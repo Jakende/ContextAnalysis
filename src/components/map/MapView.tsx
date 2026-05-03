@@ -69,6 +69,7 @@ export function MapView({
   onStatus: (status: string) => void;
   themeInvert: boolean;
 }) {
+  const shellRef = useRef<HTMLElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
   const markerRef = useRef<maplibregl.Marker | null>(null);
@@ -263,6 +264,16 @@ export function MapView({
     applyLayerVisibility(map, layers, activeScale);
   }, [layers, activeScale]);
 
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      window.setTimeout(() => mapRef.current?.resize(), 0);
+    };
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    return () => {
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+    };
+  }, []);
+
   async function handleSearch(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const firstResult = searchResults[0];
@@ -309,8 +320,17 @@ export function MapView({
   }
 
   return (
-    <section className="map-shell" aria-label="Interactive map workspace">
+    <section ref={shellRef} className="map-shell" aria-label="Interactive map workspace">
       <div ref={containerRef} className="map-canvas" />
+      <div className="map-actions panel">
+        <button
+          type="button"
+          className="ghost-button"
+          onClick={() => requestElementFullscreen(shellRef.current)}
+        >
+          Map fullscreen
+        </button>
+      </div>
       <div className="map-topbar">
         <ScaleSwitcher activeScale={activeScale} onChange={onScaleChange} />
         <form className="search-form" onSubmit={handleSearch}>
@@ -396,6 +416,15 @@ export function MapView({
       ) : null}
     </section>
   );
+}
+
+function requestElementFullscreen(element: HTMLElement | null): void {
+  if (!element) return;
+  if (document.fullscreenElement === element) {
+    void document.exitFullscreen().then(() => window.setTimeout(() => window.dispatchEvent(new Event("resize")), 0));
+    return;
+  }
+  void element.requestFullscreen().then(() => window.setTimeout(() => window.dispatchEvent(new Event("resize")), 0));
 }
 
 function MapLegend({

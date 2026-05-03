@@ -37,6 +37,7 @@ export async function runOverpassModules(input: {
   lat: number;
   lon: number;
   enabled: boolean;
+  allowCache?: boolean;
 }): Promise<{
   collections: Record<string, FeatureCollection>;
   provenance: OverpassProvenance[];
@@ -58,7 +59,7 @@ export async function runOverpassModules(input: {
 
 async function runOneModule(
   module: OverpassModule,
-  input: { lat: number; lon: number; enabled: boolean },
+  input: { lat: number; lon: number; enabled: boolean; allowCache?: boolean },
 ): Promise<{
   id: string;
   collection: FeatureCollection | null;
@@ -90,7 +91,9 @@ async function runOneModule(
     };
   }
 
-  const cached = getCached<FeatureCollection>(cacheKey, 1000 * 60 * 60 * 24);
+  const cached = input.allowCache
+    ? getCached<FeatureCollection>(cacheKey, 1000 * 60 * 60 * 24)
+    : null;
 
   const endpointStatus: OverpassProvenance["endpointStatus"] = [];
   let featureCollection: FeatureCollection | null = null;
@@ -115,7 +118,7 @@ async function runOneModule(
     if (response.ok && proxy.ok && proxy.data) {
       featureCollection = module.parse(proxy.data);
       selectedEndpoint = proxy.endpoint;
-      setCached(cacheKey, featureCollection);
+      if (input.allowCache) setCached(cacheKey, featureCollection);
     }
   } catch (error) {
     endpointStatus.push({
@@ -162,9 +165,9 @@ async function runOneModule(
         ),
         featureCount: cached.features.length,
         endpointStatus,
-        caveats: [
-          "Live Overpass refresh failed; cached data for this exact query were used.",
-        ],
+      caveats: [
+          "Live Overpass refresh failed; cached data for this exact query were used because cache fallback was explicitly enabled.",
+      ],
       },
     };
   }

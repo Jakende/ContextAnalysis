@@ -152,7 +152,7 @@ function geocodingToReceipt(
     queriedAt,
     elapsedMs: 0,
     method:
-      "Reverse geocoding executed for the selected point; cached Nominatim responses still count as source-backed retrieval.",
+      "Reverse geocoding executed for the selected point with cache fallback disabled for analysis freshness.",
     caveats:
       geocoding.status === "ok"
         ? []

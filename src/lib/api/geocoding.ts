@@ -32,6 +32,7 @@ type NominatimSearchProxyResponse = {
 export async function reverseGeocode(
   lat: number,
   lon: number,
+  options: { allowCache?: boolean } = {},
 ): Promise<{
   status: "ok" | "failed";
   cacheKey: string;
@@ -43,7 +44,9 @@ export async function reverseGeocode(
   error?: string;
 }> {
   const cacheKey = `sd:nominatim:reverse:${lat.toFixed(5)}:${lon.toFixed(5)}`;
-  const cached = getCached<NominatimResponse>(cacheKey, 1000 * 60 * 60 * 24);
+  const cached = options.allowCache
+    ? getCached<NominatimResponse>(cacheKey, 1000 * 60 * 60 * 24)
+    : null;
 
   const params = new URLSearchParams({
     format: "jsonv2",
@@ -71,7 +74,7 @@ export async function reverseGeocode(
     }
 
     const json = (await response.json()) as NominatimResponse;
-    setCached(cacheKey, json);
+    if (options.allowCache) setCached(cacheKey, json);
     return parseNominatim(json, cacheKey, "live");
   } catch (error) {
     if (cached) {
@@ -108,6 +111,7 @@ export async function forwardGeocode(
 export async function searchPlaces(
   query: string,
   limit = 5,
+  options: { allowCache?: boolean } = {},
 ): Promise<{
   status: "ok" | "failed";
   results: Array<{
@@ -126,7 +130,9 @@ export async function searchPlaces(
 
   const safeLimit = Math.max(1, Math.min(Math.trunc(limit), 8));
   const cacheKey = `sd:nominatim:search:${normalized.toLowerCase()}:${safeLimit}`;
-  const cached = getCached<NominatimSearchItem[]>(cacheKey, 1000 * 60 * 60 * 24);
+  const cached = options.allowCache
+    ? getCached<NominatimSearchItem[]>(cacheKey, 1000 * 60 * 60 * 24)
+    : null;
 
   const params = new URLSearchParams({
     format: "jsonv2",
@@ -151,7 +157,7 @@ export async function searchPlaces(
       throw new Error(payload.error ?? "Nominatim search failed");
     }
     const results = payload.data ?? [];
-    setCached(cacheKey, results);
+    if (options.allowCache) setCached(cacheKey, results);
     if (!results[0]) throw new Error("No result");
     return {
       status: "ok",

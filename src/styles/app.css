@@ -39,14 +39,15 @@
 
 .workspace {
   min-height: 680px;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(320px, 400px);
+  display: flex;
   gap: var(--space-4);
   align-items: start;
   padding: var(--space-4) var(--space-6);
 }
 
 .map-shell {
+  flex: 1 1 auto;
+  min-width: 0;
   position: relative;
   height: calc(100vh - 180px);
   min-height: 620px;
@@ -54,6 +55,14 @@
   border: 1px solid var(--border);
   overflow: hidden;
   background: var(--surface-2);
+}
+
+.map-shell:fullscreen {
+  width: 100vw;
+  height: 100vh;
+  max-height: none;
+  min-height: 0;
+  border: 0;
 }
 
 .map-canvas {
@@ -100,15 +109,23 @@
 .map-topbar,
 .map-left,
 .map-status,
-.map-legend {
+.map-legend,
+.map-actions {
   position: absolute;
   z-index: 2;
+}
+
+.map-actions {
+  top: var(--space-3);
+  right: var(--space-3);
+  padding: var(--space-1);
+  background: var(--surface);
 }
 
 .map-topbar {
   top: var(--space-3);
   left: var(--space-3);
-  right: var(--space-3);
+  right: 176px;
   display: flex;
   align-items: start;
   justify-content: space-between;
@@ -300,10 +317,45 @@
   display: grid;
   gap: var(--space-3);
   align-content: start;
-  min-width: 0;
+  flex: 0 0 auto;
+  width: clamp(320px, 24vw, 520px);
+  min-width: 300px;
+  max-width: min(760px, 48vw);
+  max-height: calc(100vh - 180px);
+  overflow: auto;
+  resize: horizontal;
+  padding-right: 2px;
 }
 
-.guided-panel,
+.side-stack:fullscreen {
+  width: 100vw;
+  max-width: none;
+  height: 100vh;
+  max-height: none;
+  resize: none;
+  overflow: auto;
+  padding: var(--space-4);
+  background: var(--surface);
+}
+
+.side-stack-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2);
+}
+
+.side-stack-toolbar > div {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.side-stack-toolbar strong {
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
 .fact-sheet,
 .export-panel,
 .section-preview {
@@ -619,8 +671,12 @@ details p {
 
 @media (max-width: 1100px) {
   .landing-strip,
-  .workspace,
   .app-footer {
+    grid-template-columns: 1fr;
+  }
+
+  .workspace {
+    display: grid;
     grid-template-columns: 1fr;
   }
 
@@ -630,6 +686,10 @@ details p {
 
   .side-stack {
     grid-row: auto;
+    width: auto;
+    max-width: none;
+    resize: vertical;
+    max-height: none;
   }
 }
 

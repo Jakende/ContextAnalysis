@@ -1,7 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ExportPanel } from "../components/export/ExportPanel";
 import { FactSheetPanel } from "../components/factsheet/FactSheetPanel";
-import { GuidedExplorer } from "../components/guided/GuidedExplorer";
 import { MapView } from "../components/map/MapView";
 import { recomputeMSectionFromAnalysis } from "../lib/analysis/m/analyzeM";
 import { runLocationAnalysis } from "../lib/analysis/runAnalysis";
@@ -23,7 +22,6 @@ const DEFAULT_LAYERS: LayerState = {
 
 export function App() {
   const [activeScale, setActiveScale] = useState<Scale>("XL");
-  const [mode, setMode] = useState<"guided" | "direct">("guided");
   const [layers, setLayers] = useState<LayerState>(DEFAULT_LAYERS);
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
   const [sectionLine, setSectionLine] = useState<SectionLine | null>(null);
@@ -31,6 +29,7 @@ export function App() {
   const [status, setStatus] = useState("Map initializing.");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [themeInvert, setThemeInvert] = useState(false);
+  const sideStackRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     document.body.classList.toggle("theme-invert", themeInvert);
@@ -42,7 +41,7 @@ export function App() {
       return;
     }
     setIsAnalyzing(true);
-    setStatus("Querying Nominatim, Overpass, tile metadata, local CSVs, and configured preprocessed source adapters.");
+    setStatus("Querying fresh Nominatim, Overpass, tile metadata, local datasets, and configured source adapters for this point.");
     try {
       const { result, sectionSvg: nextSectionSvg } = await runLocationAnalysis({
         ...point,
@@ -154,7 +153,7 @@ export function App() {
           analysis={analysis}
           activeScale={activeScale}
           layers={layers}
-          mode={mode}
+          mode="direct"
           isAnalyzing={isAnalyzing}
           analysisLocked={Boolean(analysis)}
           onPointSelected={handlePointSelected}
@@ -166,13 +165,20 @@ export function App() {
           onStatus={setStatus}
           themeInvert={themeInvert}
         />
-        <div className="side-stack">
-          <GuidedExplorer
-            mode={mode}
-            onModeChange={setMode}
-            analysis={analysis}
-            activeScale={activeScale}
-          />
+        <div className="side-stack" ref={sideStackRef}>
+          <div className="side-stack-toolbar panel">
+            <div>
+              <span className="label">Inspector</span>
+              <strong>{activeScale} fact sheet</strong>
+            </div>
+            <button
+              type="button"
+              className="ghost-button"
+              onClick={() => requestElementFullscreen(sideStackRef.current)}
+            >
+              Side fullscreen
+            </button>
+          </div>
           {activeScale === "M" && layers.section && sectionSvg ? (
             <section
               key={sectionLineKey(sectionLine, sectionSvg)}
@@ -217,6 +223,15 @@ export function App() {
       </footer>
     </main>
   );
+}
+
+function requestElementFullscreen(element: HTMLElement | null): void {
+  if (!element) return;
+  if (document.fullscreenElement === element) {
+    void document.exitFullscreen();
+    return;
+  }
+  void element.requestFullscreen();
 }
 
 function hasCalculatedSection(analysis: AnalysisResult | null): boolean {

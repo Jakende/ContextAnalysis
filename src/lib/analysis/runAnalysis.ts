@@ -49,7 +49,7 @@ export async function runLocationAnalysis(input: {
           district: undefined,
           sourceStatus: undefined,
         }
-      : await reverseGeocode(input.lat, input.lon);
+      : await reverseGeocode(input.lat, input.lon, { allowCache: false });
 
   const selectedPoint: SelectedPoint = {
     lat: input.lat,
@@ -65,6 +65,7 @@ export async function runLocationAnalysis(input: {
     lat: input.lat,
     lon: input.lon,
     enabled: input.enableOverpass ?? true,
+    allowCache: false,
   });
   const xl = analyzeXl(selectedPoint, computedAt);
   const l = analyzeL(selectedPoint, computedAt, 500, overpass.collections);
@@ -160,6 +161,7 @@ export async function runLocationAnalysis(input: {
       },
       caveats: [
         "Analysis is generated from structured indicators, not free-form LLM metrics.",
+        "Fresh live/API retrieval is requested for every new selected point; cached Nominatim or Overpass payloads are not used for point analysis.",
         ...("error" in geocoding && geocoding.error
           ? [`Reverse geocoding unavailable: ${geocoding.error}`]
           : []),

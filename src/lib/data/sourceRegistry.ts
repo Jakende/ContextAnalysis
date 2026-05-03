@@ -33,7 +33,7 @@ export const sourceRegistry = {
     scale: ["XL", "L", "M"],
     updateMode: "live",
     notes:
-      "Optional reverse geocoding. Results are cached and never required for click-based analysis.",
+      "Optional reverse geocoding. Point analysis requests fresh live results and does not use cache fallback.",
   },
   "osm-overpass": {
     id: "osm-overpass",
