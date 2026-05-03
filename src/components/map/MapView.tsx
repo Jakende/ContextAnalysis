@@ -17,6 +17,7 @@ const MAP_LAYER_COLORS = {
   zensusLow: "#15321d",
   zensusMedium: "#f3d35c",
   zensusHigh: "#d45a33",
+  zensusMissing: "#8a8f8a",
   xlSource: "#f97316",
   buffer: "#e5e7eb",
   selected: "#ffffff",
@@ -140,6 +141,7 @@ export function MapView({
     map.addControl(new maplibregl.ScaleControl({ unit: "metric" }), "bottom-left");
 
     map.on("click", (event) => {
+      if (showXlFeatureInfo(map, event)) return;
       if (sectionDrawModeRef.current) {
         const point = { lat: event.lngLat.lat, lon: event.lngLat.lng };
         if (!sectionDraftStartRef.current) {
@@ -425,11 +427,17 @@ function getLegendItems(activeScale: Scale, layers: LayerState, analysis: Analys
     { label: "Selected point", color: MAP_LAYER_COLORS.selected },
   ];
   if (activeScale === "XL") {
-    items.push({ label: "XL context extents", color: MAP_LAYER_COLORS.xl });
-    items.push({ label: "Zensus low", color: MAP_LAYER_COLORS.zensusLow });
-    items.push({ label: "Zensus medium", color: MAP_LAYER_COLORS.zensusMedium });
-    items.push({ label: "Zensus high", color: MAP_LAYER_COLORS.zensusHigh });
-    items.push({ label: "XL source coverage", color: MAP_LAYER_COLORS.xlSource });
+    items.push({ label: "XL context rings", color: MAP_LAYER_COLORS.xl });
+    if (hasMeasuredZensusGrid(analysis)) {
+      items.push({ label: "Zensus low", color: MAP_LAYER_COLORS.zensusLow });
+      items.push({ label: "Zensus medium", color: MAP_LAYER_COLORS.zensusMedium });
+      items.push({ label: "Zensus high", color: MAP_LAYER_COLORS.zensusHigh });
+    } else {
+      items.push({ label: "Zensus grid footprint - values missing", color: MAP_LAYER_COLORS.zensusMissing });
+    }
+    if (analysis.overlays.xlSources.features.length) {
+      items.push({ label: "Official XL source geometry", color: MAP_LAYER_COLORS.xlSource });
+    }
   }
   if (activeScale === "L") {
     if (layers.green) items.push({ label: "Green / blue", color: MAP_LAYER_COLORS.green });
@@ -448,6 +456,64 @@ function getLegendItems(activeScale: Scale, layers: LayerState, analysis: Analys
     if (layers.sun) items.push({ label: "Sun hints", color: MAP_LAYER_COLORS.sun });
   }
   return items;
+}
+
+function hasMeasuredZensusGrid(analysis: AnalysisResult): boolean {
+  return analysis.overlays.xlGrid.features.some(
+    (feature) =>
+      feature.properties?.valueStatus === "measured" &&
+      typeof feature.properties?.populationIndex === "number",
+  );
+}
+
+function showXlFeatureInfo(
+  map: MapLibreMap,
+  event: maplibregl.MapMouseEvent,
+): boolean {
+  const features = map.queryRenderedFeatures(event.point, {
+    layers: ["xl-grid-fill", "xl-context-line", "xl-source-line"],
+  });
+  const feature = features[0];
+  if (!feature?.properties) return false;
+
+  const props = feature.properties as Record<string, unknown>;
+  const sourceId = String(props.sourceId ?? "");
+  const label = String(props.label ?? "XL layer");
+  const valueStatus = String(props.valueStatus ?? "");
+  const populationIndex = props.populationIndex;
+  const radiusMeters = props.radiusMeters;
+  const caveat = String(props.caveat ?? "");
+  const valueLine =
+    sourceId === "zensus-grid-2022"
+      ? valueStatus === "measured" && typeof populationIndex === "number"
+        ? `Zensus value index: ${populationIndex}`
+        : "Zensus value: not loaded for this cell"
+      : typeof radiusMeters === "number"
+        ? `Radius: ${(radiusMeters / 1000).toFixed(1)} km`
+        : "";
+
+  new maplibregl.Popup({ closeButton: true, closeOnClick: true })
+    .setLngLat(event.lngLat)
+    .setHTML(
+      `<strong>${escapeHtml(label)}</strong><br/>${escapeHtml(valueLine)}${
+        caveat ? `<br/><small>${escapeHtml(caveat)}</small>` : ""
+      }`,
+    )
+    .addTo(map);
+  return true;
+}
+
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>"']/g, (char) => {
+    const entities: Record<string, string> = {
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;",
+    };
+    return entities[char] ?? char;
+  });
 }
 
 function getTransportBreakdown(analysis: AnalysisResult): Array<{
@@ -576,25 +642,30 @@ function addAnalysisSourcesAndLayers(map: MapLibreMap): void {
     source: "xl-grid",
     paint: {
       "fill-color": [
-        "interpolate",
-        ["linear"],
-        ["to-number", ["get", "populationIndex"], 0],
-        0,
-        "#15321d",
-        35,
-        "#275aa5",
-        55,
-        "#f3d35c",
-        75,
-        "#f0a23b",
-        95,
-        "#b5292e",
+        "case",
+        ["==", ["get", "valueStatus"], "measured"],
+        [
+          "interpolate",
+          ["linear"],
+          ["to-number", ["get", "populationIndex"], 0],
+          0,
+          "#15321d",
+          35,
+          "#275aa5",
+          55,
+          "#f3d35c",
+          75,
+          "#f0a23b",
+          95,
+          "#b5292e",
+        ],
+        MAP_LAYER_COLORS.zensusMissing,
       ],
       "fill-opacity": [
         "case",
-        ["==", ["get", "status"], "ok"],
+        ["==", ["get", "valueStatus"], "measured"],
         0.44,
-        0.28,
+        0.12,
       ],
     },
   });
@@ -605,7 +676,12 @@ function addAnalysisSourcesAndLayers(map: MapLibreMap): void {
     paint: {
       "line-color": MAP_LAYER_COLORS.zensus,
       "line-width": 1,
-      "line-opacity": 0.85,
+      "line-opacity": [
+        "case",
+        ["==", ["get", "valueStatus"], "measured"],
+        0.85,
+        0.38,
+      ],
     },
   });
   addLayerIfMissing(map, {

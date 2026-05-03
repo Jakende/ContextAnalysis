@@ -44,12 +44,12 @@ export function analysisToSvg(
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 720" role="img" aria-label="SD Stadtdaten editable analysis SVG">
   <metadata>${escapeXml(JSON.stringify(manifest))}</metadata>
   <style>
-    :root{--surface:#000000;--ink:#ffffff;--muted:#b3b3b3;--border:#3a3a3a;--accent:#ffffff;--map-xl:#93c5fd;--map-zensus:#f3d35c;--map-xl-source:#f97316;--map-green:#31d158;--map-tree:#16a34a;--map-building:#60a5fa;--map-transport:#facc15;--map-mobility:#22d3ee;--map-poi:#fb7185;--map-barrier:#ef4444;--map-development:#f97316;--map-sun:#fde047}
+    :root{--surface:#000000;--ink:#ffffff;--muted:#b3b3b3;--border:#3a3a3a;--accent:#ffffff;--map-xl:#93c5fd;--map-zensus:#8a8f8a;--map-xl-source:#f97316;--map-green:#31d158;--map-tree:#16a34a;--map-building:#60a5fa;--map-transport:#facc15;--map-mobility:#22d3ee;--map-poi:#fb7185;--map-barrier:#ef4444;--map-development:#f97316;--map-sun:#fde047}
     text{font-family:JetBrains Mono,SFMono-Regular,Menlo,Consolas,monospace;fill:var(--ink)}
     .frame{fill:var(--surface);stroke:var(--border);stroke-width:1}
     .buffer{fill:none;stroke:var(--muted);stroke-width:1;stroke-dasharray:6 6}
     .xl-context{fill:var(--map-xl);fill-opacity:.08;stroke:var(--map-xl);stroke-width:2;stroke-dasharray:8 4}
-    .xl-grid{fill:var(--map-zensus);fill-opacity:.12;stroke:var(--map-zensus);stroke-width:1}
+    .xl-grid{fill:var(--map-zensus);fill-opacity:.12;stroke:var(--map-zensus);stroke-opacity:.38;stroke-width:1}
     .xl-source{fill:var(--map-xl-source);fill-opacity:.04;stroke:var(--map-xl-source);stroke-width:1;stroke-dasharray:4 4}
     .green{fill:var(--map-green);fill-opacity:.24;stroke:var(--map-green);stroke-width:1}
     .street{fill:none;stroke:var(--accent);stroke-width:3}

@@ -12,12 +12,12 @@ import {
 const XL_CONTEXT_EXTENTS = [
   {
     id: "xl-statistical-context",
-    label: "Statistical context",
+    label: "Statistical grid context",
     radiusMeters: 2_500,
   },
   {
     id: "xl-city-context",
-    label: "City context",
+    label: "City comparison context",
     radiusMeters: 8_000,
   },
   {
@@ -73,8 +73,9 @@ export function createXlGridOverlay(
           label: "Zensus 2022 grid cell",
           sourceId: "zensus-grid-2022",
           status: zensusReceipt?.status ?? "missing",
-          zensusClass: zensusClass(row, column),
-          populationIndex: zensusPopulationIndex(row, column),
+          valueStatus: "unavailable",
+          zensusClass: "not available",
+          populationIndex: null,
           cellSizeMeters,
           method:
             "Visual Zensus grid footprint for the selected XL context. Actual grid statistics require a local preprocessed Zensus MBTiles/GeoJSON asset.",
@@ -90,22 +91,6 @@ export function createXlGridOverlay(
   return featureCollection(features);
 }
 
-function zensusClass(row: number, column: number): string {
-  const value = zensusPopulationIndex(row, column);
-  if (value >= 78) return "very high";
-  if (value >= 62) return "high";
-  if (value >= 45) return "medium";
-  if (value >= 28) return "low";
-  return "very low";
-}
-
-function zensusPopulationIndex(row: number, column: number): number {
-  const distancePenalty = Math.min(46, Math.round(Math.hypot(row, column) * 16));
-  const eastWestGradient = column * 7;
-  const northSouthGradient = row * -4;
-  return Math.max(12, Math.min(96, 72 - distancePenalty + eastWestGradient + northSouthGradient));
-}
-
 export function createXlSourceOverlay(
   selectedPoint: SelectedPoint,
   sourceFetches: SourceFetchReceipt[],
@@ -119,9 +104,13 @@ export function createXlSourceOverlay(
   ] as const;
 
   return featureCollection(
-    sourceIds.map((sourceId, index) => {
+    sourceIds.flatMap((sourceId, index) => {
       const source = sourceRegistry[sourceId];
       const receipt = sourceFetches.find((item) => item.sourceId === sourceId);
+      const hasSpatialAsset =
+        receipt?.status === "ok" &&
+        Boolean(receipt.url?.startsWith("/") || receipt.localPath?.startsWith("public/"));
+      if (!hasSpatialAsset) return [];
       const radiusMeters = [4_500, 9_000, 13_500, 17_500, 21_500][index];
       return geometryToFeature(
         bufferPolygon(selectedPoint.lat, selectedPoint.lon, radiusMeters, 96),

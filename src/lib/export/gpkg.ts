@@ -334,12 +334,17 @@ function styleForFeature(table: GeometryTable, feature: Feature): {
 } {
   const role = table.styleRole ?? String(feature.properties?.sourceId ?? table.name);
   if (role === "zensus-grid") {
+    const hasMeasuredValue =
+      feature.properties?.valueStatus === "measured" &&
+      typeof feature.properties?.populationIndex === "number";
     return {
       role,
-      color: zensusColor(Number(feature.properties?.populationIndex ?? 0)),
-      opacity: 0.44,
+      color: hasMeasuredValue
+        ? zensusColor(Number(feature.properties?.populationIndex))
+        : "#8a8f8a",
+      opacity: hasMeasuredValue ? 0.44 : 0.12,
       width: 0.8,
-      symbol: "polygon-fill",
+      symbol: hasMeasuredValue ? "zensus-value-fill" : "zensus-footprint-no-value",
     };
   }
   const styles: Record<string, { color: string; opacity: number; width: number; symbol: string }> = {
