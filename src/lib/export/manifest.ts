@@ -6,7 +6,7 @@ export function createExportManifest(
   files: ExportManifest["files"],
 ): ExportManifest {
   return {
-    app: "SD Stadtdaten",
+    app: "Urban Context Analysis",
     exportVersion: "0.1.0",
     selectedPoint: {
       lat: analysis.selectedPoint.lat,

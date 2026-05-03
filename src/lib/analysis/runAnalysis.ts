@@ -108,7 +108,7 @@ export async function runLocationAnalysis(input: {
   );
 
   const result: AnalysisResult = {
-    app: "SD Stadtdaten",
+    app: "Urban Context Analysis",
     analysisVersion: "0.1.0",
     selectedPoint,
     activeScale: input.activeScale,

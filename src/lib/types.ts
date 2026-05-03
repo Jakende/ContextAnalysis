@@ -146,7 +146,7 @@ export type MapOverlayCollection = {
 };
 
 export type AnalysisResult = {
-  app: "SD Stadtdaten";
+  app: "Urban Context Analysis";
   analysisVersion: string;
   selectedPoint: SelectedPoint;
   activeScale: Scale;
@@ -178,7 +178,7 @@ export type OverpassModule = {
 };
 
 export type ExportManifest = {
-  app: "SD Stadtdaten";
+  app: "Urban Context Analysis";
   exportVersion: "0.1.0";
   selectedPoint: {
     lat: number;

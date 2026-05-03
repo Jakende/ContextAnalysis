@@ -41,7 +41,7 @@ export function analysisToSvg(
     },
   ]);
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 720" role="img" aria-label="SD Stadtdaten editable analysis SVG">
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 720" role="img" aria-label="Urban Context Analysis editable analysis SVG">
   <metadata>${escapeXml(JSON.stringify(manifest))}</metadata>
   <style>
     :root{--surface:#000000;--ink:#ffffff;--muted:#b3b3b3;--border:#3a3a3a;--accent:#ffffff;--map-xl:#93c5fd;--map-zensus:#8a8f8a;--map-xl-source:#f97316;--map-green:#31d158;--map-tree:#16a34a;--map-building:#60a5fa;--map-transport:#facc15;--map-mobility:#22d3ee;--map-poi:#fb7185;--map-barrier:#ef4444;--map-development:#f97316;--map-sun:#fde047}

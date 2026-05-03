@@ -2,7 +2,7 @@ import type { StyleSpecification } from "maplibre-gl";
 
 export const openFreeMapStyle: StyleSpecification = {
   version: 8,
-  name: "SD Stadtdaten analytical base",
+  name: "Urban Context Analysis analytical base",
   glyphs: "https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf",
   sprite: "https://tiles.openfreemap.org/sprites/ofm_f384/ofm",
   sources: {

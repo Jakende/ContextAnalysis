@@ -67,7 +67,7 @@ export function analysisToGeoJson(analysis: AnalysisResult): string {
     ...feature,
     properties: {
       ...(feature.properties ?? {}),
-      exportSource: "SD Stadtdaten structured analysis",
+      exportSource: "Urban Context Analysis structured analysis",
     },
   }));
 
@@ -95,7 +95,7 @@ export function analysisToGeoJson(analysis: AnalysisResult): string {
 
 export function analysisToMarkdown(analysis: AnalysisResult): string {
   const lines = [
-    "# SD Stadtdaten Context Analysis",
+    "# Urban Context Analysis",
     "",
     `Generated: ${new Date().toISOString()}`,
     `Selected point: ${analysis.selectedPoint.lat.toFixed(5)}, ${analysis.selectedPoint.lon.toFixed(5)}`,
@@ -188,7 +188,7 @@ export function analysisToHtml(analysis: AnalysisResult): string {
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>SD Stadtdaten Report</title>
+  <title>Urban Context Analysis Report</title>
   <style>
     body{font-family:JetBrains Mono,SFMono-Regular,Menlo,Consolas,monospace;background:#fff;color:#111;line-height:1.5;margin:32px}
     h1{text-transform:uppercase;letter-spacing:.04em;font-size:28px}

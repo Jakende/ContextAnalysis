@@ -294,7 +294,7 @@ function createFeatureTable(
     [
       table.name,
       table.name,
-      `SD Stadtdaten layer ${table.name}`,
+      `Urban Context Analysis layer ${table.name}`,
       createdAt,
       bounds[0],
       bounds[1],

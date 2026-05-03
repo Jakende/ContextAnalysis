@@ -134,7 +134,7 @@ export function App() {
     <main className="app-shell">
       <section className="landing-strip" aria-label="Product overview">
         <div className="brand-block">
-          <span className="label">SD Stadtdaten</span>
+          <span className="label">Urban Context Analysis</span>
           <h1>Kontextanalyse</h1>
           <p>
             Punkt setzen, Live-Daten abrufen, XL/L/M-Fact-Sheet exportieren.

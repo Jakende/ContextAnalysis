@@ -891,7 +891,7 @@ function createSectionSvg(input: {
 }): string {
   if (!input.model.line) {
     return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 360" role="img" aria-label="User-defined street cross-section setup">
-  <metadata>{"source":"SD Stadtdaten","status":"section-line-required"}</metadata>
+  <metadata>{"source":"Urban Context Analysis","status":"section-line-required"}</metadata>
   <style>
     svg{--section-surface:var(--surface,#000);--section-ink:var(--ink,#fff);--section-muted:var(--muted,#b3b3b3);--section-border:var(--border,#3a3a3a)}
     text{font-family:JetBrains Mono,SFMono-Regular,Menlo,Consolas,monospace;fill:var(--section-ink);font-size:12px}
@@ -971,7 +971,7 @@ function createSectionSvg(input: {
   const lengthLabel = `${Math.round(model.lengthMeters)}M`;
   const treeLabel = model.trees.length ? String(model.trees.length) : "0";
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 360" role="img" aria-label="User-defined terrain and building cross-section">
-  <metadata>{"source":"SD Stadtdaten structured M-scale section","terrain":"SRTM 30m sample grid","street":"${escapeXml(input.streetName)}"}</metadata>
+  <metadata>{"source":"Urban Context Analysis structured M-scale section","terrain":"SRTM 30m sample grid","street":"${escapeXml(input.streetName)}"}</metadata>
   <style>
     svg{--section-surface:var(--surface,#000);--section-surface-2:var(--surface-2,#111);--section-ink:var(--ink,#fff);--section-muted:var(--muted,#b3b3b3);--section-border:var(--border,#3a3a3a);--section-terrain:#f3d35c;--section-building:#60a5fa;--section-tree:#31d158}
     text{font-family:JetBrains Mono,SFMono-Regular,Menlo,Consolas,monospace;fill:var(--section-ink);font-size:12px}

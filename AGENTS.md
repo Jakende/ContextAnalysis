@@ -1,4 +1,4 @@
-# AGENTS.md — SD Stadtdaten MVP Urban Context Analysis Tool
+# AGENTS.md — Urban Context Analysis MVP
 
 ## 1. Product intent
 
@@ -814,7 +814,7 @@ Every export package must include a machine-readable manifest.
 
 ```json
 {
-  "app": "SD Stadtdaten",
+  "app": "Urban Context Analysis",
   "exportVersion": "0.1.0",
   "selectedPoint": {
     "lat": 0,
