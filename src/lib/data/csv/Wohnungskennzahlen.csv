@@ -1,0 +1,5 @@
+district,average_living_area_m2,vacancy_hint,source_version
+Muenchen,71.8,low,Zensus 2022 sample schema
+Maxvorstadt,62.4,low,Zensus 2022 sample schema
+Altstadt-Lehel,66.2,low,Zensus 2022 sample schema
+Schwabing,68.9,low,Zensus 2022 sample schema

@@ -1,0 +1,5 @@
+district,asking_rent_eur_m2,city_index,source_version
+Muenchen,19.1,100,Zensus 2022 sample schema
+Maxvorstadt,22.4,117,Zensus 2022 sample schema
+Altstadt-Lehel,23.0,120,Zensus 2022 sample schema
+Schwabing,21.6,113,Zensus 2022 sample schema

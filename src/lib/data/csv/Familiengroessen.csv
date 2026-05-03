@@ -1,0 +1,5 @@
+district,average_family_size,single_household_share,source_version
+Muenchen,2.7,53.1,Zensus 2022 sample schema
+Maxvorstadt,2.2,62.8,Zensus 2022 sample schema
+Altstadt-Lehel,2.3,58.4,Zensus 2022 sample schema
+Schwabing,2.4,56.9,Zensus 2022 sample schema

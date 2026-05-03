@@ -1,0 +1,5 @@
+district,employment_rate,unemployment_hint,source_version
+Muenchen,65.1,medium,Zensus 2022 sample schema
+Maxvorstadt,68.4,low,Zensus 2022 sample schema
+Altstadt-Lehel,66.2,low,Zensus 2022 sample schema
+Schwabing,67.0,low,Zensus 2022 sample schema

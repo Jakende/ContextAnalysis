@@ -1,0 +1,5 @@
+district,owner_occupied_share,rental_share,source_version
+Muenchen,25.8,74.2,Zensus 2022 sample schema
+Maxvorstadt,18.4,81.6,Zensus 2022 sample schema
+Altstadt-Lehel,21.8,78.2,Zensus 2022 sample schema
+Schwabing,23.4,76.6,Zensus 2022 sample schema

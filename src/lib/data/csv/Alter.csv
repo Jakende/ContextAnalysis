@@ -1,0 +1,5 @@
+district,median_age,under_18_share,over_65_share,source_version
+Muenchen,41.2,16.4,17.8,Zensus 2022 sample schema
+Maxvorstadt,37.4,10.8,12.2,Zensus 2022 sample schema
+Altstadt-Lehel,44.5,11.6,20.1,Zensus 2022 sample schema
+Schwabing,39.1,13.2,15.4,Zensus 2022 sample schema

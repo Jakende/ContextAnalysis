@@ -1,0 +1,5 @@
+district,median_rent_eur_m2,rent_source,source_version
+Muenchen,15.8,local CSV sample,Zensus 2022 sample schema
+Maxvorstadt,18.1,local CSV sample,Zensus 2022 sample schema
+Altstadt-Lehel,19.4,local CSV sample,Zensus 2022 sample schema
+Schwabing,17.6,local CSV sample,Zensus 2022 sample schema
