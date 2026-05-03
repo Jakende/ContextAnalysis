@@ -328,6 +328,10 @@
 }
 
 .side-stack:fullscreen {
+  display: grid;
+  grid-template-columns: minmax(360px, .9fr) minmax(520px, 1.5fr);
+  grid-auto-rows: min-content;
+  align-content: start;
   width: 100vw;
   max-width: none;
   height: 100vh;
@@ -336,6 +340,20 @@
   overflow: auto;
   padding: var(--space-4);
   background: var(--surface);
+}
+
+.side-stack:fullscreen .side-stack-toolbar,
+.side-stack:fullscreen .export-panel {
+  grid-column: 1 / -1;
+}
+
+.side-stack:fullscreen .section-preview {
+  grid-column: 1 / -1;
+  min-height: 420px;
+}
+
+.side-stack:fullscreen .fact-sheet {
+  grid-column: 1 / -1;
 }
 
 .side-stack-toolbar {
@@ -403,6 +421,36 @@
   overflow: auto;
 }
 
+.side-stack:fullscreen .fact-sheet {
+  display: grid;
+  grid-template-columns: minmax(320px, .85fr) minmax(520px, 1.4fr);
+  gap: var(--space-4);
+  max-height: none;
+  overflow: visible;
+}
+
+.side-stack:fullscreen .fact-sheet-header,
+.side-stack:fullscreen .point-readout {
+  grid-column: 1;
+}
+
+.side-stack:fullscreen .module-list {
+  grid-column: 1;
+  margin-top: 0;
+}
+
+.side-stack:fullscreen .analysis-charts {
+  grid-column: 2;
+  grid-row: 1 / span 3;
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+
+.side-stack:fullscreen .source-run-list {
+  grid-column: 1 / -1;
+}
+
 .fact-sheet-header,
 .point-readout,
 .fact-module,
@@ -445,12 +493,29 @@
   gap: var(--space-2);
 }
 
+.side-stack:fullscreen .plotly-stack {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
+}
+
+.side-stack:fullscreen .plotly-frame:first-child {
+  grid-column: 1 / -1;
+}
+
 .plotly-frame {
   position: relative;
   min-height: 188px;
   border: 1px solid var(--border);
   background: var(--surface-2);
   overflow: hidden;
+}
+
+.side-stack:fullscreen .plotly-frame {
+  min-height: 280px;
+}
+
+.side-stack:fullscreen .plotly-panel {
+  min-height: 280px;
 }
 
 .plotly-panel {
@@ -629,6 +694,10 @@ details p {
   height: 320px;
 }
 
+.side-stack:fullscreen .section-preview svg {
+  height: 380px;
+}
+
 .export-panel {
   display: grid;
   gap: var(--space-3);
@@ -643,6 +712,10 @@ details p {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: var(--space-1);
+}
+
+.side-stack:fullscreen .export-grid {
+  grid-template-columns: repeat(5, minmax(140px, 1fr));
 }
 
 .export-grid button {
@@ -690,6 +763,25 @@ details p {
     max-width: none;
     resize: vertical;
     max-height: none;
+  }
+
+  .side-stack:fullscreen,
+  .side-stack:fullscreen .fact-sheet {
+    grid-template-columns: 1fr;
+  }
+
+  .side-stack:fullscreen .fact-sheet-header,
+  .side-stack:fullscreen .point-readout,
+  .side-stack:fullscreen .module-list,
+  .side-stack:fullscreen .analysis-charts,
+  .side-stack:fullscreen .source-run-list {
+    grid-column: 1;
+    grid-row: auto;
+  }
+
+  .side-stack:fullscreen .plotly-stack,
+  .side-stack:fullscreen .export-grid {
+    grid-template-columns: 1fr;
   }
 }
 

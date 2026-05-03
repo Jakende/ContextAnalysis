@@ -15,7 +15,7 @@ export async function generateOllamaReport(
 ): Promise<OllamaReport> {
   const baseUrl =
     import.meta.env.VITE_OLLAMA_BASE_URL ?? "http://localhost:11434";
-  const model = import.meta.env.VITE_OLLAMA_MODEL ?? "llama3.1";
+  const model = import.meta.env.VITE_OLLAMA_MODEL ?? "glm-4.7-flash:latest";
   const language = import.meta.env.VITE_REPORT_LANGUAGE ?? "en";
   const timeoutMs = Number(import.meta.env.VITE_OLLAMA_TIMEOUT_MS ?? 120000);
 

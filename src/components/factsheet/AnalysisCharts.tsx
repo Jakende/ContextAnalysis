@@ -247,7 +247,7 @@ function ChartSnapshot({
     <svg
       className="chart-snapshot"
       viewBox="0 0 360 200"
-      preserveAspectRatio="none"
+      preserveAspectRatio="xMidYMid meet"
       aria-hidden="true"
     >
       <text className="chart-title" x="12" y="22">
