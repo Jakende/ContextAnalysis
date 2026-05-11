@@ -4,6 +4,7 @@ import { FactSheetPanel } from "../components/factsheet/FactSheetPanel";
 import { MapView } from "../components/map/MapView";
 import { recomputeMSectionFromAnalysis } from "../lib/analysis/m/analyzeM";
 import { runLocationAnalysis } from "../lib/analysis/runAnalysis";
+import { loadTerrainSamplesForSection } from "../lib/data/localSpatial";
 import type {
   AnalysisResult,
   LayerId,
@@ -69,16 +70,18 @@ export function App() {
     setStatus("Analysis closed. Search can zoom the map; click the canvas pin target for a new analysis.");
   }
 
-  function handleSectionLineSelected(nextSectionLine: SectionLine) {
+  async function handleSectionLineSelected(nextSectionLine: SectionLine) {
     if (!analysis) {
       setStatus("Select an analysis point before drawing an M-scale section line.");
       return;
     }
 
     try {
+      const terrainSamples = await loadTerrainSamplesForSection(nextSectionLine);
       const { result, sectionSvg: nextSectionSvg } = recomputeMSectionFromAnalysis(
         analysis,
         nextSectionLine,
+        terrainSamples,
       );
       setSectionLine(nextSectionLine);
       setAnalysis(result);

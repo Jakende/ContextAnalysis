@@ -7,6 +7,7 @@ import type {
 } from "../types";
 import { getCsvSourceSummary } from "./csvLoader";
 import { sourceRegistry } from "./sourceRegistry";
+import { ZENSUS_WMS_CAPABILITIES_URL } from "./zensusWms";
 
 type GeocodingReceipt = {
   enabled: boolean;
@@ -35,15 +36,17 @@ type SourceProbeResponse = {
 };
 
 const PREPROCESSED_ASSET_CHECKS: Record<string, string> = {
-  "zensus-grid-2022": "/tiles/zensus-grid/metadata.json",
-  "lod2-bayern": "/tiles/lod2/tileset.json",
-  "srtm-30m": "/data/processed/srtm-30m/metadata.json",
-  "eurostat-gisco-fua": "/data/processed/eurostat-gisco-fua.json",
-  "copernicus-urban-atlas": "/data/processed/copernicus-urban-atlas.json",
-  "ghsl-jrc": "/data/processed/ghsl.json",
-  "bkg-geobasis": "/data/processed/bkg-boundaries.json",
-  "dwd-cdc": "/data/processed/dwd-climate.json",
-  "mobilithek-gtfs": "/data/processed/gtfs-stops.json",
+  "zensus-grid-2022": "/data/processed/zensus-grid.geojson",
+  "lod2-bayern": "/data/processed/lod2-buildings.geojson",
+  "global-building-atlas": "/data/processed/global-building-atlas.geojson",
+  "overture-buildings": "/data/processed/overture-buildings.geojson",
+  "srtm-30m": "/data/processed/srtm-30m/samples.geojson",
+  "eurostat-gisco-fua": "/data/processed/eurostat-gisco-fua.geojson",
+  "copernicus-urban-atlas": "/data/processed/copernicus-urban-atlas.geojson",
+  "ghsl-jrc": "/data/processed/ghsl.geojson",
+  "bkg-geobasis": "/data/processed/bkg-boundaries.geojson",
+  "dwd-cdc": "/data/processed/dwd-climate.geojson",
+  "mobilithek-gtfs": "/data/processed/gtfs-stops.geojson",
   "natural-earth-openfreemap":
     "https://tiles.openfreemap.org/natural_earth/ne2sr/0/0/0.png",
 };
@@ -55,6 +58,15 @@ const DIRECT_ADAPTER_SOURCE_IDS = new Set([
   "osm-overpass",
   "osm-core",
   "destatis-genesis",
+]);
+
+const PREPROCESSED_ONLY_SOURCE_IDS = new Set([
+  "copernicus-urban-atlas",
+  "dwd-cdc",
+  "global-building-atlas",
+  "ghsl-jrc",
+  "mobilithek-gtfs",
+  "overture-buildings",
 ]);
 
 export async function runSourceAdapters(
@@ -216,7 +228,7 @@ function osmCoreToReceipt(
     caveats:
       featureCount > 0
         ? ["OSM completeness varies by place and tag class."]
-        : ["No live OSM features were available; fallback indicators remain low-confidence."],
+        : ["No live OSM features were available; affected indicators remain unavailable."],
   });
 }
 
@@ -229,7 +241,7 @@ function csvToReceipt(
   const exactMatches = summary.matchedRows.filter(
     (match) => match.match === "exact",
   ).length;
-  const fallbackMatches = summary.matchedRows.length - exactMatches;
+  const missingMatches = summary.matchedRows.length - exactMatches;
   return receipt(source, {
     status: "ok",
     queriedAt,
@@ -239,7 +251,7 @@ function csvToReceipt(
     method:
       "Read all configured local CSV tables for the selected point's inferred district during this analysis run.",
     caveats: [
-      `${exactMatches}/${summary.tableCount} CSV tables matched the inferred district directly; ${fallbackMatches} used deterministic city/sample fallback rows.`,
+      `${exactMatches}/${summary.tableCount} CSV tables matched the inferred district directly; ${missingMatches} tables emitted no values because fallback rows are disabled.`,
       "Bundled CSV files are MVP schema samples and must be replaced by authoritative Destatis/Zensus preprocessing exports.",
     ],
   });
@@ -250,6 +262,9 @@ async function registryBackedSourceReceipt(
   queriedAt: string,
 ): Promise<SourceFetchReceipt> {
   const source: DataSource = sourceRegistry[sourceId as keyof typeof sourceRegistry];
+  if (sourceId === "zensus-grid-2022") {
+    return zensusWmsSourceReceipt(source, queriedAt);
+  }
   const localUrl = PREPROCESSED_ASSET_CHECKS[sourceId] ?? publicUrlFromLocalPath(source.localPath);
 
   if (localUrl) {
@@ -279,6 +294,24 @@ async function registryBackedSourceReceipt(
     }
   }
 
+  if (PREPROCESSED_ONLY_SOURCE_IDS.has(sourceId)) {
+    return receipt(source, {
+      status: "missing",
+      queriedAt,
+      elapsedMs: 0,
+      url: localUrl,
+      method:
+        "Checked for a local/preprocessed building dataset during the selected-point analysis run. Live WFS/download probing is intentionally disabled for this source.",
+      caveats: [
+        localUrl
+          ? `Local preprocessed asset was not available at ${localUrl}.`
+          : "No local preprocessed asset endpoint is configured for this source.",
+        "This source is too large or too fragile for direct point-analysis requests; preprocess a clipped dataset before using it for M-scale massing.",
+      ],
+      error: "Preprocessed asset missing",
+    });
+  }
+
   if (source.url) {
     return remoteMetadataReceipt(source, queriedAt, localUrl);
   }
@@ -295,6 +328,42 @@ async function registryBackedSourceReceipt(
     ],
     error: "No source URL or public local asset path configured",
   });
+}
+
+async function zensusWmsSourceReceipt(
+  source: DataSource,
+  queriedAt: string,
+): Promise<SourceFetchReceipt> {
+  const started = performance.now();
+  try {
+    const response = await fetchWithTimeout(
+      ZENSUS_WMS_CAPABILITIES_URL,
+      { cache: "no-store" },
+      8_000,
+    );
+    const text = await response.text();
+    const layerCount = (text.match(/<Name>[^<]+_[0-9]+(?:km|m)<\/Name>/g) ?? []).length;
+    return receipt(source, {
+      status: response.ok ? "ok" : "failed",
+      queriedAt,
+      elapsedMs: Math.round(performance.now() - started),
+      url: ZENSUS_WMS_CAPABILITIES_URL,
+      recordCount: layerCount,
+      sourceVersion: "WMS 1.3.0",
+      method:
+        "Fetched the official Zensus-Atlas WMS GetCapabilities document during this selected-point analysis run.",
+      caveats: response.ok
+        ? [
+            "Zensus values are loaded through WMS GetFeatureInfo for configured 1km layers.",
+          ]
+        : ["Zensus WMS capabilities could not be loaded."],
+      error: response.ok ? undefined : `HTTP ${response.status}`,
+    });
+  } catch (error) {
+    return failedReceipt(source, queriedAt, started, error, [
+      "Zensus WMS capabilities could not be loaded; Zensus indicators remain unavailable.",
+    ], ZENSUS_WMS_CAPABILITIES_URL);
+  }
 }
 
 async function remoteMetadataReceipt(

@@ -1,6 +1,15 @@
 import type { FeatureCollection } from "geojson";
 import { reverseGeocode } from "../api/geocoding";
+import {
+  loadBkgBoundariesForPoint,
+  loadFuaGeometriesForPoint,
+  loadGtfsStopsForPoint,
+  loadLod2BuildingsForPoint,
+  loadTerrainSamplesForSection,
+  loadZensusGridForPoint,
+} from "../data/localSpatial";
 import { runSourceAdapters } from "../data/sourceAdapters";
+import { fetchZensusWmsIndicators } from "../data/zensusWms";
 import { runOverpassModules } from "../overpass/client";
 import type {
   AnalysisResult,
@@ -19,6 +28,8 @@ import {
   createXlSourceOverlay,
 } from "./xl/overlays";
 import { createXlSourceStatusModule } from "./xl/sourceStatus";
+import { createZensusGridModule } from "./xl/zensus";
+import { createZensusWmsModule } from "./xl/zensusWms";
 
 const DEFAULT_LAYER_STATE: LayerState = {
   "3D": true,
@@ -67,9 +78,35 @@ export async function runLocationAnalysis(input: {
     enabled: input.enableOverpass ?? true,
     allowCache: false,
   });
+  const zensusGrid = await loadZensusGridForPoint(selectedPoint);
+  const zensusWmsIndicators = await fetchZensusWmsIndicators(selectedPoint, computedAt);
+  const lod2Buildings = await loadLod2BuildingsForPoint(selectedPoint);
+  const bkgBoundaries = await loadBkgBoundariesForPoint(selectedPoint);
+  const fuaGeometries = await loadFuaGeometriesForPoint(selectedPoint);
+  const gtfsStops = await loadGtfsStopsForPoint(selectedPoint);
+  const terrainSamples = input.sectionLine
+    ? await loadTerrainSamplesForSection(input.sectionLine)
+    : [];
+  const analysisCollections: Record<string, FeatureCollection> = {
+    ...overpass.collections,
+    buildings: mergeCollections(
+      lod2Buildings,
+      overpass.collections.buildings ?? featureCollection(),
+    ),
+    transportStops: mergeCollections(
+      gtfsStops,
+      overpass.collections.transportStops ?? featureCollection(),
+    ),
+  };
   const xl = analyzeXl(selectedPoint, computedAt);
-  const l = analyzeL(selectedPoint, computedAt, 500, overpass.collections);
-  const m = analyzeM(selectedPoint, computedAt, overpass.collections, input.sectionLine);
+  const l = analyzeL(selectedPoint, computedAt, 500, analysisCollections);
+  const m = analyzeM(
+    selectedPoint,
+    computedAt,
+    analysisCollections,
+    input.sectionLine,
+    terrainSamples,
+  );
   const sourceFetches = await runSourceAdapters({
     district: xl.district,
     computedAt,
@@ -84,15 +121,21 @@ export async function runLocationAnalysis(input: {
     overpassCollections: overpass.collections,
   });
   const xlSourceStatus = createXlSourceStatusModule(sourceFetches, computedAt);
+  const zensus = createZensusGridModule(zensusGrid, computedAt);
+  const zensusWms = createZensusWmsModule(zensusWmsIndicators, computedAt);
 
   const allModules = [
     ...xl.modules,
+    ...zensusWms.modules,
+    ...zensus.modules,
     ...xlSourceStatus.modules,
     ...l.modules,
     ...m.modules,
   ];
   const allIndicators = [
     ...xl.indicators,
+    ...zensusWms.indicators,
+    ...zensus.indicators,
     ...xlSourceStatus.indicators,
     ...l.indicators,
     ...m.indicators,
@@ -119,9 +162,9 @@ export async function runLocationAnalysis(input: {
       selectedPoint: geometryToFeature(pointGeometry(input.lat, input.lon), {
         label: selectedPoint.label ?? "selected point",
       }) as AnalysisResult["overlays"]["selectedPoint"],
-      xlContext: createXlContextOverlay(selectedPoint),
-      xlGrid: createXlGridOverlay(selectedPoint, sourceFetches),
-      xlSources: createXlSourceOverlay(selectedPoint, sourceFetches),
+      xlContext: createXlContextOverlay(selectedPoint, bkgBoundaries),
+      xlGrid: createXlGridOverlay(selectedPoint, sourceFetches, zensusGrid),
+      xlSources: createXlSourceOverlay(selectedPoint, sourceFetches, fuaGeometries),
       lBuffer: mergeCollections(l.overlays.lBuffer),
       mStreetSegment: mergeCollections(m.overlays.street, m.overlays.corridor),
       green: mergeCollections(l.overlays.green),
@@ -129,8 +172,8 @@ export async function runLocationAnalysis(input: {
       buildings: mergeCollections(m.overlays.buildings),
       pois: mergeCollections(overpass.collections.pois ?? featureCollection()),
       transport: mergeCollections(
-        overpass.collections.transportStops ?? featureCollection(),
-        overpass.collections.transportLines ?? featureCollection(),
+        analysisCollections.transportStops,
+        analysisCollections.transportLines ?? featureCollection(),
       ),
       mobility: mergeCollections(
         overpass.collections.mobilityInfrastructure ?? featureCollection(),

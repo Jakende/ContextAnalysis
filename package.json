@@ -9,6 +9,12 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview --host 127.0.0.1",
     "typecheck": "tsc --noEmit",
+    "preprocess:bkg": "node scripts/preprocess/preprocess-bkg-boundaries.mjs",
+    "preprocess:fua": "node scripts/preprocess/preprocess-gisco-fua.mjs",
+    "preprocess:srtm": "node scripts/preprocess/preprocess-srtm-samples.mjs",
+    "preprocess:buildings": "node scripts/preprocess/preprocess-building-fallback.mjs",
+    "preprocess:gtfs": "node scripts/preprocess/preprocess-gtfs-stops.mjs",
+    "preprocess:thematic": "node scripts/preprocess/preprocess-thematic-geojson.mjs",
     "validate:ui": "python3 scripts/validate/validate_ui_css.py src/styles/design-system.css src/styles/app.css"
   },
   "keywords": [],

@@ -186,7 +186,7 @@ async function runOneModule(
       ),
       endpointStatus,
       caveats: [
-        "All configured Overpass endpoints failed or timed out. Fact sheet uses deterministic local fallback modules.",
+        "All configured Overpass endpoints failed or timed out. Affected live OSM indicators remain unavailable.",
       ],
     },
   };

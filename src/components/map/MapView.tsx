@@ -2,7 +2,13 @@ import maplibregl, { type GeoJSONSource, type Map as MapLibreMap } from "maplibr
 import type { MutableRefObject } from "react";
 import { useEffect, useRef, useState } from "react";
 import { searchPlaces } from "../../lib/api/geocoding";
+import { srtmWmsTileUrl } from "../../lib/data/publicGeoServices";
 import { openFreeMapStyle } from "../../lib/tiles/openFreeMapStyle";
+import {
+  ZENSUS_WMS_DISPLAY_LAYER,
+  ZENSUS_WMS_METRICS,
+  zensusWmsTileUrl,
+} from "../../lib/data/zensusWms";
 import type { AnalysisResult, LayerId, LayerState, SectionLine } from "../../lib/types";
 import { LayerTogglePanel } from "./LayerTogglePanel";
 import { ScaleSwitcher } from "./ScaleSwitcher";
@@ -72,6 +78,7 @@ export function MapView({
   const shellRef = useRef<HTMLElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
+  const zensusLayerRef = useRef(ZENSUS_WMS_DISPLAY_LAYER);
   const markerRef = useRef<maplibregl.Marker | null>(null);
   const searchMarkerRef = useRef<maplibregl.Marker | null>(null);
   const onPointSelectedRef = useRef(onPointSelected);
@@ -91,6 +98,11 @@ export function MapView({
   const [searchOpen, setSearchOpen] = useState(false);
   const [sectionDrawMode, setSectionDrawMode] = useState(false);
   const [sectionDraftStart, setSectionDraftStart] = useState<SectionLine["start"] | null>(null);
+  const [zensusLayer, setZensusLayer] = useState(ZENSUS_WMS_DISPLAY_LAYER);
+
+  useEffect(() => {
+    zensusLayerRef.current = zensusLayer;
+  }, [zensusLayer]);
 
   useEffect(() => {
     onPointSelectedRef.current = onPointSelected;
@@ -175,6 +187,7 @@ export function MapView({
     map.on("load", () => {
       map.resize();
       addAnalysisSourcesAndLayers(map);
+      updateZensusWmsLayer(map, zensusLayerRef.current);
       applyBaseMapTheme(map, themeInvertRef.current);
       syncAnalysisToMap(
         map,
@@ -263,6 +276,13 @@ export function MapView({
     if (!map || !map.getSource("selected-point")) return;
     applyLayerVisibility(map, layers, activeScale);
   }, [layers, activeScale]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !map.isStyleLoaded()) return;
+    updateZensusWmsLayer(map, zensusLayer);
+    applyLayerVisibility(map, layers, activeScale);
+  }, [zensusLayer, layers, activeScale]);
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -412,7 +432,13 @@ export function MapView({
         ) : null}
       </div>
       {analysis ? (
-        <MapLegend activeScale={activeScale} layers={layers} analysis={analysis} />
+        <MapLegend
+          activeScale={activeScale}
+          layers={layers}
+          analysis={analysis}
+          zensusLayer={zensusLayer}
+          onZensusLayerChange={setZensusLayer}
+        />
       ) : null}
     </section>
   );
@@ -431,15 +457,46 @@ function MapLegend({
   activeScale,
   layers,
   analysis,
+  zensusLayer,
+  onZensusLayerChange,
 }: {
   activeScale: Scale;
   layers: LayerState;
   analysis: AnalysisResult;
+  zensusLayer: string;
+  onZensusLayerChange: (layer: string) => void;
 }) {
+  const activeZensusMetric =
+    ZENSUS_WMS_METRICS.find((metric) => metric.layer === zensusLayer) ??
+    ZENSUS_WMS_METRICS[0];
   const items = getLegendItems(activeScale, layers, analysis);
   return (
     <div className="map-legend panel" aria-label="Map layer colors">
       <span className="label">Map layers</span>
+      {activeScale === "XL" ? (
+        <div className="zensus-legend-control">
+          <label htmlFor="zensus-layer-select">Zensus WMS</label>
+          <select
+            id="zensus-layer-select"
+            value={zensusLayer}
+            onChange={(event) => onZensusLayerChange(event.target.value)}
+          >
+            {ZENSUS_WMS_METRICS.map((metric) => (
+              <option key={metric.layer} value={metric.layer}>
+                {metric.label}
+              </option>
+            ))}
+          </select>
+          <div className="zensus-class-legend" aria-label={`Legende ${activeZensusMetric.label}`}>
+            {activeZensusMetric.classes.map((item) => (
+              <span className="zensus-class-row" key={`${activeZensusMetric.layer}:${item.label}`}>
+                <i style={{ background: item.color }} />
+                {item.label}
+              </span>
+            ))}
+          </div>
+        </div>
+      ) : null}
       {items.map((item) => (
         <span className="legend-row" key={item.label}>
           <i style={{ background: item.color }} />
@@ -451,18 +508,26 @@ function MapLegend({
   );
 }
 
-function getLegendItems(activeScale: Scale, layers: LayerState, analysis: AnalysisResult) {
+function getLegendItems(
+  activeScale: Scale,
+  layers: LayerState,
+  analysis: AnalysisResult,
+) {
   const items: Array<{ label: string; color: string; count?: number }> = [
     { label: "Selected point", color: MAP_LAYER_COLORS.selected },
   ];
   if (activeScale === "XL") {
-    items.push({ label: "XL context rings", color: MAP_LAYER_COLORS.xl });
-    if (hasMeasuredZensusGrid(analysis)) {
-      items.push({ label: "Zensus low", color: MAP_LAYER_COLORS.zensusLow });
-      items.push({ label: "Zensus medium", color: MAP_LAYER_COLORS.zensusMedium });
-      items.push({ label: "Zensus high", color: MAP_LAYER_COLORS.zensusHigh });
-    } else {
-      items.push({ label: "Zensus grid footprint - values missing", color: MAP_LAYER_COLORS.zensusMissing });
+    if (analysis.overlays.xlContext.features.length) {
+      items.push({ label: "Official XL context geometry", color: MAP_LAYER_COLORS.xl });
+    }
+    if (analysis.overlays.xlGrid.features.length) {
+      if (hasMeasuredZensusGrid(analysis)) {
+        items.push({ label: "Zensus low", color: MAP_LAYER_COLORS.zensusLow });
+        items.push({ label: "Zensus medium", color: MAP_LAYER_COLORS.zensusMedium });
+        items.push({ label: "Zensus high", color: MAP_LAYER_COLORS.zensusHigh });
+      } else {
+        items.push({ label: "Zensus grid values missing", color: MAP_LAYER_COLORS.zensusMissing });
+      }
     }
     if (analysis.overlays.xlSources.features.length) {
       items.push({ label: "Official XL source geometry", color: MAP_LAYER_COLORS.xlSource });
@@ -571,6 +636,9 @@ function getTransportBreakdown(analysis: AnalysisResult): Array<{
 }
 
 function addAnalysisSourcesAndLayers(map: MapLibreMap): void {
+  ensureZensusWmsLayer(map, ZENSUS_WMS_DISPLAY_LAYER);
+  ensureSrtmWmsLayer(map);
+
   for (const id of [
     "selected-point",
     "xl-context",
@@ -931,8 +999,8 @@ function addAnalysisSourcesAndLayers(map: MapLibreMap): void {
         "to-number",
         ["get", "render_height"],
         ["get", "height"],
-        ["*", ["to-number", ["get", "building:levels"], 5], 3.2],
-        14,
+        ["get", "building:height"],
+        0,
       ],
       "fill-extrusion-base": [
         "to-number",
@@ -954,8 +1022,8 @@ function addAnalysisSourcesAndLayers(map: MapLibreMap): void {
         [
           "to-number",
           ["get", "height"],
-          ["*", ["to-number", ["get", "building:levels"], 6], 3],
-          18,
+          ["get", "building:height"],
+          0,
         ],
         6,
         "#93c5fd",
@@ -968,8 +1036,8 @@ function addAnalysisSourcesAndLayers(map: MapLibreMap): void {
       "fill-extrusion-height": [
         "to-number",
         ["get", "height"],
-        ["*", ["to-number", ["get", "building:levels"], 6], 3],
-        18,
+        ["get", "building:height"],
+        0,
       ],
       "fill-extrusion-base": 0,
       "fill-extrusion-vertical-gradient": true,
@@ -983,8 +1051,8 @@ function addAnalysisSourcesAndLayers(map: MapLibreMap): void {
     paint: {
       "fill-extrusion-color": MAP_LAYER_COLORS.tree,
       "fill-extrusion-opacity": 0.68,
-      "fill-extrusion-height": ["to-number", ["get", "canopyHeight"], 9],
-      "fill-extrusion-base": ["to-number", ["get", "trunkHeight"], 3],
+      "fill-extrusion-height": ["to-number", ["get", "canopyHeight"], 0],
+      "fill-extrusion-base": ["to-number", ["get", "trunkHeight"], 0],
       "fill-extrusion-vertical-gradient": true,
     },
   });
@@ -1096,11 +1164,67 @@ function addAnalysisSourcesAndLayers(map: MapLibreMap): void {
   });
 }
 
+function updateZensusWmsLayer(map: MapLibreMap, layer: string): void {
+  if (map.getLayer("zensus-wms-raster")) {
+    map.removeLayer("zensus-wms-raster");
+  }
+  if (map.getSource("zensus-wms")) {
+    map.removeSource("zensus-wms");
+  }
+  ensureZensusWmsLayer(map, layer);
+}
+
+function ensureZensusWmsLayer(map: MapLibreMap, layer: string): void {
+  if (!map.getSource("zensus-wms")) {
+    map.addSource("zensus-wms", {
+      type: "raster",
+      tiles: [zensusWmsTileUrl(layer)],
+      tileSize: 256,
+      attribution:
+        "Zensus 2022: © Statistische Ämter des Bundes und der Länder, 2024; Gittergeometrien: © GeoBasis-DE / BKG (2024)",
+    });
+  }
+  addLayerIfMissing(
+    map,
+    {
+      id: "zensus-wms-raster",
+      type: "raster",
+      source: "zensus-wms",
+      paint: {
+        "raster-opacity": 0.58,
+        "raster-resampling": "nearest",
+      },
+    },
+    "xl-context-fill",
+  );
+}
+
+function ensureSrtmWmsLayer(map: MapLibreMap): void {
+  if (!map.getSource("srtm-wms")) {
+    map.addSource("srtm-wms", {
+      type: "raster",
+      tiles: [srtmWmsTileUrl()],
+      tileSize: 256,
+      attribution: "SRTM terrain WMS via terrestris / mundialis",
+    });
+  }
+  addLayerIfMissing(map, {
+    id: "srtm-wms-raster",
+    type: "raster",
+    source: "srtm-wms",
+    paint: {
+      "raster-opacity": 0.42,
+      "raster-resampling": "linear",
+    },
+  });
+}
+
 function addLayerIfMissing(
   map: MapLibreMap,
   layer: Parameters<MapLibreMap["addLayer"]>[0],
+  beforeId?: string,
 ): void {
-  if (!map.getLayer(layer.id)) map.addLayer(layer);
+  if (!map.getLayer(layer.id)) map.addLayer(layer, beforeId);
 }
 
 function syncAnalysisToMap(
@@ -1217,10 +1341,12 @@ function applyLayerVisibility(
   setLayerVisibility(map, "tree-circles", activeScale !== "XL" && layers.trees);
   setLayerVisibility(map, "sun-lines", activeScale === "M" && layers.sun);
   setLayerVisibility(map, "section-user-line", activeScale === "M" && layers.section);
+  setLayerVisibility(map, "srtm-wms-raster", activeScale === "M" && layers.section);
   setLayerVisibility(map, "green-fill", activeScale === "L" && layers.green);
   setLayerVisibility(map, "green-outline", activeScale === "L" && layers.green);
   setLayerVisibility(map, "xl-context-fill", activeScale === "XL");
   setLayerVisibility(map, "xl-context-line", activeScale === "XL");
+  setLayerVisibility(map, "zensus-wms-raster", activeScale === "XL");
   setLayerVisibility(map, "xl-grid-fill", activeScale === "XL");
   setLayerVisibility(map, "xl-grid-line", activeScale === "XL");
   setLayerVisibility(map, "xl-source-fill", activeScale === "XL");

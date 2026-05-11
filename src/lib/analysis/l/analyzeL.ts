@@ -1,11 +1,9 @@
-import type { FeatureCollection } from "geojson";
+import type { Feature, FeatureCollection, MultiPolygon, Polygon } from "geojson";
 import type { FactSheetModule, Indicator, SelectedPoint } from "../../types";
 import {
   bufferPolygon,
   featureCollection,
   geometryToFeature,
-  metersToLatitudeDegrees,
-  metersToLongitudeDegrees,
 } from "../geometry";
 import { createIndicator } from "../indicators/createIndicator";
 
@@ -23,11 +21,13 @@ export function analyzeL(
   const livePois = liveCollections.pois;
   const liveDevelopment = liveCollections.developmentHints;
   const liveLandUse = liveCollections.landUse;
-  const liveGreenFeatureCount = liveGreenBlue?.features.length ?? 0;
+  const liveTrees = liveCollections.trees;
   const hasLiveGreenResponse = liveGreenBlue !== undefined;
-  const greenPercent = hasLiveGreenResponse
-    ? Math.min(85, Math.round((8 + liveGreenFeatureCount * 1.7) * 10) / 10)
-    : null;
+  const measuredGreenArea = liveGreenBlue ? collectionAreaSqm(liveGreenBlue) : 0;
+  const greenPercent =
+    hasLiveGreenResponse && measuredGreenArea > 0
+      ? Math.round((measuredGreenArea / circleAreaSqm(radiusMeters)) * 10_000) / 100
+      : null;
   const exactTransitStops = liveTransportStops?.features.length;
   const exactTransitLines = liveTransportLines?.features.filter(
     (feature) => feature.geometry.type === "LineString",
@@ -74,14 +74,16 @@ export function analyzeL(
         liveGreenBlue?.features.find((feature) => feature.geometry.type === "Polygon")
           ?.geometry ?? overlays.green.features[0]?.geometry,
       method:
-        hasLiveGreenResponse
-          ? "Computed from live Overpass green/blue feature density inside the configured radius; exact polygon-area preprocessing can refine this percentage."
+        greenPercent !== null
+          ? "Computed from live Overpass green/blue polygon area inside the configured radius."
           : "Live green/blue source did not return a usable response and no local preprocessed polygons are loaded.",
       sourceIds: ["osm-core", "osm-overpass", "copernicus-urban-atlas"],
       confidence: hasLiveGreenResponse ? "medium" : "low",
       caveats: [
         caveat,
-        "Green percentage remains an area proxy until local land-use polygons are preprocessed.",
+        greenPercent !== null
+          ? "OSM polygon completeness varies; authoritative Urban Atlas/local land-use preprocessing can improve coverage."
+          : "No synthetic green percentage is emitted without real polygon area.",
       ],
       computedAt,
     }),
@@ -109,7 +111,7 @@ export function analyzeL(
       method:
         exactTransitStops !== undefined
           ? "Counted live Overpass public_transport, bus_stop, railway station/halt/tram_stop features inside the radius."
-          : "Used deterministic fallback because live transport stop retrieval was unavailable.",
+          : "Live transport stop retrieval was unavailable; no fallback count is emitted.",
       sourceIds: ["osm-core", "mobilithek-gtfs", "osm-overpass"],
       confidence: exactTransitStops !== undefined ? "medium" : "low",
       caveats: [exactTransitStops !== undefined ? liveCaveat : fallbackCaveat],
@@ -141,11 +143,11 @@ export function analyzeL(
       label: "Mobility infrastructure hints",
       scale: "L",
       value: mobilityHints,
-      unit: exactMobilityFeatures !== undefined ? "features" : "classes",
+      unit: exactMobilityFeatures !== undefined ? "features" : undefined,
       method:
         exactMobilityFeatures !== undefined
           ? "Counted live Overpass mobility infrastructure features for cycleways, parking, charging, sharing, and pedestrian/cycle classes."
-          : "Used deterministic fallback class count because live mobility retrieval was unavailable.",
+          : "Live mobility infrastructure retrieval was unavailable; no fallback class count is emitted.",
       sourceIds: ["osm-core", "osm-overpass"],
       confidence: exactMobilityFeatures !== undefined ? "medium" : "low",
       caveats: [exactMobilityFeatures !== undefined ? liveCaveat : fallbackCaveat],
@@ -160,7 +162,7 @@ export function analyzeL(
       method:
         exactPois !== undefined
           ? "Counted live Overpass amenity/shop POIs relevant to social and civic infrastructure inside the radius."
-          : "Used deterministic fallback POI count because live POI retrieval was unavailable.",
+          : "Live POI retrieval was unavailable; no fallback POI count is emitted.",
       sourceIds: ["osm-core", "osm-overpass"],
       confidence: exactPois !== undefined ? "medium" : "low",
       caveats: [exactPois !== undefined ? liveCaveat : fallbackCaveat],
@@ -228,9 +230,9 @@ export function analyzeL(
 
   if (liveGreenBlue) {
     overlays.green = liveGreenBlue;
-    overlays.trees = featureCollection(
-      liveGreenBlue.features.filter((feature) => feature.geometry.type === "Point"),
-    );
+  }
+  if (liveTrees) {
+    overlays.trees = liveTrees;
   }
 
   return { modules, indicators, overlays };
@@ -248,40 +250,65 @@ function createLOverlays(
     }),
   ]);
 
-  const green = featureCollection([
-    geometryToFeature(
-      bufferPolygon(
-        lat + metersToLatitudeDegrees(radiusMeters * 0.34),
-        lon - metersToLongitudeDegrees(radiusMeters * 0.28, lat),
-        radiusMeters * 0.22,
-        32,
-      ),
-      { class: "park", sourceId: "osm-core" },
-    ),
-    geometryToFeature(
-      bufferPolygon(
-        lat - metersToLatitudeDegrees(radiusMeters * 0.24),
-        lon + metersToLongitudeDegrees(radiusMeters * 0.22, lat),
-        radiusMeters * 0.16,
-        32,
-      ),
-      { class: "green corridor", sourceId: "osm-core" },
-    ),
-  ]);
+  return {
+    lBuffer,
+    green: featureCollection(),
+    trees: featureCollection(),
+  };
+}
 
-  const trees = featureCollection(
-    Array.from({ length: 16 }, (_, index) => {
-      const angle = (Math.PI * 2 * index) / 16;
-      const distance = radiusMeters * (0.18 + (index % 5) * 0.09);
-      const treeLat = lat + Math.sin(angle) * metersToLatitudeDegrees(distance);
-      const treeLon =
-        lon + Math.cos(angle) * metersToLongitudeDegrees(distance, lat);
-      return geometryToFeature(
-        { type: "Point", coordinates: [treeLon, treeLat] },
-        { sourceId: "osm-core", class: "tree", confidence: "estimated" },
-      );
-    }),
+function circleAreaSqm(radiusMeters: number): number {
+  return Math.PI * radiusMeters * radiusMeters;
+}
+
+function collectionAreaSqm(collection: FeatureCollection): number {
+  return collection.features.reduce((total, feature) => total + featureAreaSqm(feature), 0);
+}
+
+function featureAreaSqm(feature: Feature): number {
+  if (feature.geometry.type === "Polygon") {
+    return polygonAreaSqm(feature.geometry);
+  }
+  if (feature.geometry.type === "MultiPolygon") {
+    return multiPolygonAreaSqm(feature.geometry);
+  }
+  return 0;
+}
+
+function multiPolygonAreaSqm(geometry: MultiPolygon): number {
+  return geometry.coordinates.reduce(
+    (total, polygonCoordinates) =>
+      total + polygonAreaSqm({ type: "Polygon", coordinates: polygonCoordinates }),
+    0,
   );
+}
 
-  return { lBuffer, green, trees };
+function polygonAreaSqm(geometry: Polygon): number {
+  const outerArea = ringAreaSqm(geometry.coordinates[0] ?? []);
+  const holesArea = geometry.coordinates
+    .slice(1)
+    .reduce((total, ring) => total + ringAreaSqm(ring), 0);
+  return Math.max(0, outerArea - holesArea);
+}
+
+function ringAreaSqm(ring: number[][]): number {
+  if (ring.length < 4) return 0;
+  const referenceLat =
+    ring.reduce((total, coordinate) => total + coordinate[1], 0) / ring.length;
+  const projected = ring.map((coordinate) => projectMeters(coordinate, referenceLat));
+  let area = 0;
+  for (let index = 0; index < projected.length - 1; index += 1) {
+    area +=
+      projected[index].x * projected[index + 1].y -
+      projected[index + 1].x * projected[index].y;
+  }
+  return Math.abs(area) / 2;
+}
+
+function projectMeters(coordinate: number[], referenceLat: number) {
+  const latRadians = (referenceLat * Math.PI) / 180;
+  return {
+    x: coordinate[0] * 111_320 * Math.cos(latRadians),
+    y: coordinate[1] * 111_320,
+  };
 }

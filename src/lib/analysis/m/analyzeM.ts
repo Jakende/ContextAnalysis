@@ -7,13 +7,9 @@ import type {
   SelectedPoint,
 } from "../../types";
 import {
-  bufferPolygon,
   featureCollection,
   geometryToFeature,
-  metersToLatitudeDegrees,
-  metersToLongitudeDegrees,
   polygonFromLineCorridor,
-  syntheticStreetSegment,
 } from "../geometry";
 import { createIndicator } from "../indicators/createIndicator";
 
@@ -22,6 +18,7 @@ export function analyzeM(
   computedAt: string,
   liveCollections: Record<string, FeatureCollection | undefined> = {},
   sectionLine?: SectionLine | null,
+  terrainSamples: Array<{ distance: number; elevation: number }> = [],
 ): { modules: FactSheetModule[]; indicators: Indicator[]; overlays: ReturnType<typeof createMOverlays>; sectionSvg: string } {
   const overlays = createMOverlays(selectedPoint, sectionLine);
   const liveStreetFeatures = (liveCollections.streets?.features ?? []).filter(
@@ -78,10 +75,7 @@ export function analyzeM(
     overlays.buildings = featureCollection();
   }
   if (displayedTreeFeatures.length) {
-    overlays.trees = featureCollection([
-      ...displayedTreeFeatures,
-      ...createTreeVolumeFeatures(displayedTreeFeatures),
-    ]);
+    overlays.trees = featureCollection(displayedTreeFeatures);
   } else {
     overlays.trees = featureCollection();
   }
@@ -91,9 +85,7 @@ export function analyzeM(
   const hasLiveBuildings = corridorBuildingFeatures.length > 0;
   const hasLiveTrees = corridorTreeFeatures.length > 0;
   const taggedWidth = readNumericTag(streetFeature, ["width", "est_width"]);
-  const inferredWidth = inferStreetWidth(streetFeature);
-  const estimatedWidth =
-    taggedWidth === null ? inferredWidth : Math.round(taggedWidth);
+  const measuredWidth = taggedWidth === null ? null : Math.round(taggedWidth);
   const liveBuildingHeight = corridorBuildingFeatures
       .map((feature) => readBuildingHeight(feature))
       .find((height): height is number => height !== null) ?? null;
@@ -104,10 +96,11 @@ export function analyzeM(
     selectedPoint,
     buildings: corridorBuildingFeatures,
     trees: corridorTreeFeatures,
+    terrainSamples,
   });
   const sectionSvg = createSectionSvg({
     streetName,
-    width: estimatedWidth,
+    width: measuredWidth,
     height: buildingHeight,
     trees: treePresence,
     model: sectionModel,
@@ -138,14 +131,12 @@ export function analyzeM(
       id: "m.street-width",
       label: "Approximate cross-section width",
       scale: "M",
-      value: estimatedWidth,
+      value: measuredWidth,
       unit: "m",
       method:
         taggedWidth !== null
           ? "Street width read from live OSM width/est_width tags."
-          : inferredWidth !== null
-            ? "Street width estimated from live OSM highway/lanes tags for the snapped nearest segment."
-            : "Live street source did not return width tags and no local street cross-section data is loaded.",
+          : "Live street source did not return measured width tags and no local street cross-section data is loaded.",
       sourceIds: ["osm-core", "osm-overpass"],
       confidence:
         hasLiveStreet && taggedWidth !== null
@@ -154,7 +145,7 @@ export function analyzeM(
       caveats: [
         caveat,
         taggedWidth === null
-          ? "No OSM width/est_width tag was available; section width is inferred from highway class where possible."
+          ? "No OSM width/est_width tag was available; no inferred width is emitted."
           : "OSM width tags are not cadastral measurements.",
       ],
       computedAt,
@@ -169,7 +160,7 @@ export function analyzeM(
       method:
         hasLiveTrees
           ? "Counted live Overpass natural=tree and tree_row features along the M-scale corridor."
-          : "Used fallback street-edge tree hints because live tree retrieval returned no features.",
+          : "Live tree retrieval returned no features; no fallback tree hints are emitted.",
       sourceIds: ["osm-core", "osm-overpass"],
       confidence: hasLiveTrees ? "medium" : "low",
       caveats: [caveat],
@@ -184,24 +175,21 @@ export function analyzeM(
       geometry: overlays.buildings.features[0]?.geometry,
       method:
         hasLiveBuildings
-          ? "Read live OSM building footprints and height/building:levels tags where present; LOD2 remains the preferred local source when preprocessed."
+          ? "Read live OSM building footprints and direct height tags where present; LOD2 remains the preferred local source when preprocessed."
           : "No live OSM building footprint/height data and no local LOD2 tiles are loaded for this point.",
       sourceIds: ["lod2-bayern", "osm-core"],
       confidence: hasLiveBuildings ? "medium" : "low",
-      caveats: [caveat, "Estimated building heights are labelled as approximate."],
+      caveats: [caveat, "building:levels is not converted into height in real-data-only mode."],
       computedAt,
     }),
     createIndicator({
       id: "m.sun-shadow",
       label: "Sun / shadow hint",
       scale: "M",
-      value:
-        buildingHeight === null
-          ? null
-          : "representative sun vector constrained by loaded building hints",
+      value: null,
       geometry: overlays.sun.features[0]?.geometry,
       method:
-        "Simple representative sun vector and estimated building massing; not a validated solar simulation.",
+        "No sun/shadow value is emitted until a validated solar model is connected to real building and date/time inputs.",
       sourceIds: ["lod2-bayern", "dwd-cdc"],
       confidence: "low",
       caveats: [
@@ -236,13 +224,15 @@ export function analyzeM(
       geometry: sectionLineToGeometry(sectionLine),
       method:
         sectionLine
-          ? "Section is calculated from the user-defined line. Buildings and tree locations are orthogonally projected onto the section; terrain is sampled at 30 m intervals for the SRTM-ready profile."
+          ? "Section is calculated from the user-defined line. Loaded buildings, tree locations, and available SRTM/DEM samples are orthogonally projected onto the section."
           : "No user-defined section line is set. The section SVG stays in setup mode instead of rendering a generic street section.",
       sourceIds: ["srtm-30m", "lod2-bayern", "osm-core", "osm-overpass"],
       confidence: sectionLine ? "medium" : "low",
       caveats: [
         sectionLine
-          ? "SRTM 30m raster sampling is represented at the correct sample interval; local raster values must be connected in preprocessing for authoritative elevations."
+          ? terrainSamples.length > 0
+            ? "Terrain samples come from the configured local SRTM/DEM GeoJSON; no synthetic terrain is emitted."
+            : "No local SRTM/DEM samples were found for the drawn line; no synthetic terrain profile is emitted."
           : "Set a section line in M scale to calculate a meaningful cross-section.",
       ],
       computedAt,
@@ -278,7 +268,7 @@ export function analyzeM(
       scale: "M",
       indicators: [indicators[1], indicators[5], indicators[6]],
       method:
-        "User-defined section line with projected building/tree evidence and SRTM 30m-ready terrain sampling.",
+        "User-defined section line with projected real building/tree evidence and configured local SRTM/DEM samples where available.",
       sourceIds: ["osm-core", "osm-overpass", "lod2-bayern", "srtm-30m"],
       computedAt,
       confidence: sectionLine ? "medium" : "low",
@@ -297,6 +287,7 @@ export function analyzeM(
 export function recomputeMSectionFromAnalysis(
   analysis: AnalysisResult,
   sectionLine: SectionLine,
+  terrainSamples: Array<{ distance: number; elevation: number }> = [],
 ): { result: AnalysisResult; sectionSvg: string } {
   const computedAt = new Date().toISOString();
   const buildings = analysis.overlays.buildings.features.filter(
@@ -318,6 +309,7 @@ export function recomputeMSectionFromAnalysis(
     selectedPoint: analysis.selectedPoint,
     buildings,
     trees,
+    terrainSamples,
   });
   const sectionSvg = createSectionSvg({
     streetName,
@@ -334,11 +326,13 @@ export function recomputeMSectionFromAnalysis(
     unit: "section length",
     geometry: sectionLineToGeometry(sectionLine),
     method:
-      "Section is calculated immediately from the user-defined line and the already loaded M-scale building/tree overlays. Terrain is sampled at 30 m intervals for the SRTM-ready profile.",
+      "Section is calculated immediately from the user-defined line and the already loaded M-scale building/tree overlays plus configured local SRTM/DEM samples where available.",
     sourceIds: ["srtm-30m", "lod2-bayern", "osm-core", "osm-overpass"],
     confidence: "medium",
     caveats: [
-      "Section dimensions are driven by the drawn line; SRTM values use the 30 m sampling model until local raster values are wired into preprocessing.",
+      terrainSamples.length > 0
+        ? "Terrain samples come from the configured local SRTM/DEM GeoJSON; no synthetic terrain is emitted."
+        : "Section dimensions are driven by the drawn line; no local SRTM/DEM samples were found and no synthetic terrain is emitted.",
     ],
     computedAt,
   });
@@ -349,7 +343,7 @@ export function recomputeMSectionFromAnalysis(
           ...module,
           indicators: replaceIndicator(module.indicators, sectionIndicator),
           method:
-            "User-defined section line with projected building/tree evidence and SRTM 30m-ready terrain sampling.",
+            "User-defined section line with projected real building/tree evidence and configured local SRTM/DEM samples where available.",
           sourceIds: uniqueSourceIds([
             ...module.sourceIds,
             "srtm-30m",
@@ -539,19 +533,6 @@ function projectMeters(coordinate: number[], referenceLat: number) {
   };
 }
 
-function inferStreetWidth(feature: Feature | undefined): number | null {
-  if (!feature?.properties) return null;
-  const lanes = readNumericTag(feature, ["lanes"]);
-  if (lanes !== null && lanes > 0) return Math.round(lanes * 3.25 + 3.5);
-  const highway = String(feature.properties.highway ?? "");
-  if (highway === "primary") return 18;
-  if (highway === "secondary" || highway === "tertiary") return 14;
-  if (highway === "residential" || highway === "unclassified") return 10;
-  if (highway === "service") return 6;
-  if (highway === "living_street" || highway === "pedestrian") return 8;
-  return null;
-}
-
 function readNumericTag(
   feature: Feature | undefined,
   keys: string[],
@@ -568,24 +549,7 @@ function readNumericTag(
 
 function readBuildingHeight(feature: Feature): number | null {
   const direct = readNumericTag(feature, ["height", "building:height"]);
-  if (direct !== null) return direct;
-  const levels = readNumericTag(feature, ["building:levels", "levels"]);
-  return levels === null ? null : levels * 3.1;
-}
-
-function createTreeVolumeFeatures(features: Feature[]): Feature<Polygon>[] {
-  return features
-    .flatMap((feature) => pointCoordinatesForTree(feature))
-    .slice(0, 120)
-    .map(([lon, lat], index) =>
-      geometryToFeature(bufferPolygon(lat, lon, 4.8, 16), {
-        id: `tree-canopy-${index}`,
-        class: "tree canopy volume",
-        sourceId: "osm-core",
-        canopyHeight: 10 + (index % 4),
-        trunkHeight: 2.8,
-      }) as Feature<Polygon>,
-    );
+  return direct;
 }
 
 function pointCoordinatesForTree(feature: Feature): number[][] {
@@ -622,79 +586,13 @@ function sampleLineCoordinates(coordinates: number[][], everyMeters: number): nu
   return sampled;
 }
 
-function createMOverlays(selectedPoint: SelectedPoint, sectionLine?: SectionLine | null) {
-  const { lat, lon } = selectedPoint;
-  const street = syntheticStreetSegment(lat, lon, 240, 7);
-  const corridor = polygonFromLineCorridor(street, 42);
-
-  const buildings = featureCollection([
-    geometryToFeature(
-      bufferPolygon(
-        lat + metersToLatitudeDegrees(38),
-        lon - metersToLongitudeDegrees(32, lat),
-        24,
-        4,
-      ),
-      { height: 24, sourceId: "lod2-bayern", confidence: "estimated" },
-    ),
-    geometryToFeature(
-      bufferPolygon(
-        lat - metersToLatitudeDegrees(36),
-        lon + metersToLongitudeDegrees(42, lat),
-        28,
-        4,
-      ),
-      { height: 18, sourceId: "lod2-bayern", confidence: "estimated" },
-    ),
-  ]);
-
-  const trees = featureCollection(
-    Array.from({ length: 8 }, (_, index) => {
-      const side = index % 2 === 0 ? 1 : -1;
-      const offset = -90 + index * 24;
-      return geometryToFeature(
-        {
-          type: "Point",
-          coordinates: [
-            lon + metersToLongitudeDegrees(offset, lat),
-            lat + metersToLatitudeDegrees(side * 24),
-          ],
-        },
-        { class: "street tree", sourceId: "osm-core" },
-      );
-    }),
-  );
-
-  const sun = featureCollection([
-    geometryToFeature(
-      {
-        type: "LineString",
-        coordinates: [
-          [lon - metersToLongitudeDegrees(85, lat), lat + metersToLatitudeDegrees(90)],
-          [lon + metersToLongitudeDegrees(92, lat), lat - metersToLatitudeDegrees(48)],
-        ],
-      },
-      { class: "sun-shadow-vector", sourceId: "dwd-cdc" },
-    ),
-  ]);
-
+function createMOverlays(_selectedPoint: SelectedPoint, sectionLine?: SectionLine | null) {
   return {
-    street: featureCollection([
-      geometryToFeature(street, {
-        id: "m-street-segment",
-        sourceId: "osm-core",
-      }),
-    ]),
-    corridor: featureCollection([
-      geometryToFeature(corridor, {
-        id: "m-corridor",
-        widthMeters: 42,
-        sourceId: "osm-core",
-      }),
-    ]),
-    buildings,
-    trees,
-    sun,
+    street: featureCollection(),
+    corridor: featureCollection(),
+    buildings: featureCollection(),
+    trees: featureCollection(),
+    sun: featureCollection(),
     sectionLine: sectionLine
       ? featureCollection([createSectionLineFeature(sectionLine)])
       : featureCollection(),
@@ -737,6 +635,7 @@ function createSectionModel(input: {
   selectedPoint: SelectedPoint;
   buildings: Array<Feature<Polygon>>;
   trees: Feature[];
+  terrainSamples?: Array<{ distance: number; elevation: number }>;
 }): SectionModel {
   if (!input.sectionLine) {
     return {
@@ -767,25 +666,11 @@ function createSectionModel(input: {
   const dx = endMeters.x - startMeters.x;
   const dy = endMeters.y - startMeters.y;
   const lengthMeters = Math.max(1, Math.hypot(dx, dy));
-  const sampleCount = Math.max(2, Math.ceil(lengthMeters / 30) + 1);
-  const samples: SectionModel["terrainSamples"] = Array.from(
-    { length: sampleCount },
-    (_, index) => {
-      const distance = (lengthMeters * index) / Math.max(1, sampleCount - 1);
-      const t = distance / lengthMeters;
-      const lon = start[0] + (end[0] - start[0]) * t;
-      const lat = start[1] + (end[1] - start[1]) * t;
-      return {
-        distance,
-        elevation: estimateSrtmElevation(lat, lon),
-      };
-    },
-  );
 
   return {
     line: input.sectionLine,
     lengthMeters,
-    terrainSamples: samples,
+    terrainSamples: input.terrainSamples ?? [],
     buildings: input.buildings
       .map((feature) => projectPolygonToSection(feature, startMeters, dx, dy, lengthMeters, refLat))
       .filter((item): item is SectionModel["buildings"][number] => item !== null)
@@ -868,12 +753,6 @@ function average(values: number[]): number {
     : 0;
 }
 
-function estimateSrtmElevation(lat: number, lon: number): number {
-  const coarseLat = Math.round(lat / metersToLatitudeDegrees(30));
-  const coarseLon = Math.round(lon / metersToLongitudeDegrees(30, lat));
-  return 520 + ((coarseLat * 17 + coarseLon * 31) % 18);
-}
-
 function terrainYForSample(
   sample: { elevation: number },
   minElevation: number,
@@ -908,7 +787,10 @@ function createSectionSvg(input: {
   }
 
   const model = input.model;
-  const minElevation = Math.min(...model.terrainSamples.map((sample) => sample.elevation));
+  const hasTerrain = model.terrainSamples.length > 0;
+  const minElevation = hasTerrain
+    ? Math.min(...model.terrainSamples.map((sample) => sample.elevation))
+    : 0;
   const maxBuilding = Math.max(24, ...model.buildings.map((building) => building.height));
   const heightDomain = Math.max(18, maxBuilding + 8);
   const xForDistance = (distance: number) =>
@@ -971,13 +853,14 @@ function createSectionSvg(input: {
   const lengthLabel = `${Math.round(model.lengthMeters)}M`;
   const treeLabel = model.trees.length ? String(model.trees.length) : "0";
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 360" role="img" aria-label="User-defined terrain and building cross-section">
-  <metadata>{"source":"Urban Context Analysis structured M-scale section","terrain":"SRTM 30m sample grid","street":"${escapeXml(input.streetName)}"}</metadata>
+  <metadata>{"source":"Urban Context Analysis structured M-scale section","terrain":"not loaded","street":"${escapeXml(input.streetName)}"}</metadata>
   <style>
     svg{--section-surface:var(--surface,#000);--section-surface-2:var(--surface-2,#111);--section-ink:var(--ink,#fff);--section-muted:var(--muted,#b3b3b3);--section-border:var(--border,#3a3a3a);--section-terrain:#f3d35c;--section-building:#60a5fa;--section-tree:#31d158}
     text{font-family:JetBrains Mono,SFMono-Regular,Menlo,Consolas,monospace;fill:var(--section-ink);font-size:12px}
     .axis,.line{stroke:var(--section-border);stroke-width:1;fill:none}
     .muted{fill:var(--section-muted)}
     .terrain{stroke:var(--section-terrain);stroke-width:2;fill:none}
+    .terrain-missing{stroke:var(--section-muted);stroke-width:1;fill:none;stroke-dasharray:6 5}
     .building-left{fill:rgba(96,165,250,.36);stroke:var(--section-building);stroke-width:1}
     .building-right{fill:rgba(96,165,250,.18);stroke:var(--section-building);stroke-width:1;stroke-dasharray:4 3}
     .tree-trunk{stroke:var(--section-muted);stroke-width:1}
@@ -986,12 +869,17 @@ function createSectionSvg(input: {
   <rect width="720" height="360" fill="var(--section-surface)"/>
   <g id="metadata-labels">
     <text x="24" y="30">${escapeXml(input.streetName)}</text>
-    <text x="24" y="52" class="muted">SECTION ${lengthLabel} / SRTM 30M SAMPLES ${model.terrainSamples.length} / STREET WIDTH ${widthLabel} / TREES ${treeLabel}</text>
+    <text x="24" y="52" class="muted">SECTION ${lengthLabel} / SRTM TERRAIN NOT LOADED / STREET WIDTH ${widthLabel} / TREES ${treeLabel}</text>
   </g>
   <g id="profile">
     ${buildingSvg || `<text x="44" y="94" class="muted">NO BUILDING INTERSECTION WITH SECTION LINE</text>`}
     ${treeSvg || `<text x="44" y="116" class="muted">NO TREE LOCATION INTERSECTION WITH SECTION LINE</text>`}
-    <path d="${terrainPath}" class="terrain"/>
+    ${
+      hasTerrain
+        ? `<path d="${terrainPath}" class="terrain"/>`
+        : `<line x1="42" y1="${profileBaseY}" x2="678" y2="${profileBaseY}" class="terrain-missing"/>
+    <text x="44" y="${profileBaseY - 10}" class="muted">SRTM TERRAIN NOT LOADED</text>`
+    }
     <line x1="42" y1="${profileBaseY}" x2="678" y2="${profileBaseY}" class="axis"/>
   </g>
   <g id="scale-bar">

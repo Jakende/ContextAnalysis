@@ -2,13 +2,6 @@ import { getDistrictCsvProfile, toNumber } from "../../data/csvLoader";
 import type { FactSheetModule, Indicator, SelectedPoint } from "../../types";
 import { createIndicator } from "../indicators/createIndicator";
 
-function inferMunichDistrict(lat: number, lon: number): string {
-  if (lat > 48.155 && lon < 11.59) return "Schwabing";
-  if (lat > 48.13 && lon > 11.56 && lon < 11.59) return "Altstadt-Lehel";
-  if (lat > 48.13 && lon < 11.57) return "Maxvorstadt";
-  return "Muenchen";
-}
-
 function normalizeDistrictName(value: string | undefined): string {
   if (!value) return "";
   const normalized = value.toLowerCase();
@@ -27,23 +20,22 @@ export function analyzeXl(
   selectedPoint: SelectedPoint,
   computedAt: string,
 ): { modules: FactSheetModule[]; indicators: Indicator[]; district: string } {
-  const district =
-    normalizeDistrictName(selectedPoint.district) ||
-    inferMunichDistrict(selectedPoint.lat, selectedPoint.lon);
-  const municipality =
-    selectedPoint.municipality ??
-    (selectedPoint.address?.includes("Berlin") ? "Berlin" : "Muenchen");
+  const district = normalizeDistrictName(selectedPoint.district);
+  const municipality = selectedPoint.municipality ?? null;
   const profile = getDistrictCsvProfile(district);
-  const population = toNumber(profile.stadtbezirke.population);
-  const medianAge = toNumber(profile.alter.median_age);
-  const medianRent = toNumber(profile.mieteDerWohnung.median_rent_eur_m2);
-  const rentIndex = toNumber(profile.mietpreiseStadtteile.city_index);
-  const area = toNumber(profile.stadtbezirke.area_km2);
+  const population = toNumber(profile.stadtbezirke?.population);
+  const medianAge = toNumber(profile.alter?.median_age);
+  const medianRent = toNumber(profile.mieteDerWohnung?.median_rent_eur_m2);
+  const rentIndex = toNumber(profile.mietpreiseStadtteile?.city_index);
+  const area = toNumber(profile.stadtbezirke?.area_km2);
   const density =
     population !== null && area !== null ? Math.round(population / area) : null;
 
   const caveat =
-    "Local CSVs use the required MVP schema with sample rows; replace with authoritative Destatis/Zensus exports in preprocessing.";
+    "Local CSV values are emitted only for exact district-row matches; no city/sample fallback row is used.";
+  const missingDistrictCaveat =
+    "No exact district key was available from reverse geocoding or local boundary preprocessing.";
+  const csvMatchConfidence = district ? "medium" : "low";
 
   const indicators = [
     createIndicator({
@@ -54,12 +46,12 @@ export function analyzeXl(
       method:
         "Municipality is read from Nominatim reverse-geocoding context where available; local CSV joins are used when matching rows exist.",
       sourceIds: ["osm-nominatim", "bkg-geobasis", "destatis-genesis"],
-      sourceVersion: profile.stadtbezirke.source_version,
-      confidence: "medium",
+      sourceVersion: profile.stadtbezirke?.source_version,
+      confidence: municipality ? "medium" : "low",
       caveats: [
-        municipality === "Muenchen"
+        municipality
           ? caveat
-          : "No local CSV row is available for this municipality yet; citywide sample rows are used only for schema continuity.",
+          : "Municipality is unavailable because no reverse-geocoding or official boundary result was loaded.",
       ],
       computedAt,
     }),
@@ -67,14 +59,14 @@ export function analyzeXl(
       id: "xl.district",
       label: "District / Stadtbezirk",
       scale: "XL",
-      value: district,
+      value: district || null,
       method:
-        "District is read from Nominatim when available, otherwise inferred by the local MVP coordinate bucket; official boundaries are expected from BKG preprocessing.",
+        "District is read from Nominatim when available; official BKG/statistical boundaries should replace this when preprocessed.",
       sourceIds: ["osm-nominatim", "bkg-geobasis", "destatis-genesis"],
-      sourceVersion: profile.stadtbezirke.source_version,
-      confidence: "low",
+      sourceVersion: profile.stadtbezirke?.source_version,
+      confidence: district ? "medium" : "low",
       caveats: [
-        "District assignment is an MVP deterministic approximation until official boundaries are loaded.",
+        district ? caveat : missingDistrictCaveat,
         caveat,
       ],
       computedAt,
@@ -87,9 +79,9 @@ export function analyzeXl(
       unit: "residents",
       method: "Read from local Stadtbezirke CSV by district key.",
       sourceIds: ["destatis-genesis"],
-      sourceVersion: profile.stadtbezirke.source_version,
-      confidence: "medium",
-      caveats: [caveat],
+      sourceVersion: profile.stadtbezirke?.source_version,
+      confidence: population !== null ? csvMatchConfidence : "low",
+      caveats: [population !== null ? caveat : "No exact Stadtbezirke CSV row matched this selected point."],
       computedAt,
     }),
     createIndicator({
@@ -100,9 +92,9 @@ export function analyzeXl(
       unit: "residents/km2",
       method: "Population divided by district area from local CSV fields.",
       sourceIds: ["destatis-genesis"],
-      sourceVersion: profile.stadtbezirke.source_version,
-      confidence: "medium",
-      caveats: [caveat],
+      sourceVersion: profile.stadtbezirke?.source_version,
+      confidence: density !== null ? csvMatchConfidence : "low",
+      caveats: [density !== null ? caveat : "No exact population and area CSV values matched this selected point."],
       computedAt,
     }),
     createIndicator({
@@ -113,9 +105,9 @@ export function analyzeXl(
       unit: "years",
       method: "Read from local Alter CSV by district key.",
       sourceIds: ["destatis-genesis"],
-      sourceVersion: profile.alter.source_version,
-      confidence: "medium",
-      caveats: [caveat],
+      sourceVersion: profile.alter?.source_version,
+      confidence: medianAge !== null ? csvMatchConfidence : "low",
+      caveats: [medianAge !== null ? caveat : "No exact Alter CSV row matched this selected point."],
       computedAt,
     }),
     createIndicator({
@@ -126,9 +118,9 @@ export function analyzeXl(
       unit: "EUR/m2",
       method: "Read from local Miete_der_Wohnung CSV by district key.",
       sourceIds: ["destatis-genesis"],
-      sourceVersion: profile.mieteDerWohnung.source_version,
-      confidence: "medium",
-      caveats: [caveat],
+      sourceVersion: profile.mieteDerWohnung?.source_version,
+      confidence: medianRent !== null ? csvMatchConfidence : "low",
+      caveats: [medianRent !== null ? caveat : "No exact Miete_der_Wohnung CSV row matched this selected point."],
       computedAt,
     }),
     createIndicator({
@@ -139,9 +131,9 @@ export function analyzeXl(
       unit: "city=100",
       method: "Read from local Mietpreise_Stadtteile CSV.",
       sourceIds: ["destatis-genesis"],
-      sourceVersion: profile.mietpreiseStadtteile.source_version,
-      confidence: "medium",
-      caveats: [caveat],
+      sourceVersion: profile.mietpreiseStadtteile?.source_version,
+      confidence: rentIndex !== null ? csvMatchConfidence : "low",
+      caveats: [rentIndex !== null ? caveat : "No exact Mietpreise_Stadtteile CSV row matched this selected point."],
       computedAt,
     }),
   ];
@@ -171,5 +163,5 @@ export function analyzeXl(
     },
   ];
 
-  return { modules, indicators, district };
+  return { modules, indicators, district: district || "not available" };
 }

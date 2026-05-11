@@ -51,19 +51,17 @@ export function getCsvSourceSummary(district: string) {
   };
 }
 
-function findDistrictRow(table: CsvRow[], district: string): CsvRow {
+function findDistrictRow(table: CsvRow[], district: string): CsvRow | null {
   return findDistrictRowWithMatch(table, district).row;
 }
 
 function findDistrictRowWithMatch(
   table: CsvRow[],
   district: string,
-): { row: CsvRow; match: "exact" | "city-fallback" | "first-row-fallback" } {
+): { row: CsvRow | null; match: "exact" | "missing" } {
   const exact = table.find((row) => row.district === district);
   if (exact) return { row: exact, match: "exact" };
-  const cityFallback = table.find((row) => row.district === "Muenchen");
-  if (cityFallback) return { row: cityFallback, match: "city-fallback" };
-  return { row: table[0], match: "first-row-fallback" };
+  return { row: null, match: "missing" };
 }
 
 export function getDistrictCsvProfile(district: string) {
