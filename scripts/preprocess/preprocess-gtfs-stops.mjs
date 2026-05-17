@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import { spawnSync } from "node:child_process";
@@ -11,17 +11,53 @@ import {
   writeJson,
 } from "./shared.mjs";
 
-const DEFAULT_OUT = "public/data/processed/gtfs-stops.geojson";
+const DEFAULT_OUT = "public/data/processed/gtfs-stops/index.json";
+const FEEDS = {
+  "gtfs-de-local-transit": {
+    url: "https://download.gtfs.de/germany/nv_free/latest.zip",
+    provider: "GTFS.DE local public transit",
+    sourceId: "gtfs-de-local-transit",
+    out: DEFAULT_OUT,
+  },
+  "gtfs-de-full": {
+    url: "https://download.gtfs.de/germany/free/latest.zip",
+    provider: "GTFS.DE full Germany",
+    sourceId: "gtfs-de-full",
+    out: "public/data/processed/gtfs-full-stops/index.json",
+  },
+  "gtfs-de-regional-rail": {
+    url: "https://download.gtfs.de/germany/rv_free/latest.zip",
+    provider: "GTFS.DE regional rail",
+    sourceId: "gtfs-de-regional-rail",
+    out: "public/data/processed/gtfs-regional-rail-stops/index.json",
+  },
+  "gtfs-de-long-distance-rail": {
+    url: "https://download.gtfs.de/germany/fv_free/latest.zip",
+    provider: "GTFS.DE long-distance rail",
+    sourceId: "gtfs-de-long-distance-rail",
+    out: "public/data/processed/gtfs-long-distance-rail-stops/index.json",
+  },
+};
 
 const args = parseArgs();
-const out = args.out ?? DEFAULT_OUT;
+const feed = args.feed ? FEEDS[args.feed] : null;
+if (args.feed && !feed) {
+  throw new Error(`Unsupported --feed ${args.feed}. Use ${Object.keys(FEEDS).join(", ")}`);
+}
+
+const out = args.out ?? feed?.out ?? DEFAULT_OUT;
+const shardDegrees = Number(args["shard-degrees"] ?? 0.25);
+const singleFile = args["single-file"] === "true";
 const sourceVersion = args["source-version"] ?? new Date().toISOString().slice(0, 10);
-const provider = args.provider ?? "GTFS feed provider";
+const provider = args.provider ?? feed?.provider ?? "GTFS feed provider";
+const sourceId = args["source-id"] ?? feed?.sourceId ?? "mobilithek-gtfs";
 const input = args.input;
-const url = args.url;
+const url = args.url ?? feed?.url;
 
 if (!input && !url) {
-  throw new Error("Provide --input <gtfs.zip|directory|stops.txt> or --url <gtfs.zip|stops.txt>");
+  throw new Error(
+    `Provide --input <gtfs.zip|directory|stops.txt>, --url <gtfs.zip|stops.txt>, or --feed ${Object.keys(FEEDS).join("|")}`,
+  );
 }
 
 const workingDir = await mkdtemp(join(tmpdir(), "uca-gtfs-"));
@@ -45,9 +81,10 @@ try {
         type: "Feature",
         geometry: { type: "Point", coordinates: [lon, lat] },
         properties: {
-          sourceId: "mobilithek-gtfs",
+          sourceId,
           sourceVersion,
           provider,
+          feed: args.feed ?? "custom",
           stop_id: row.stop_id,
           stop_name: row.stop_name,
           label: firstString(row, ["stop_name", "stop_id"]) ?? "GTFS stop",
@@ -58,10 +95,80 @@ try {
     })
     .filter(Boolean);
 
-  await writeJson(out, { type: "FeatureCollection", features });
-  console.log(`Wrote ${features.length} GTFS stop features to ${out}`);
+  if (singleFile) {
+    await writeJson(out, { type: "FeatureCollection", features });
+    console.log(`Wrote ${features.length} GTFS stop features to ${out}`);
+  } else {
+    await writeShardedGeoJson(out, features, {
+      sourceId,
+      sourceVersion,
+      provider,
+      feed: args.feed ?? "custom",
+      shardDegrees,
+    });
+  }
 } finally {
   await rm(workingDir, { recursive: true, force: true });
+}
+
+async function writeShardedGeoJson(indexPath, features, metadata) {
+  if (!Number.isFinite(metadata.shardDegrees) || metadata.shardDegrees <= 0) {
+    throw new Error("--shard-degrees must be a positive number");
+  }
+  const indexDir = indexPath.replace(/\/[^/]+$/, "");
+  const shardDir = join(indexDir, "shards");
+  await mkdir(shardDir, { recursive: true });
+  const shards = new Map();
+  for (const feature of features) {
+    const [lon, lat] = feature.geometry.coordinates;
+    const key = shardKey(lon, lat, metadata.shardDegrees);
+    const shardFeatures = shards.get(key) ?? [];
+    shardFeatures.push(feature);
+    shards.set(key, shardFeatures);
+  }
+
+  const shardEntries = [];
+  for (const [key, shardFeatures] of shards) {
+    const fileName = `${key}.geojson`;
+    const shardPath = join(shardDir, fileName);
+    await writeJson(shardPath, { type: "FeatureCollection", features: shardFeatures });
+    shardEntries.push({
+      key,
+      url: `/data/processed/gtfs-stops/shards/${fileName}`,
+      bbox: shardBbox(key, metadata.shardDegrees),
+      count: shardFeatures.length,
+    });
+  }
+
+  shardEntries.sort((a, b) => a.key.localeCompare(b.key));
+  await writeJson(indexPath, {
+    type: "FeatureShardIndex",
+    sourceId: metadata.sourceId,
+    sourceVersion: metadata.sourceVersion,
+    provider: metadata.provider,
+    feed: metadata.feed,
+    shardDegrees: metadata.shardDegrees,
+    featureCount: features.length,
+    shardCount: shardEntries.length,
+    generatedAt: new Date().toISOString(),
+    shards: shardEntries,
+  });
+  console.log(
+    `Wrote ${features.length} GTFS stop features into ${shardEntries.length} shards with index ${indexPath}`,
+  );
+}
+
+function shardKey(lon, lat, shardDegrees) {
+  const lonIndex = Math.floor((lon + 180) / shardDegrees);
+  const latIndex = Math.floor((lat + 90) / shardDegrees);
+  return `${latIndex}_${lonIndex}`;
+}
+
+function shardBbox(key, shardDegrees) {
+  const [latIndex, lonIndex] = key.split("_").map(Number);
+  const west = lonIndex * shardDegrees - 180;
+  const south = latIndex * shardDegrees - 90;
+  return [west, south, west + shardDegrees, south + shardDegrees];
 }
 
 async function resolveStopsPath(sourcePath, workingDir) {

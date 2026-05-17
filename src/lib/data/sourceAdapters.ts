@@ -3,9 +3,11 @@ import { fetchWithTimeout } from "../api/cache";
 import type {
   DataSource,
   OverpassProvenance,
+  SelectedPoint,
   SourceFetchReceipt,
 } from "../types";
 import { getCsvSourceSummary } from "./csvLoader";
+import { inspectPointSourceCoverage } from "./localSpatial";
 import { sourceRegistry } from "./sourceRegistry";
 import { ZENSUS_WMS_CAPABILITIES_URL } from "./zensusWms";
 
@@ -19,6 +21,7 @@ type GeocodingReceipt = {
 
 type SourceAdapterInput = {
   district: string;
+  selectedPoint: SelectedPoint;
   computedAt: string;
   geocoding: GeocodingReceipt;
   overpassQueries: OverpassProvenance[];
@@ -39,14 +42,23 @@ const PREPROCESSED_ASSET_CHECKS: Record<string, string> = {
   "zensus-grid-2022": "/data/processed/zensus-grid.geojson",
   "lod2-bayern": "/data/processed/lod2-buildings.geojson",
   "global-building-atlas": "/data/processed/global-building-atlas.geojson",
-  "overture-buildings": "/data/processed/overture-buildings.geojson",
+  "global-building-atlas-odbl-polygons": "/data/processed/global-building-atlas.geojson",
+  "overture-buildings": "/data/processed/overture-buildings/index.json",
+  "overture-building-parts": "/data/processed/overture-building-parts/index.json",
   "srtm-30m": "/data/processed/srtm-30m/samples.geojson",
   "eurostat-gisco-fua": "/data/processed/eurostat-gisco-fua.geojson",
-  "copernicus-urban-atlas": "/data/processed/copernicus-urban-atlas.geojson",
+  "copernicus-urban-atlas": "/data/processed/copernicus-urban-atlas/index.json",
+  "urban-atlas-2021-catalog": "/data/processed/copernicus-urban-atlas/index.json",
   "ghsl-jrc": "/data/processed/ghsl.geojson",
+  "ghsl-direct-download": "/data/processed/ghsl.geojson",
   "bkg-geobasis": "/data/processed/bkg-boundaries.geojson",
   "dwd-cdc": "/data/processed/dwd-climate.geojson",
-  "mobilithek-gtfs": "/data/processed/gtfs-stops.geojson",
+  "dwd-cdc-grids-germany": "/data/processed/dwd-climate.geojson",
+  "mobilithek-gtfs": "/data/processed/gtfs-stops/index.json",
+  "gtfs-de-local-transit": "/data/processed/gtfs-stops/index.json",
+  "gtfs-de-full": "/data/processed/gtfs-full-stops/index.json",
+  "gtfs-de-regional-rail": "/data/processed/gtfs-regional-rail-stops/index.json",
+  "gtfs-de-long-distance-rail": "/data/processed/gtfs-long-distance-rail-stops/index.json",
   "natural-earth-openfreemap":
     "https://tiles.openfreemap.org/natural_earth/ne2sr/0/0/0.png",
 };
@@ -63,10 +75,19 @@ const DIRECT_ADAPTER_SOURCE_IDS = new Set([
 const PREPROCESSED_ONLY_SOURCE_IDS = new Set([
   "copernicus-urban-atlas",
   "dwd-cdc",
+  "dwd-cdc-grids-germany",
   "global-building-atlas",
+  "global-building-atlas-odbl-polygons",
   "ghsl-jrc",
+  "ghsl-direct-download",
   "mobilithek-gtfs",
+  "gtfs-de-local-transit",
+  "gtfs-de-full",
+  "gtfs-de-regional-rail",
+  "gtfs-de-long-distance-rail",
   "overture-buildings",
+  "overture-building-parts",
+  "urban-atlas-2021-catalog",
 ]);
 
 export async function runSourceAdapters(
@@ -86,7 +107,7 @@ export async function runSourceAdapters(
   const registryReceipts = await Promise.all(
     Object.keys(sourceRegistry)
       .filter((sourceId) => !DIRECT_ADAPTER_SOURCE_IDS.has(sourceId))
-      .map((sourceId) => registryBackedSourceReceipt(sourceId, input.computedAt)),
+      .map((sourceId) => registryBackedSourceReceipt(sourceId, input)),
   );
   receipts.push(...registryReceipts);
 
@@ -259,11 +280,15 @@ function csvToReceipt(
 
 async function registryBackedSourceReceipt(
   sourceId: string,
-  queriedAt: string,
+  input: SourceAdapterInput,
 ): Promise<SourceFetchReceipt> {
   const source: DataSource = sourceRegistry[sourceId as keyof typeof sourceRegistry];
+  const queriedAt = input.computedAt;
   if (sourceId === "zensus-grid-2022") {
     return zensusWmsSourceReceipt(source, queriedAt);
+  }
+  if (isPointAwareSource(sourceId)) {
+    return pointAwareSourceReceipt(source, input);
   }
   const localUrl = PREPROCESSED_ASSET_CHECKS[sourceId] ?? publicUrlFromLocalPath(source.localPath);
 
@@ -301,12 +326,12 @@ async function registryBackedSourceReceipt(
       elapsedMs: 0,
       url: localUrl,
       method:
-        "Checked for a local/preprocessed building dataset during the selected-point analysis run. Live WFS/download probing is intentionally disabled for this source.",
+        "Checked for a local/preprocessed dataset during the selected-point analysis run. Live catalog/download probing is intentionally disabled for this source.",
       caveats: [
         localUrl
           ? `Local preprocessed asset was not available at ${localUrl}.`
           : "No local preprocessed asset endpoint is configured for this source.",
-        "This source is too large or too fragile for direct point-analysis requests; preprocess a clipped dataset before using it for M-scale massing.",
+        "This source is too large or too fragile for direct point-analysis requests; preprocess a clipped dataset before using it for indicators or exports.",
       ],
       error: "Preprocessed asset missing",
     });
@@ -327,6 +352,48 @@ async function registryBackedSourceReceipt(
       "No loadable local asset or remote URL is configured; related indicators remain unavailable instead of being inferred.",
     ],
     error: "No source URL or public local asset path configured",
+  });
+}
+
+async function pointAwareSourceReceipt(
+  source: DataSource,
+  input: SourceAdapterInput,
+): Promise<SourceFetchReceipt> {
+  const started = performance.now();
+  const radiusMeters = pointAwareRadius(source.id);
+  const coverage = await inspectPointSourceCoverage({
+    sourceId: source.id,
+    selectedPoint: input.selectedPoint,
+    radiusMeters,
+  });
+  return receipt(source, {
+    status:
+      coverage.status === "ok"
+        ? "ok"
+        : coverage.status === "missing"
+          ? "missing"
+          : coverage.status === "failed"
+            ? "failed"
+            : "missing",
+    queriedAt: input.computedAt,
+    elapsedMs: Math.round(performance.now() - started),
+    url: coverage.indexUrl || PREPROCESSED_ASSET_CHECKS[source.id],
+    recordCount: coverage.selectedShardCount,
+    featureCount: coverage.loadedFeatureCount,
+    sourceVersion: coverage.sourceVersion,
+    method:
+      "Checked the sharded local cache against the selected point and analysis radius, not only whether the dataset exists on disk.",
+    caveats:
+      coverage.status === "ok"
+        ? [
+            `Point cache hit: ${coverage.selectedShardCount} shard(s), ${coverage.loadedFeatureCount} feature(s).`,
+            ...coverage.caveats,
+          ]
+        : [
+            ...coverage.caveats,
+            "A pull/preprocess step is required for this point before this source can produce local indicators or exports.",
+          ],
+    error: coverage.error,
   });
 }
 
@@ -422,6 +489,27 @@ function publicUrlFromLocalPath(localPath?: string): string | undefined {
   if (localPath.startsWith("public/")) return `/${localPath.slice("public/".length)}`;
   if (localPath.startsWith("/")) return localPath;
   return undefined;
+}
+
+function isPointAwareSource(sourceId: string): boolean {
+  return (
+    sourceId === "overture-buildings" ||
+    sourceId === "copernicus-urban-atlas" ||
+    sourceId === "urban-atlas-2021-catalog" ||
+    sourceId === "gtfs-de-local-transit" ||
+    sourceId === "mobilithek-gtfs"
+  );
+}
+
+function pointAwareRadius(sourceId: string): number {
+  if (sourceId === "overture-buildings") return 900;
+  if (sourceId === "copernicus-urban-atlas" || sourceId === "urban-atlas-2021-catalog") {
+    return 1_000;
+  }
+  if (sourceId === "gtfs-de-local-transit" || sourceId === "mobilithek-gtfs") {
+    return 1_000;
+  }
+  return 1_000;
 }
 
 function receipt(

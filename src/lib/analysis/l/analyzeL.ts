@@ -22,8 +22,10 @@ export function analyzeL(
   const liveDevelopment = liveCollections.developmentHints;
   const liveLandUse = liveCollections.landUse;
   const liveTrees = liveCollections.trees;
+  const urbanAtlas = liveCollections.urbanAtlas;
+  const urbanAtlasFeatures = urbanAtlas?.features.length ?? 0;
   const hasLiveGreenResponse = liveGreenBlue !== undefined;
-  const measuredGreenArea = liveGreenBlue ? collectionAreaSqm(liveGreenBlue) : 0;
+  const measuredGreenArea = liveGreenBlue ? collectionAreaSqm(liveGreenBlue, isGreenFeature) : 0;
   const greenPercent =
     hasLiveGreenResponse && measuredGreenArea > 0
       ? Math.round((measuredGreenArea / circleAreaSqm(radiusMeters)) * 10_000) / 100
@@ -35,10 +37,14 @@ export function analyzeL(
   const exactMobilityFeatures = liveMobility?.features.length;
   const exactPois = livePois?.features.length;
   const exactLandUseFeatures = liveLandUse?.features.length;
+  const landUseClasses = liveLandUse ? uniqueLandUseClasses(liveLandUse) : [];
   const landUseMix =
-    exactLandUseFeatures === undefined
+    exactLandUseFeatures === undefined && urbanAtlasFeatures === 0
       ? null
-      : Math.min(0.92, Math.round((0.35 + Math.min(exactLandUseFeatures, 80) / 140) * 100) / 100);
+      : Math.min(
+          0.95,
+          Math.round((0.25 + Math.min(landUseClasses.length || exactLandUseFeatures || 0, 18) / 24) * 100) / 100,
+        );
   const transitStops = exactTransitStops ?? null;
   const mobilityHints = exactMobilityFeatures ?? null;
   const infrastructurePois = exactPois ?? null;
@@ -47,6 +53,10 @@ export function analyzeL(
   const fallbackCaveat =
     "No live OSM result was available for this module and no local preprocessed dataset is loaded; value is not available.";
   const caveat = hasLiveGreenResponse ? liveCaveat : fallbackCaveat;
+  const urbanAtlasCaveat =
+    urbanAtlasFeatures > 0
+      ? "Preprocessed Copernicus Urban Atlas polygons were loaded for this point and used before OSM-only fallback classes."
+      : "No local Copernicus Urban Atlas polygon was available for this point.";
 
   const indicators = [
     createIndicator({
@@ -75,14 +85,14 @@ export function analyzeL(
           ?.geometry ?? overlays.green.features[0]?.geometry,
       method:
         greenPercent !== null
-          ? "Computed from live Overpass green/blue polygon area inside the configured radius."
+          ? "Computed from loaded Urban Atlas and/or live Overpass green/blue polygon area inside the configured radius."
           : "Live green/blue source did not return a usable response and no local preprocessed polygons are loaded.",
-      sourceIds: ["osm-core", "osm-overpass", "copernicus-urban-atlas"],
+      sourceIds: ["osm-core", "osm-overpass", "copernicus-urban-atlas", "urban-atlas-2021-catalog"],
       confidence: hasLiveGreenResponse ? "medium" : "low",
       caveats: [
         caveat,
         greenPercent !== null
-          ? "OSM polygon completeness varies; authoritative Urban Atlas/local land-use preprocessing can improve coverage."
+          ? urbanAtlasCaveat
           : "No synthetic green percentage is emitted without real polygon area.",
       ],
       computedAt,
@@ -94,12 +104,16 @@ export function analyzeL(
       value: landUseMix,
       unit: "0-1",
       method:
-        exactLandUseFeatures !== undefined
-          ? "Computed as a live OSM land-use class diversity proxy from returned landuse/leisure/amenity polygons."
+        exactLandUseFeatures !== undefined || urbanAtlasFeatures > 0
+          ? "Computed as a class-diversity proxy from loaded Urban Atlas polygons and live OSM landuse/leisure/amenity polygons."
           : "Live land-use source did not return a usable response and no local Urban Atlas preprocessing is loaded.",
-      sourceIds: ["osm-core", "copernicus-urban-atlas"],
-      confidence: exactLandUseFeatures !== undefined ? "medium" : "low",
-      caveats: [exactLandUseFeatures !== undefined ? liveCaveat : fallbackCaveat],
+      sourceIds: ["osm-core", "copernicus-urban-atlas", "urban-atlas-2021-catalog"],
+      confidence: urbanAtlasFeatures > 0 ? "high" : exactLandUseFeatures !== undefined ? "medium" : "low",
+      caveats: [
+        exactLandUseFeatures !== undefined || urbanAtlasFeatures > 0
+          ? urbanAtlasCaveat
+          : fallbackCaveat,
+      ],
       computedAt,
     }),
     createIndicator({
@@ -112,7 +126,7 @@ export function analyzeL(
         exactTransitStops !== undefined
           ? "Counted live Overpass public_transport, bus_stop, railway station/halt/tram_stop features inside the radius."
           : "Live transport stop retrieval was unavailable; no fallback count is emitted.",
-      sourceIds: ["osm-core", "mobilithek-gtfs", "osm-overpass"],
+      sourceIds: ["osm-core", "mobilithek-gtfs", "gtfs-de-local-transit", "osm-overpass"],
       confidence: exactTransitStops !== undefined ? "medium" : "low",
       caveats: [exactTransitStops !== undefined ? liveCaveat : fallbackCaveat],
       computedAt,
@@ -130,7 +144,7 @@ export function analyzeL(
         exactTransitLines !== undefined
           ? "Loaded live Overpass public-transport route relations and rail/tram line ways within the L-scale context; geometries are grouped by transport mode for map rendering."
           : "Live public-transport line retrieval was unavailable.",
-      sourceIds: ["osm-core", "osm-overpass", "mobilithek-gtfs"],
+      sourceIds: ["osm-core", "osm-overpass", "mobilithek-gtfs", "gtfs-de-local-transit"],
       confidence: exactTransitLines !== undefined ? "medium" : "low",
       caveats: [
         exactTransitLines !== undefined ? liveCaveat : fallbackCaveat,
@@ -182,7 +196,7 @@ export function analyzeL(
         liveDevelopment?.features.length
           ? "Read live Overpass brownfield, construction, parking, disused, abandoned and related development-hint classes."
           : "Live development-hint source did not return a usable response and no local preprocessing is loaded.",
-      sourceIds: ["osm-core", "osm-overpass", "copernicus-urban-atlas"],
+      sourceIds: ["osm-core", "osm-overpass", "copernicus-urban-atlas", "urban-atlas-2021-catalog"],
       confidence: liveDevelopment ? "medium" : "low",
       caveats: [
         liveDevelopment ? liveCaveat : caveat,
@@ -199,7 +213,7 @@ export function analyzeL(
       scale: "L",
       indicators: indicators.slice(0, 3),
       method: "Radius buffer with explicit green/open-space class mapping.",
-      sourceIds: ["osm-core", "osm-overpass", "copernicus-urban-atlas"],
+      sourceIds: ["osm-core", "osm-overpass", "copernicus-urban-atlas", "urban-atlas-2021-catalog"],
       computedAt,
       confidence: "low",
       caveats: [caveat],
@@ -210,7 +224,7 @@ export function analyzeL(
       scale: "L",
       indicators: indicators.slice(3, 7),
       method: "Counts and class hints within the selected walkable radius.",
-      sourceIds: ["osm-core", "osm-overpass", "mobilithek-gtfs"],
+      sourceIds: ["osm-core", "osm-overpass", "mobilithek-gtfs", "gtfs-de-local-transit"],
       computedAt,
       confidence: "low",
       caveats: [caveat],
@@ -221,7 +235,7 @@ export function analyzeL(
       scale: "L",
       indicators: [indicators[7]],
       method: "Screening rules from open-data class hints.",
-      sourceIds: ["osm-core", "copernicus-urban-atlas"],
+      sourceIds: ["osm-core", "copernicus-urban-atlas", "urban-atlas-2021-catalog"],
       computedAt,
       confidence: "low",
       caveats: indicators[7].caveats,
@@ -229,7 +243,7 @@ export function analyzeL(
   ];
 
   if (liveGreenBlue) {
-    overlays.green = liveGreenBlue;
+    overlays.green = featureCollection(liveGreenBlue.features.filter(isGreenFeature));
   }
   if (liveTrees) {
     overlays.trees = liveTrees;
@@ -261,8 +275,14 @@ function circleAreaSqm(radiusMeters: number): number {
   return Math.PI * radiusMeters * radiusMeters;
 }
 
-function collectionAreaSqm(collection: FeatureCollection): number {
-  return collection.features.reduce((total, feature) => total + featureAreaSqm(feature), 0);
+function collectionAreaSqm(
+  collection: FeatureCollection,
+  filterFeature: (feature: Feature) => boolean = () => true,
+): number {
+  return collection.features.reduce(
+    (total, feature) => total + (filterFeature(feature) ? featureAreaSqm(feature) : 0),
+    0,
+  );
 }
 
 function featureAreaSqm(feature: Feature): number {
@@ -289,6 +309,44 @@ function polygonAreaSqm(geometry: Polygon): number {
     .slice(1)
     .reduce((total, ring) => total + ringAreaSqm(ring), 0);
   return Math.max(0, outerArea - holesArea);
+}
+
+function uniqueLandUseClasses(collection: FeatureCollection): string[] {
+  const classes = collection.features
+    .map((feature) => readClassValue(feature))
+    .filter((value): value is string => Boolean(value));
+  return [...new Set(classes)];
+}
+
+function readClassValue(feature: Feature): string | null {
+  const value =
+    feature.properties?.urbanAtlasClass ??
+    feature.properties?.label ??
+    feature.properties?.landuse ??
+    feature.properties?.leisure ??
+    feature.properties?.natural ??
+    feature.properties?.amenity ??
+    feature.properties?.class ??
+    feature.properties?.code;
+  return value === undefined || value === null ? null : String(value).toLowerCase();
+}
+
+function isGreenFeature(feature: Feature): boolean {
+  const sourceId = String(feature.properties?.sourceId ?? "");
+  const classValue = readClassValue(feature) ?? "";
+  if (sourceId === "copernicus-urban-atlas") {
+    return (
+      classValue.startsWith("141") ||
+      classValue.startsWith("142") ||
+      classValue.startsWith("2") ||
+      classValue.startsWith("3") ||
+      classValue.startsWith("5") ||
+      classValue.includes("green") ||
+      classValue.includes("forest") ||
+      classValue.includes("water")
+    );
+  }
+  return true;
 }
 
 function ringAreaSqm(ring: number[][]): number {

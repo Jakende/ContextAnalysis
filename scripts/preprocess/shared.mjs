@@ -84,6 +84,24 @@ export async function fetchBuffer(url, options = {}) {
   return Buffer.from(await response.arrayBuffer());
 }
 
+export async function fetchText(url, options = {}) {
+  const response = await fetch(url, {
+    headers: {
+      "User-Agent": "UrbanContextAnalysis/0.1 preprocessing",
+      Accept: "text/csv,text/plain,application/json,*/*;q=0.5",
+      ...(options.headers ?? {}),
+    },
+    ...options,
+  });
+  if (!response.ok) {
+    const text = await response.text().catch(() => "");
+    throw new Error(
+      `HTTP ${response.status} ${response.statusText} for ${url}${text ? `: ${text.slice(0, 300)}` : ""}`,
+    );
+  }
+  return response.text();
+}
+
 export function assertFeatureCollection(value, label) {
   if (!value || value.type !== "FeatureCollection" || !Array.isArray(value.features)) {
     throw new Error(`${label} did not return a GeoJSON FeatureCollection`);

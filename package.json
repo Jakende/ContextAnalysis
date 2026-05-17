@@ -15,6 +15,7 @@
     "preprocess:buildings": "node scripts/preprocess/preprocess-building-fallback.mjs",
     "preprocess:gtfs": "node scripts/preprocess/preprocess-gtfs-stops.mjs",
     "preprocess:thematic": "node scripts/preprocess/preprocess-thematic-geojson.mjs",
+    "preprocess:point-cache": "node scripts/preprocess/resolve-point-cache.mjs",
     "validate:ui": "python3 scripts/validate/validate_ui_css.py src/styles/design-system.css src/styles/app.css"
   },
   "keywords": [],

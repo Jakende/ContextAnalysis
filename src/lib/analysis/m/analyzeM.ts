@@ -177,7 +177,7 @@ export function analyzeM(
         hasLiveBuildings
           ? "Read live OSM building footprints and direct height tags where present; LOD2 remains the preferred local source when preprocessed."
           : "No live OSM building footprint/height data and no local LOD2 tiles are loaded for this point.",
-      sourceIds: ["lod2-bayern", "osm-core"],
+      sourceIds: ["lod2-bayern", "overture-buildings", "overture-building-parts", "osm-core"],
       confidence: hasLiveBuildings ? "medium" : "low",
       caveats: [caveat, "building:levels is not converted into height in real-data-only mode."],
       computedAt,
@@ -190,7 +190,7 @@ export function analyzeM(
       geometry: overlays.sun.features[0]?.geometry,
       method:
         "No sun/shadow value is emitted until a validated solar model is connected to real building and date/time inputs.",
-      sourceIds: ["lod2-bayern", "dwd-cdc"],
+      sourceIds: ["lod2-bayern", "overture-buildings", "dwd-cdc", "dwd-cdc-grids-germany"],
       confidence: "low",
       caveats: [
         caveat,
@@ -226,7 +226,7 @@ export function analyzeM(
         sectionLine
           ? "Section is calculated from the user-defined line. Loaded buildings, tree locations, and available SRTM/DEM samples are orthogonally projected onto the section."
           : "No user-defined section line is set. The section SVG stays in setup mode instead of rendering a generic street section.",
-      sourceIds: ["srtm-30m", "lod2-bayern", "osm-core", "osm-overpass"],
+      sourceIds: ["srtm-30m", "lod2-bayern", "overture-buildings", "osm-core", "osm-overpass"],
       confidence: sectionLine ? "medium" : "low",
       caveats: [
         sectionLine
@@ -257,7 +257,7 @@ export function analyzeM(
       scale: "M",
       indicators: indicators.slice(3, 5),
       method: "LOD2-ready massing and approximate sun/shadow module.",
-      sourceIds: ["lod2-bayern", "dwd-cdc", "osm-core"],
+      sourceIds: ["lod2-bayern", "overture-buildings", "dwd-cdc", "dwd-cdc-grids-germany", "osm-core"],
       computedAt,
       confidence: "low",
       caveats: [caveat],
@@ -269,7 +269,7 @@ export function analyzeM(
       indicators: [indicators[1], indicators[5], indicators[6]],
       method:
         "User-defined section line with projected real building/tree evidence and configured local SRTM/DEM samples where available.",
-      sourceIds: ["osm-core", "osm-overpass", "lod2-bayern", "srtm-30m"],
+      sourceIds: ["osm-core", "osm-overpass", "lod2-bayern", "overture-buildings", "srtm-30m"],
       computedAt,
       confidence: sectionLine ? "medium" : "low",
       caveats: [
@@ -327,7 +327,7 @@ export function recomputeMSectionFromAnalysis(
     geometry: sectionLineToGeometry(sectionLine),
     method:
       "Section is calculated immediately from the user-defined line and the already loaded M-scale building/tree overlays plus configured local SRTM/DEM samples where available.",
-    sourceIds: ["srtm-30m", "lod2-bayern", "osm-core", "osm-overpass"],
+    sourceIds: ["srtm-30m", "lod2-bayern", "overture-buildings", "osm-core", "osm-overpass"],
     confidence: "medium",
     caveats: [
       terrainSamples.length > 0
@@ -348,6 +348,7 @@ export function recomputeMSectionFromAnalysis(
             ...module.sourceIds,
             "srtm-30m",
             "lod2-bayern",
+            "overture-buildings",
             "osm-core",
             "osm-overpass",
           ]),
@@ -376,6 +377,7 @@ export function recomputeMSectionFromAnalysis(
           ...analysis.provenance.sourceIds,
           "srtm-30m",
           "lod2-bayern",
+          "overture-buildings",
           "osm-core",
         ]),
         caveats: [

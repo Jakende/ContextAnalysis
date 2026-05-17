@@ -6,6 +6,7 @@ import {
   loadGtfsStopsForPoint,
   loadLod2BuildingsForPoint,
   loadTerrainSamplesForSection,
+  loadUrbanAtlasForPoint,
   loadZensusGridForPoint,
 } from "../data/localSpatial";
 import { runSourceAdapters } from "../data/sourceAdapters";
@@ -22,6 +23,7 @@ import { featureCollection, geometryToFeature, pointGeometry } from "./geometry"
 import { analyzeL } from "./l/analyzeL";
 import { analyzeM } from "./m/analyzeM";
 import { analyzeXl } from "./xl/analyzeXl";
+import { createFuaContextModule } from "./xl/fua";
 import {
   createXlContextOverlay,
   createXlGridOverlay,
@@ -84,6 +86,7 @@ export async function runLocationAnalysis(input: {
   const bkgBoundaries = await loadBkgBoundariesForPoint(selectedPoint);
   const fuaGeometries = await loadFuaGeometriesForPoint(selectedPoint);
   const gtfsStops = await loadGtfsStopsForPoint(selectedPoint);
+  const urbanAtlas = await loadUrbanAtlasForPoint(selectedPoint);
   const terrainSamples = input.sectionLine
     ? await loadTerrainSamplesForSection(input.sectionLine)
     : [];
@@ -97,6 +100,15 @@ export async function runLocationAnalysis(input: {
       gtfsStops,
       overpass.collections.transportStops ?? featureCollection(),
     ),
+    urbanAtlas,
+    landUse: mergeCollections(
+      urbanAtlas,
+      overpass.collections.landUse ?? featureCollection(),
+    ),
+    greenBlue: mergeCollections(
+      urbanAtlas,
+      overpass.collections.greenBlue ?? featureCollection(),
+    ),
   };
   const xl = analyzeXl(selectedPoint, computedAt);
   const l = analyzeL(selectedPoint, computedAt, 500, analysisCollections);
@@ -109,6 +121,7 @@ export async function runLocationAnalysis(input: {
   );
   const sourceFetches = await runSourceAdapters({
     district: xl.district,
+    selectedPoint,
     computedAt,
     geocoding: {
       enabled: input.enableGeocoding !== false,
@@ -121,11 +134,13 @@ export async function runLocationAnalysis(input: {
     overpassCollections: overpass.collections,
   });
   const xlSourceStatus = createXlSourceStatusModule(sourceFetches, computedAt);
+  const fua = createFuaContextModule(fuaGeometries, computedAt);
   const zensus = createZensusGridModule(zensusGrid, computedAt);
   const zensusWms = createZensusWmsModule(zensusWmsIndicators, computedAt);
 
   const allModules = [
     ...xl.modules,
+    ...fua.modules,
     ...zensusWms.modules,
     ...zensus.modules,
     ...xlSourceStatus.modules,
@@ -134,6 +149,7 @@ export async function runLocationAnalysis(input: {
   ];
   const allIndicators = [
     ...xl.indicators,
+    ...fua.indicators,
     ...zensusWms.indicators,
     ...zensus.indicators,
     ...xlSourceStatus.indicators,

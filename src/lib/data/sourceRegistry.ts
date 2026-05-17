@@ -115,18 +115,45 @@ export const sourceRegistry = {
     notes:
       "Use as optional global fallback only after local preprocessing. Live WFS is too heavy for default point analysis and license classes must remain visible.",
   },
+  "global-building-atlas-odbl-polygons": {
+    id: "global-building-atlas-odbl-polygons",
+    label: "GlobalBuildingAtlas ODbL building polygons",
+    type: "external-download",
+    url: "https://huggingface.co/datasets/zhu-xlab/GBA.ODbLPolygon",
+    localPath: "public/data/processed/global-building-atlas.geojson",
+    license: "ODbL polygon subset; verify dataset release metadata before redistribution",
+    attribution:
+      "GlobalBuildingAtlas / TUM Data Science in Earth Observation / Zhu et al.",
+    scale: ["M"],
+    updateMode: "preprocessed",
+    notes:
+      "Experimental fallback. Only the license-compatible polygon subset should feed the standard runtime pipeline; LoD1/height products require separate review.",
+  },
   "overture-buildings": {
     id: "overture-buildings",
     label: "Overture Maps buildings",
     type: "external-download",
-    url: "https://docs.overturemaps.org/guides/buildings/",
-    localPath: "public/data/processed/overture-buildings.geojson",
+    url: "https://stac.overturemaps.org/catalog.json",
+    localPath: "public/data/processed/overture-buildings/index.json",
     license: "CDLA Permissive 2.0 / Overture Maps data terms",
     attribution: "Overture Maps Foundation contributors",
     scale: ["M"],
     updateMode: "preprocessed",
     notes:
-      "Preferred global building-footprint fallback for non-Bavaria contexts after preprocessing to local tiles or clipped GeoJSON. Heights may be incomplete and must remain lower-confidence than LOD2.",
+      "Preferred broad building-footprint fallback for non-Bavaria contexts after preprocessing to local tiles or clipped GeoJSON. Resolve releases through STAC/CLI instead of pinning a stale release path. Heights may be incomplete and must remain lower-confidence than LOD2.",
+  },
+  "overture-building-parts": {
+    id: "overture-building-parts",
+    label: "Overture Maps building parts",
+    type: "external-download",
+    url: "https://stac.overturemaps.org/catalog.json",
+    localPath: "public/data/processed/overture-building-parts/index.json",
+    license: "CDLA Permissive 2.0 / Overture Maps data terms",
+    attribution: "Overture Maps Foundation contributors",
+    scale: ["M"],
+    updateMode: "preprocessed",
+    notes:
+      "Optional richer massing source. Keep separate from building footprints until the runtime explicitly handles part hierarchies and duplicate geometry.",
   },
   "srtm-30m": {
     id: "srtm-30m",
@@ -158,12 +185,24 @@ export const sourceRegistry = {
     label: "Copernicus Land Monitoring Service Urban Atlas",
     type: "external-download",
     url: "https://land.copernicus.eu/en/products/urban-atlas",
-    localPath: "public/data/processed/copernicus-urban-atlas.geojson",
+    localPath: "public/data/processed/copernicus-urban-atlas/index.json",
     attribution: "Copernicus Land Monitoring Service / European Environment Agency",
     scale: ["L"],
     updateMode: "preprocessed",
     notes:
       "Use only after local preprocessing of the relevant Urban Atlas FUA extract. Product pages are not treated as analysis data.",
+  },
+  "urban-atlas-2021-catalog": {
+    id: "urban-atlas-2021-catalog",
+    label: "Copernicus Urban Atlas 2021 CSV catalog",
+    type: "external-download",
+    url: "https://s3.waw3-1.cloudferro.com/swift/v1/CatalogueCSV/land_cover_use_in_priority_areas/urban_atlas/clms_ua_land-cover-land-use_europe_V025ha_3yearly_v1/clms_ua_land-cover-land-use_europe_V025ha_3yearly_v1_flatgeobuf.csv",
+    localPath: "public/data/processed/copernicus-urban-atlas/index.json",
+    attribution: "Copernicus Land Monitoring Service / European Environment Agency",
+    scale: ["L"],
+    updateMode: "preprocessed",
+    notes:
+      "Preferred Urban Atlas resolver. Preprocessing should select the relevant FUA FlatGeobuf from this catalog, convert it locally, and only then expose L-scale land-use indicators.",
   },
   "ghsl-jrc": {
     id: "ghsl-jrc",
@@ -176,6 +215,18 @@ export const sourceRegistry = {
     updateMode: "preprocessed",
     notes:
       "Comparative/modelled context only; not cadastral or street-level truth.",
+  },
+  "ghsl-direct-download": {
+    id: "ghsl-direct-download",
+    label: "GHSL direct download catalog",
+    type: "external-download",
+    url: "https://human-settlement.emergency.copernicus.eu/download.php",
+    localPath: "public/data/processed/ghsl.geojson",
+    attribution: "European Commission Joint Research Centre / GHSL",
+    scale: ["XL", "L"],
+    updateMode: "preprocessed",
+    notes:
+      "Resolver for modelled GHSL products such as built-up surface, population grid, settlement model, and built-up height. Use as comparative context, not cadastral truth.",
   },
   "bkg-geobasis": {
     id: "bkg-geobasis",
@@ -201,17 +252,81 @@ export const sourceRegistry = {
     notes:
       "Optional climate context. Coarse grids are never presented as street-level measurements.",
   },
+  "dwd-cdc-grids-germany": {
+    id: "dwd-cdc-grids-germany",
+    label: "DWD CDC grids Germany",
+    type: "external-download",
+    url: "https://opendata.dwd.de/climate_environment/CDC/grids_germany/",
+    localPath: "public/data/processed/dwd-climate.geojson",
+    attribution: "Deutscher Wetterdienst / Climate Data Center",
+    scale: ["XL", "L", "M"],
+    updateMode: "preprocessed",
+    notes:
+      "Preferred climate-grid resolver for annual/monthly temperature, hot days, summer days, precipitation, and global radiation. Runtime values must remain coarse climate proxies.",
+  },
   "mobilithek-gtfs": {
     id: "mobilithek-gtfs",
     label: "Mobilithek / DELFI / GTFS feeds",
     type: "external-download",
     url: "https://mobilithek.info/",
-    localPath: "public/data/processed/gtfs-stops.geojson",
+    localPath: "public/data/processed/gtfs-stops/index.json",
     attribution: "Mobilithek / DELFI / GTFS feed providers",
     scale: ["L"],
     updateMode: "preprocessed",
     notes:
       "Runtime expects preprocessed stop points. Feed licensing and provider coverage must be checked before preprocessing.",
+  },
+  "gtfs-de-local-transit": {
+    id: "gtfs-de-local-transit",
+    label: "GTFS.DE local public transit feed",
+    type: "external-download",
+    url: "https://download.gtfs.de/germany/nv_free/latest.zip",
+    localPath: "public/data/processed/gtfs-stops/index.json",
+    license: "GTFS.DE / DELFI feed terms; verify current feed metadata",
+    attribution: "GTFS.DE / DELFI / participating public transport providers",
+    scale: ["L"],
+    updateMode: "preprocessed",
+    notes:
+      "Preferred MVP feed for stop-distance and mode-availability indicators. It is preprocessed to stop points; GTFS-RT is intentionally out of MVP scope.",
+  },
+  "gtfs-de-full": {
+    id: "gtfs-de-full",
+    label: "GTFS.DE full Germany feed",
+    type: "external-download",
+    url: "https://download.gtfs.de/germany/free/latest.zip",
+    localPath: "public/data/processed/gtfs-full-stops/index.json",
+    license: "GTFS.DE / DELFI feed terms; verify current feed metadata",
+    attribution: "GTFS.DE / DELFI / participating public transport providers",
+    scale: ["L", "XL"],
+    updateMode: "preprocessed",
+    notes:
+      "Optional broader feed including long-distance services. Keep separate from the default local-transit stop layer to avoid over-counting L-scale accessibility.",
+  },
+  "gtfs-de-regional-rail": {
+    id: "gtfs-de-regional-rail",
+    label: "GTFS.DE regional rail feed",
+    type: "external-download",
+    url: "https://download.gtfs.de/germany/rv_free/latest.zip",
+    localPath: "public/data/processed/gtfs-regional-rail-stops/index.json",
+    license: "GTFS.DE / DELFI feed terms; verify current feed metadata",
+    attribution: "GTFS.DE / DELFI / participating rail and public transport providers",
+    scale: ["L", "XL"],
+    updateMode: "preprocessed",
+    notes:
+      "Optional regional-rail feed for rail-accessibility contexts. Not part of the default L-scale stop count unless explicitly preprocessed and wired.",
+  },
+  "gtfs-de-long-distance-rail": {
+    id: "gtfs-de-long-distance-rail",
+    label: "GTFS.DE long-distance rail feed",
+    type: "external-download",
+    url: "https://download.gtfs.de/germany/fv_free/latest.zip",
+    localPath: "public/data/processed/gtfs-long-distance-rail-stops/index.json",
+    license: "GTFS.DE / DELFI feed terms; verify current feed metadata",
+    attribution: "GTFS.DE / DELFI / participating rail providers",
+    scale: ["XL"],
+    updateMode: "preprocessed",
+    notes:
+      "Optional long-distance service context. Keep separate from neighbourhood stop accessibility to avoid inflated L-scale results.",
   },
   "natural-earth-openfreemap": {
     id: "natural-earth-openfreemap",
