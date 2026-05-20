@@ -14,6 +14,28 @@ export function analysisToJson(analysis: AnalysisResult): string {
   return JSON.stringify({ manifest, analysis }, null, 2);
 }
 
+export function analysisToProvenanceJson(analysis: AnalysisResult): string {
+  const manifest = createExportManifest(analysis, [
+    {
+      name: "provenance.json",
+      mediaType: "application/json",
+      role: "data-source run provenance",
+    },
+  ]);
+  return JSON.stringify(
+    {
+      manifest,
+      selectedPoint: analysis.selectedPoint,
+      dataSourceRun: analysis.provenance.dataSourceRun,
+      sourceFetches: analysis.provenance.sourceFetches,
+      overpassQueries: analysis.provenance.overpassQueries,
+      caveats: analysis.provenance.caveats,
+    },
+    null,
+    2,
+  );
+}
+
 export function analysisToCsv(analysis: AnalysisResult): string {
   const headers = [
     "id",
@@ -130,7 +152,10 @@ export function analysisToMarkdown(analysis: AnalysisResult): string {
   for (const id of [
     "xl.population-density",
     "l.green-percentage",
+    "l.land-use-dominant",
     "l.transit-stops",
+    "l.transit-stop-density",
+    "l.transit-mode-mix",
     "l.transit-lines",
     "m.street-width",
     "m.building-height",
@@ -157,6 +182,20 @@ export function analysisToMarkdown(analysis: AnalysisResult): string {
     lines.push(
       `- ${receipt.label}: ${receipt.status}, ${count}, ${receipt.elapsedMs}ms`,
     );
+  }
+
+  lines.push("", "## Data Source Run");
+  for (const event of analysis.provenance.dataSourceRun) {
+    const count =
+      event.featureCount !== undefined
+        ? `${event.featureCount} features`
+        : event.recordCount !== undefined
+          ? `${event.recordCount} records`
+          : event.phase;
+    lines.push(
+      `- ${event.label}: ${event.status}, ${count}${event.elapsedMs !== undefined ? `, ${event.elapsedMs}ms` : ""}`,
+    );
+    if (event.error) lines.push(`  Error: ${event.error}`);
   }
 
   lines.push("", "## Caveats");

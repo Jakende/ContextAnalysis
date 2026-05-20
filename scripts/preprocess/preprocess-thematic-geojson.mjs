@@ -221,8 +221,11 @@ function firstUrl(row) {
     (value) => typeof value === "string" && value.startsWith("s3://"),
   );
   if (s3Path) {
+    if (process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY) {
+      return s3PathToVsiPath(s3Path);
+    }
     throw new Error(
-      `Matched Urban Atlas catalog row uses CDSE S3 access (${s3Path}). Configure CDSE S3 credentials or provide a downloaded FlatGeobuf/GeoJSON via --input.`,
+      `Matched Urban Atlas catalog row uses CDSE S3 access (${s3Path}). Configure CDSE S3 credentials in the shell environment or provide a downloaded FlatGeobuf/GeoJSON via --input.`,
     );
   }
   const urls = Object.values(row).filter(
@@ -233,6 +236,12 @@ function firstUrl(row) {
     urls.find((value) => /\.(geojson|json|gpkg|zip)(\?|$)/i.test(value)) ??
     urls[0]
   );
+}
+
+function s3PathToVsiPath(s3Path) {
+  return s3Path
+    .replace(/^s3:\/\/EODATA\//i, "/vsis3/eodata/")
+    .replace(/^s3:\/\/eodata\//i, "/vsis3/eodata/");
 }
 
 function normalizeSearchValue(value) {

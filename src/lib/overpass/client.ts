@@ -5,13 +5,14 @@ import type { OverpassModule, OverpassProvenance, QueryParams } from "../types";
 import { overpassModules } from "./modules";
 
 const OVERPASS_ENDPOINTS = [
-  "https://overpass.kumi.systems/api/interpreter",
-  "https://overpass.private.coffee/api/interpreter",
   "https://overpass-api.de/api/interpreter",
+  "https://overpass.private.coffee/api/interpreter",
+  "https://overpass.kumi.systems/api/interpreter",
+  "https://overpass.openstreetmap.jp/api/interpreter",
 ];
 const OVERPASS_CONCURRENCY = 2;
-const OVERPASS_PROXY_TIMEOUT_MS = 32_000;
-const OVERPASS_CACHE_VERSION = "v3-sanitized-priority";
+const OVERPASS_PROXY_TIMEOUT_MS = 45_000;
+const OVERPASS_CACHE_VERSION = "v4-public-transport-lines";
 
 type OverpassProxyResponse = {
   ok: boolean;

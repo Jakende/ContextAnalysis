@@ -26,6 +26,7 @@ type SourceAdapterInput = {
   geocoding: GeocodingReceipt;
   overpassQueries: OverpassProvenance[];
   overpassCollections: Record<string, FeatureCollection>;
+  localCollections?: Record<string, FeatureCollection>;
 };
 
 type SourceProbeResponse = {
@@ -287,6 +288,9 @@ async function registryBackedSourceReceipt(
   if (sourceId === "zensus-grid-2022") {
     return zensusWmsSourceReceipt(source, queriedAt);
   }
+  if (input.localCollections?.[sourceId]) {
+    return loadedLocalCollectionReceipt(source, input.localCollections[sourceId], queriedAt);
+  }
   if (isPointAwareSource(sourceId)) {
     return pointAwareSourceReceipt(source, input);
   }
@@ -352,6 +356,29 @@ async function registryBackedSourceReceipt(
       "No loadable local asset or remote URL is configured; related indicators remain unavailable instead of being inferred.",
     ],
     error: "No source URL or public local asset path configured",
+  });
+}
+
+function loadedLocalCollectionReceipt(
+  source: DataSource,
+  collection: FeatureCollection,
+  queriedAt: string,
+): SourceFetchReceipt {
+  const featureCount = collection.features.length;
+  return receipt(source, {
+    status: featureCount > 0 ? "ok" : "missing",
+    queriedAt,
+    elapsedMs: 0,
+    url: PREPROCESSED_ASSET_CHECKS[source.id] ?? publicUrlFromLocalPath(source.localPath),
+    featureCount,
+    method:
+      "Loaded the preprocessed local dataset and intersected it with the selected-point analysis area.",
+    caveats:
+      featureCount > 0
+        ? [`Point coverage hit: ${featureCount} feature(s) loaded.`]
+        : [
+            "The preprocessed dataset exists or is configured, but no feature covered the selected point.",
+          ],
   });
 }
 

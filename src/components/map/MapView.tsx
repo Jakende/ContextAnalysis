@@ -9,7 +9,13 @@ import {
   ZENSUS_WMS_METRICS,
   zensusWmsTileUrl,
 } from "../../lib/data/zensusWms";
-import type { AnalysisResult, LayerId, LayerState, SectionLine } from "../../lib/types";
+import type {
+  AnalysisLoadStep,
+  AnalysisResult,
+  LayerId,
+  LayerState,
+  SectionLine,
+} from "../../lib/types";
 import { LayerTogglePanel } from "./LayerTogglePanel";
 import { ScaleSwitcher } from "./ScaleSwitcher";
 import type { Scale } from "../../lib/types";
@@ -48,8 +54,8 @@ export function MapView({
   analysis,
   activeScale,
   layers,
-  mode,
   isAnalyzing,
+  analysisLoadSteps,
   analysisLocked,
   onPointSelected,
   onAnalysisClear,
@@ -63,8 +69,8 @@ export function MapView({
   analysis: AnalysisResult | null;
   activeScale: Scale;
   layers: LayerState;
-  mode: "guided" | "direct";
   isAnalyzing: boolean;
+  analysisLoadSteps: AnalysisLoadStep[];
   analysisLocked: boolean;
   onPointSelected: (point: { lat: number; lon: number }) => void;
   onAnalysisClear: () => void;
@@ -144,14 +150,9 @@ export function MapView({
     });
 
     map.addControl(
-      new maplibregl.AttributionControl({
-        compact: true,
-        customAttribution:
-          'OpenFreeMap © OpenMapTiles Data from <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>',
-      }),
-      "bottom-right",
+      new maplibregl.ScaleControl({ unit: "metric" }),
+      "bottom-left",
     );
-    map.addControl(new maplibregl.ScaleControl({ unit: "metric" }), "bottom-left");
 
     map.on("click", (event) => {
       if (showXlFeatureInfo(map, event)) return;
@@ -342,59 +343,62 @@ export function MapView({
   return (
     <section ref={shellRef} className="map-shell" aria-label="Interactive map workspace">
       <div ref={containerRef} className="map-canvas" />
-      <div className="map-actions panel">
-        <button
-          type="button"
-          className="ghost-button"
-          onClick={() => requestElementFullscreen(shellRef.current)}
-        >
-          Map fullscreen
-        </button>
-      </div>
       <div className="map-topbar">
         <ScaleSwitcher activeScale={activeScale} onChange={onScaleChange} />
-        <form className="search-form" onSubmit={handleSearch}>
-          <input
-            type="search"
-            placeholder="Adresse suchen..."
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            onFocus={() => setSearchOpen(searchResults.length > 0)}
-            aria-label="Address search"
-          />
-          <button type="submit">Go</button>
-          {searchOpen ? (
-            <div className="search-suggestions" role="listbox" aria-label="Place suggestions">
-              {searchResults.map((result) => (
-                <button
-                  type="button"
-                  role="option"
-                  key={`${result.lat}:${result.lon}:${result.label}`}
-                  onClick={() => zoomToSearchResult(result)}
-                >
-                  <span>{result.label ?? "Unnamed place"}</span>
-                  <small>
-                    {result.lat.toFixed(5)}, {result.lon.toFixed(5)}
-                  </small>
-                </button>
-              ))}
-            </div>
-          ) : null}
-        </form>
+        <div className="map-topbar-right">
+          <form className="search-form" onSubmit={handleSearch}>
+            <input
+              type="search"
+              placeholder="Adresse suchen..."
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              onFocus={() => setSearchOpen(searchResults.length > 0)}
+              aria-label="Address search"
+            />
+            <button type="submit">Go</button>
+            {searchOpen ? (
+              <div className="search-suggestions" role="listbox" aria-label="Place suggestions">
+                {searchResults.map((result) => (
+                  <button
+                    type="button"
+                    role="option"
+                    key={`${result.lat}:${result.lon}:${result.label}`}
+                    onClick={() => zoomToSearchResult(result)}
+                  >
+                    <span>{result.label ?? "Unnamed place"}</span>
+                    <small>
+                      {result.lat.toFixed(5)}, {result.lon.toFixed(5)}
+                    </small>
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </form>
+          <button
+            type="button"
+            className="icon-button"
+            aria-label="Fullscreen map"
+            title="Fullscreen map"
+            onClick={() => requestElementFullscreen(shellRef.current)}
+          >
+            <FullscreenIcon />
+          </button>
+        </div>
       </div>
       <div className="map-left">
         <LayerTogglePanel
           layers={layers}
+          analysis={analysis}
+          activeScale={activeScale}
           onToggle={onLayerToggle}
           onReset={onLayerReset}
         />
       </div>
       <div className="map-status panel">
-        <span className="label">{mode === "guided" ? "Guided" : "Direct"} mode</span>
         <strong>{isAnalyzing ? "Analysis running" : analysis ? "Analysis loaded" : "Awaiting point"}</strong>
         <span>
           {analysis
-            ? `${analysis.selectedPoint.lat.toFixed(5)}, ${analysis.selectedPoint.lon.toFixed(5)}`
+            ? "Point fixed. Switch scale, toggle layers, or export."
             : "Search only zooms. Click the canvas pin target to run analysis."}
         </span>
         {analysis ? (
@@ -440,17 +444,91 @@ export function MapView({
           onZensusLayerChange={setZensusLayer}
         />
       ) : null}
+      <details className="map-attribution panel">
+        <summary aria-label="Toggle attribution and data sources">
+          <span className="map-attribution-icon">i</span>
+        </summary>
+        <div className="map-attribution-body">
+          <span className="label">Attribution</span>
+          <p>
+            OpenFreeMap, © OpenMapTiles, OpenStreetMap contributors / ODbL, Destatis,
+            GeoBasis-DE / BKG, LOD2 Bayern, Eurostat GISCO, Copernicus, GHSL, DWD,
+            Mobilithek.
+          </p>
+        </div>
+      </details>
+      {isAnalyzing ? <AnalysisLoadingOverlay steps={analysisLoadSteps} /> : null}
     </section>
+  );
+}
+
+function AnalysisLoadingOverlay({ steps }: { steps: AnalysisLoadStep[] }) {
+  const activeStep = steps.find((step) => step.status === "running") ?? steps[0];
+  const visibleSteps = steps.filter((step) => step.status !== "queued");
+  const completed = steps.filter((step) => step.status === "ok" || step.status === "skipped").length;
+  const failed = steps.filter((step) => step.status === "failed").length;
+  return (
+    <div className="analysis-loading-overlay" aria-live="polite" aria-label="Analysis loading progress">
+      <div className="analysis-loader-vector" aria-hidden="true">
+        <svg viewBox="0 0 160 160" role="img">
+          <circle className="loader-ring loader-ring-outer" cx="80" cy="80" r="58" />
+          <circle className="loader-ring loader-ring-inner" cx="80" cy="80" r="34" />
+          <path className="loader-scan" d="M24 80H136" />
+          <path className="loader-scan loader-scan-vertical" d="M80 24V136" />
+          <path className="loader-route" d="M43 106L72 67L96 88L119 51" />
+          <circle className="loader-node loader-node-a" cx="43" cy="106" r="5" />
+          <circle className="loader-node loader-node-b" cx="72" cy="67" r="5" />
+          <circle className="loader-node loader-node-c" cx="96" cy="88" r="5" />
+          <circle className="loader-node loader-node-d" cx="119" cy="51" r="5" />
+        </svg>
+      </div>
+      <div className="analysis-loading-copy">
+        <span className="label">Live analysis</span>
+        <strong>{activeStep?.label ?? "Preparing data"}</strong>
+        <span>{compactLoadDetail(activeStep?.detail ?? "Fetching live and cached datasets.")}</span>
+        <small>
+          {completed}/{steps.length} ready{failed ? ` / ${failed} warning` : ""}
+        </small>
+      </div>
+      {visibleSteps.length ? (
+        <ol className="analysis-loading-steps">
+          {visibleSteps.slice(-3).map((step) => (
+            <li className={`analysis-step analysis-step-${step.status}`} key={step.id}>
+              <span>{step.status}</span>
+              <strong>{step.label}</strong>
+              <small>{compactLoadDetail(step.detail)}</small>
+            </li>
+          ))}
+        </ol>
+      ) : null}
+    </div>
+  );
+}
+
+function compactLoadDetail(detail: string): string {
+  if (/CDSE credentials/i.test(detail)) return "Urban Atlas skipped: CDSE credentials missing.";
+  if (/Point cache updated/i.test(detail)) return "Cache updated; continuing analysis.";
+  return detail.split(/\r?\n/)[0].slice(0, 96);
+}
+
+function FullscreenIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M4 9V4h5" />
+      <path d="M20 9V4h-5" />
+      <path d="M4 15v5h5" />
+      <path d="M20 15v5h-5" />
+    </svg>
   );
 }
 
 function requestElementFullscreen(element: HTMLElement | null): void {
   if (!element) return;
   if (document.fullscreenElement === element) {
-    void document.exitFullscreen().then(() => window.setTimeout(() => window.dispatchEvent(new Event("resize")), 0));
+    void document.exitFullscreen();
     return;
   }
-  void element.requestFullscreen().then(() => window.setTimeout(() => window.dispatchEvent(new Event("resize")), 0));
+  void element.requestFullscreen();
 }
 
 function MapLegend({

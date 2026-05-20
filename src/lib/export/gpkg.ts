@@ -205,6 +205,49 @@ export async function analysisToGpkgBlob(
     );
   }
 
+  db.run(`CREATE TABLE data_source_run (
+    id TEXT PRIMARY KEY,
+    source_id TEXT,
+    label TEXT NOT NULL,
+    phase TEXT NOT NULL,
+    status TEXT NOT NULL,
+    requested_at TEXT NOT NULL,
+    finished_at TEXT,
+    elapsed_ms INTEGER,
+    scale TEXT,
+    url TEXT,
+    local_path TEXT,
+    record_count INTEGER,
+    feature_count INTEGER,
+    detail TEXT NOT NULL,
+    caveats TEXT NOT NULL,
+    error TEXT
+  )`);
+
+  for (const event of analysis.provenance.dataSourceRun) {
+    db.run(
+      `INSERT INTO data_source_run VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      [
+        event.id,
+        event.sourceId ?? null,
+        event.label,
+        event.phase,
+        event.status,
+        event.requestedAt,
+        event.finishedAt ?? null,
+        event.elapsedMs ?? null,
+        event.scale?.join("|") ?? null,
+        event.url ?? null,
+        event.localPath ?? null,
+        event.recordCount ?? null,
+        event.featureCount ?? null,
+        event.detail,
+        event.caveats.join("|"),
+        event.error ?? null,
+      ],
+    );
+  }
+
   db.run(`CREATE TABLE export_manifest (
     id INTEGER PRIMARY KEY CHECK (id = 1),
     manifest_json TEXT NOT NULL

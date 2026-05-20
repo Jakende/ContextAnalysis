@@ -6,6 +6,7 @@ import {
   analysisToHtml,
   analysisToJson,
   analysisToMarkdown,
+  analysisToProvenanceJson,
 } from "../../lib/export/serializers";
 import { analysisToSvg, svgToPngBlob } from "../../lib/export/svg";
 import { generateOllamaReport } from "../../lib/ollama/client";
@@ -15,11 +16,15 @@ export function ExportPanel({
   analysis,
   sectionSvg,
   onStatus,
-}: {
+  }: {
   analysis: AnalysisResult | null;
   sectionSvg: string;
   onStatus: (status: string) => void;
 }) {
+  if (!analysis) {
+    return null;
+  }
+
   const baseName = analysis
     ? safeFilename(
         `sd-stadtdaten-${analysis.selectedPoint.lat.toFixed(5)}-${analysis.selectedPoint.lon.toFixed(5)}`,
@@ -32,6 +37,13 @@ export function ExportPanel({
       onStatus(`Exporting ${kind}...`);
       if (kind === "json") {
         downloadText(analysisToJson(analysis), `${baseName}.json`, "application/json");
+      }
+      if (kind === "provenance") {
+        downloadText(
+          analysisToProvenanceJson(analysis),
+          `${baseName}-provenance.json`,
+          "application/json",
+        );
       }
       if (kind === "csv") {
         downloadText(analysisToCsv(analysis), `${baseName}.csv`, "text/csv");
@@ -71,37 +83,46 @@ export function ExportPanel({
     }
   }
 
+  const primaryExports = [
+    ["json", "JSON"],
+    ["svg", "SVG map"],
+    ["png", "PNG"],
+    ["ollama", "Ollama report"],
+  ] as const;
+
+  const secondaryExports = [
+    ["csv", "CSV"],
+    ["provenance", "Provenance JSON"],
+    ["geojson", "GeoJSON"],
+    ["gpkg", "GPKG"],
+    ["markdown", "Markdown"],
+    ["html", "HTML"],
+    ...(sectionSvg ? ([["section-svg", "SVG section"]] as const) : []),
+  ] as const;
+
   return (
     <section className="export-panel panel" aria-label="Exports">
       <div className="panel-heading">
         <span className="label">Exports</span>
-        <span className="export-status">
-          {analysis ? "Ready" : "Select point first"}
-        </span>
+        <span className="export-status">Ready</span>
       </div>
-      <div className="export-grid">
-        {[
-          ["json", "JSON"],
-          ["csv", "CSV"],
-          ["geojson", "GeoJSON"],
-          ["gpkg", "GPKG"],
-          ["svg", "SVG map"],
-          ["section-svg", "SVG section"],
-          ["png", "PNG"],
-          ["markdown", "Markdown"],
-          ["html", "HTML"],
-          ["ollama", "Ollama report"],
-        ].map(([kind, label]) => (
-          <button
-            type="button"
-            key={kind}
-            disabled={!analysis}
-            onClick={() => void runExport(kind)}
-          >
+      <div className="export-primary-row">
+        {primaryExports.map(([kind, label]) => (
+          <button type="button" key={kind} onClick={() => void runExport(kind)}>
             {label}
           </button>
         ))}
       </div>
+      <details className="export-secondary">
+        <summary>More exports</summary>
+        <div className="export-grid">
+          {secondaryExports.map(([kind, label]) => (
+            <button type="button" key={kind} onClick={() => void runExport(kind)}>
+              {label}
+            </button>
+          ))}
+        </div>
+      </details>
     </section>
   );
 }

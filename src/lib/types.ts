@@ -68,6 +68,13 @@ export type LayerId = "3D" | "trees" | "sun" | "section" | "green";
 
 export type LayerState = Record<LayerId, boolean>;
 
+export type AnalysisLoadStep = {
+  id: string;
+  label: string;
+  detail: string;
+  status: "queued" | "running" | "ok" | "failed" | "skipped";
+};
+
 export type OverpassEndpointStatus = {
   endpoint: string;
   ok: boolean;
@@ -111,10 +118,48 @@ export type SourceFetchReceipt = {
   error?: string;
 };
 
+export type DataSourceRunStatus =
+  | "requested"
+  | "fetched"
+  | "cache-hit"
+  | "empty"
+  | "missing-credentials"
+  | "missing"
+  | "failed"
+  | "skipped";
+
+export type DataSourceRunPhase =
+  | "preflight"
+  | "geocoding"
+  | "live-api"
+  | "preprocessed"
+  | "tile-service"
+  | "indicator";
+
+export type DataSourceRunEvent = {
+  id: string;
+  sourceId?: string;
+  label: string;
+  phase: DataSourceRunPhase;
+  status: DataSourceRunStatus;
+  requestedAt: string;
+  finishedAt?: string;
+  elapsedMs?: number;
+  scale?: Scale[];
+  url?: string;
+  localPath?: string;
+  recordCount?: number;
+  featureCount?: number;
+  detail: string;
+  caveats: string[];
+  error?: string;
+};
+
 export type AnalysisProvenance = {
   createdAt: string;
   sourceIds: string[];
   sourceFetches: SourceFetchReceipt[];
+  dataSourceRun: DataSourceRunEvent[];
   overpassQueries: OverpassProvenance[];
   geocoding: {
     enabled: boolean;
@@ -188,6 +233,7 @@ export type ExportManifest = {
   scales: Scale[];
   sources: DataSource[];
   sourceFetches: SourceFetchReceipt[];
+  dataSourceRun: DataSourceRunEvent[];
   overpassQueries: OverpassProvenance[];
   files: Array<{
     name: string;

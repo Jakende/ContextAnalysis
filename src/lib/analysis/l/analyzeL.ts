@@ -23,12 +23,33 @@ export function analyzeL(
   const liveLandUse = liveCollections.landUse;
   const liveTrees = liveCollections.trees;
   const urbanAtlas = liveCollections.urbanAtlas;
-  const urbanAtlasFeatures = urbanAtlas?.features.length ?? 0;
+  const urbanAtlasRadius = urbanAtlas
+    ? featureCollection(
+        urbanAtlas.features.filter((feature) =>
+          featureTouchesRadius(feature, selectedPoint, radiusMeters),
+        ),
+      )
+    : undefined;
+  const urbanAtlasFeatures = urbanAtlasRadius?.features.length ?? 0;
+  const landUseRadius = liveLandUse
+    ? featureCollection(
+        liveLandUse.features.filter((feature) =>
+          featureTouchesRadius(feature, selectedPoint, radiusMeters),
+        ),
+      )
+    : undefined;
+  const greenBlueRadius = liveGreenBlue
+    ? featureCollection(
+        liveGreenBlue.features.filter((feature) =>
+          featureTouchesRadius(feature, selectedPoint, radiusMeters),
+        ),
+      )
+    : undefined;
   const hasLiveGreenResponse = liveGreenBlue !== undefined;
-  const measuredGreenArea = liveGreenBlue ? collectionAreaSqm(liveGreenBlue, isGreenFeature) : 0;
+  const measuredGreenArea = greenBlueRadius ? collectionAreaSqm(greenBlueRadius, isGreenFeature) : 0;
   const greenPercent =
     hasLiveGreenResponse && measuredGreenArea > 0
-      ? Math.round((measuredGreenArea / circleAreaSqm(radiusMeters)) * 10_000) / 100
+      ? Math.min(100, Math.round((measuredGreenArea / circleAreaSqm(radiusMeters)) * 10_000) / 100)
       : null;
   const exactTransitStops = liveTransportStops?.features.length;
   const exactTransitLines = liveTransportLines?.features.filter(
@@ -36,8 +57,10 @@ export function analyzeL(
   ).length;
   const exactMobilityFeatures = liveMobility?.features.length;
   const exactPois = livePois?.features.length;
-  const exactLandUseFeatures = liveLandUse?.features.length;
-  const landUseClasses = liveLandUse ? uniqueLandUseClasses(liveLandUse) : [];
+  const exactLandUseFeatures = landUseRadius?.features.length;
+  const landUseClasses = landUseRadius ? uniqueLandUseClasses(landUseRadius) : [];
+  const landUseSummary = summarizeLandUse(landUseRadius, radiusMeters);
+  const transitSummary = summarizeTransitStops(liveTransportStops, radiusMeters);
   const landUseMix =
     exactLandUseFeatures === undefined && urbanAtlasFeatures === 0
       ? null
@@ -45,7 +68,7 @@ export function analyzeL(
           0.95,
           Math.round((0.25 + Math.min(landUseClasses.length || exactLandUseFeatures || 0, 18) / 24) * 100) / 100,
         );
-  const transitStops = exactTransitStops ?? null;
+  const transitStops = transitSummary?.uniqueStopCount ?? exactTransitStops ?? null;
   const mobilityHints = exactMobilityFeatures ?? null;
   const infrastructurePois = exactPois ?? null;
   const liveCaveat =
@@ -85,7 +108,7 @@ export function analyzeL(
           ?.geometry ?? overlays.green.features[0]?.geometry,
       method:
         greenPercent !== null
-          ? "Computed from loaded Urban Atlas and/or live Overpass green/blue polygon area inside the configured radius."
+          ? "Computed from loaded Urban Atlas and/or live Overpass green/blue polygon area intersecting the configured radius."
           : "Live green/blue source did not return a usable response and no local preprocessed polygons are loaded.",
       sourceIds: ["osm-core", "osm-overpass", "copernicus-urban-atlas", "urban-atlas-2021-catalog"],
       confidence: hasLiveGreenResponse ? "medium" : "low",
@@ -94,6 +117,11 @@ export function analyzeL(
         greenPercent !== null
           ? urbanAtlasCaveat
           : "No synthetic green percentage is emitted without real polygon area.",
+        ...(greenPercent !== null
+          ? [
+              "Polygon areas are approximated from intersecting source polygons and capped at 100%; exact clipping to the circular buffer is a later geometry-processing refinement.",
+            ]
+          : []),
       ],
       computedAt,
     }),
@@ -117,6 +145,42 @@ export function analyzeL(
       computedAt,
     }),
     createIndicator({
+      id: "l.land-use-dominant",
+      label: "Dominant land-use family",
+      scale: "L",
+      value: landUseSummary?.dominantFamily ?? null,
+      unit: landUseSummary ? `${landUseSummary.dominantSharePercent}%` : undefined,
+      method:
+        landUseSummary !== null
+          ? "Grouped loaded Urban Atlas and OSM polygon classes into analytical land-use families and ranked them by approximate polygon area inside the L-scale context."
+          : "No polygonal land-use source returned usable classes for this point.",
+      sourceIds: ["osm-core", "osm-overpass", "copernicus-urban-atlas", "urban-atlas-2021-catalog"],
+      confidence: urbanAtlasFeatures > 0 ? "high" : exactLandUseFeatures !== undefined ? "medium" : "low",
+      caveats: [
+        landUseSummary !== null ? urbanAtlasCaveat : fallbackCaveat,
+        "Families are analytical classes derived from source labels/codes, not official zoning categories.",
+      ],
+      computedAt,
+    }),
+    createIndicator({
+      id: "l.land-use-family-share",
+      label: "Land-use family shares",
+      scale: "L",
+      value: landUseSummary ? formatFamilyShares(landUseSummary.familyShares) : null,
+      unit: "%",
+      method:
+        landUseSummary !== null
+          ? "Computed approximate area shares for built, green/blue, transport, industrial, social/open, and underused land-use families."
+          : "No polygonal land-use source returned usable classes for this point.",
+      sourceIds: ["osm-core", "osm-overpass", "copernicus-urban-atlas", "urban-atlas-2021-catalog"],
+      confidence: urbanAtlasFeatures > 0 ? "high" : exactLandUseFeatures !== undefined ? "medium" : "low",
+      caveats: [
+        landUseSummary !== null ? urbanAtlasCaveat : fallbackCaveat,
+        "Shares are approximate because MVP geometry uses intersecting polygons, not exact clipped overlay areas.",
+      ],
+      computedAt,
+    }),
+    createIndicator({
       id: "l.transit-stops",
       label: "Public transport stops",
       scale: "L",
@@ -124,11 +188,52 @@ export function analyzeL(
       unit: "within radius",
       method:
         exactTransitStops !== undefined
-          ? "Counted live Overpass public_transport, bus_stop, railway station/halt/tram_stop features inside the radius."
+          ? "Counted unique GTFS and live Overpass stop/platform/station points inside the radius, de-duplicated by rounded coordinate and name where possible."
           : "Live transport stop retrieval was unavailable; no fallback count is emitted.",
       sourceIds: ["osm-core", "mobilithek-gtfs", "gtfs-de-local-transit", "osm-overpass"],
-      confidence: exactTransitStops !== undefined ? "medium" : "low",
-      caveats: [exactTransitStops !== undefined ? liveCaveat : fallbackCaveat],
+      confidence: liveTransportStops ? "high" : "low",
+      caveats: [
+        exactTransitStops !== undefined
+          ? "GTFS stop points are preferred where preprocessed; OSM stop points may still duplicate station/platform concepts."
+          : fallbackCaveat,
+      ],
+      computedAt,
+    }),
+    createIndicator({
+      id: "l.transit-stop-density",
+      label: "Transit stop density",
+      scale: "L",
+      value: transitSummary?.stopDensityPerSqkm ?? null,
+      unit: "stops/km²",
+      method:
+        transitSummary !== null
+          ? "Computed from unique GTFS/OSM stop count divided by the configured L-scale buffer area."
+          : "No stop collection was available for density calculation.",
+      sourceIds: ["mobilithek-gtfs", "gtfs-de-local-transit", "osm-overpass", "osm-core"],
+      confidence: liveTransportStops ? "high" : "low",
+      caveats: [
+        transitSummary !== null
+          ? "Density reflects stop/platform availability, not service frequency or timetable quality."
+          : fallbackCaveat,
+      ],
+      computedAt,
+    }),
+    createIndicator({
+      id: "l.transit-mode-mix",
+      label: "Transit mode mix",
+      scale: "L",
+      value: transitSummary ? formatModeMix(transitSummary.modeCounts) : null,
+      method:
+        transitSummary !== null
+          ? "Grouped GTFS and OSM stop features by available transportMode tags."
+          : "No stop collection was available for mode-mix calculation.",
+      sourceIds: ["mobilithek-gtfs", "gtfs-de-local-transit", "osm-overpass", "osm-core"],
+      confidence: liveTransportStops ? "medium" : "low",
+      caveats: [
+        transitSummary !== null
+          ? "GTFS stop mode is provider-derived when available; generic stops remain classified as transit."
+          : fallbackCaveat,
+      ],
       computedAt,
     }),
     createIndicator({
@@ -142,13 +247,13 @@ export function analyzeL(
       )?.geometry,
       method:
         exactTransitLines !== undefined
-          ? "Loaded live Overpass public-transport route relations and rail/tram line ways within the L-scale context; geometries are grouped by transport mode for map rendering."
+          ? "Loaded live Overpass rail/tram/subway ways, busway and bus-lane corridor ways, route-tagged ways, and public_transport platform ways within the L-scale context; geometries are grouped by transport mode for map rendering."
           : "Live public-transport line retrieval was unavailable.",
       sourceIds: ["osm-core", "osm-overpass", "mobilithek-gtfs", "gtfs-de-local-transit"],
       confidence: exactTransitLines !== undefined ? "medium" : "low",
       caveats: [
         exactTransitLines !== undefined ? liveCaveat : fallbackCaveat,
-        "OSM route relation completeness varies; GTFS/Mobilithek preprocessing remains the authoritative next step for services and frequencies.",
+        "Live Overpass intentionally avoids full bus-route relation recursion because it is large and unstable; GTFS/Mobilithek preprocessing remains the authoritative next step for services and frequencies.",
       ],
       computedAt,
     }),
@@ -211,39 +316,43 @@ export function analyzeL(
       id: "l.land-use-green",
       title: "Land use and green/blue",
       scale: "L",
-      indicators: indicators.slice(0, 3),
+      indicators: indicators.slice(0, 5),
       method: "Radius buffer with explicit green/open-space class mapping.",
       sourceIds: ["osm-core", "osm-overpass", "copernicus-urban-atlas", "urban-atlas-2021-catalog"],
       computedAt,
-      confidence: "low",
-      caveats: [caveat],
+      confidence: urbanAtlasFeatures > 0 ? "high" : "low",
+      caveats: [caveat, urbanAtlasCaveat],
     },
     {
       id: "l.access-infrastructure",
       title: "Access and infrastructure",
       scale: "L",
-      indicators: indicators.slice(3, 7),
+      indicators: indicators.slice(5, 11),
       method: "Counts and class hints within the selected walkable radius.",
       sourceIds: ["osm-core", "osm-overpass", "mobilithek-gtfs", "gtfs-de-local-transit"],
       computedAt,
-      confidence: "low",
-      caveats: [caveat],
+      confidence: liveTransportStops ? "medium" : "low",
+      caveats: [
+        liveTransportStops
+          ? "GTFS/OSM stop data were loaded for this point; service frequency is not yet evaluated."
+          : caveat,
+      ],
     },
     {
       id: "l.potential",
       title: "Development hints",
       scale: "L",
-      indicators: [indicators[7]],
+      indicators: [indicators[11]],
       method: "Screening rules from open-data class hints.",
       sourceIds: ["osm-core", "copernicus-urban-atlas", "urban-atlas-2021-catalog"],
       computedAt,
       confidence: "low",
-      caveats: indicators[7].caveats,
+      caveats: indicators[11].caveats,
     },
   ];
 
-  if (liveGreenBlue) {
-    overlays.green = featureCollection(liveGreenBlue.features.filter(isGreenFeature));
+  if (greenBlueRadius) {
+    overlays.green = featureCollection(greenBlueRadius.features.filter(isGreenFeature));
   }
   if (liveTrees) {
     overlays.trees = liveTrees;
@@ -318,6 +427,101 @@ function uniqueLandUseClasses(collection: FeatureCollection): string[] {
   return [...new Set(classes)];
 }
 
+type LandUseSummary = {
+  dominantFamily: string;
+  dominantSharePercent: number;
+  familyShares: Array<{ family: string; percent: number; areaSqm: number }>;
+};
+
+type TransitSummary = {
+  uniqueStopCount: number;
+  stopDensityPerSqkm: number;
+  modeCounts: Array<{ mode: string; count: number }>;
+};
+
+function summarizeLandUse(
+  collection: FeatureCollection | undefined,
+  radiusMeters: number,
+): LandUseSummary | null {
+  if (!collection?.features.length) return null;
+  const areaByFamily = new Map<string, number>();
+  for (const feature of collection.features) {
+    const area = featureAreaSqm(feature);
+    if (area <= 0) continue;
+    const family = classifyLandUseFamily(feature);
+    areaByFamily.set(family, (areaByFamily.get(family) ?? 0) + area);
+  }
+  const totalArea = [...areaByFamily.values()].reduce((total, area) => total + area, 0);
+  if (totalArea <= 0) return null;
+  const contextArea = circleAreaSqm(radiusMeters);
+  const familyShares = [...areaByFamily.entries()]
+    .map(([family, areaSqm]) => ({
+      family,
+      areaSqm,
+      percent: Math.min(100, Math.round((areaSqm / contextArea) * 10_000) / 100),
+    }))
+    .sort((left, right) => right.areaSqm - left.areaSqm);
+  const dominant = familyShares[0];
+  return {
+    dominantFamily: dominant.family,
+    dominantSharePercent: dominant.percent,
+    familyShares,
+  };
+}
+
+function summarizeTransitStops(
+  collection: FeatureCollection | undefined,
+  radiusMeters: number,
+): TransitSummary | null {
+  if (!collection?.features.length) return null;
+  const uniqueStops = new Map<string, { mode: string }>();
+  for (const feature of collection.features) {
+    if (feature.geometry.type !== "Point") continue;
+    const coordinates = feature.geometry.coordinates;
+    const label = String(
+      feature.properties?.stop_name ??
+        feature.properties?.name ??
+        feature.properties?.label ??
+        "",
+    )
+      .toLowerCase()
+      .trim();
+    const key = [
+      coordinates[0].toFixed(5),
+      coordinates[1].toFixed(5),
+      label.slice(0, 48),
+    ].join(":");
+    uniqueStops.set(key, { mode: normalizeTransitMode(feature) });
+  }
+  const modeMap = new Map<string, number>();
+  for (const stop of uniqueStops.values()) {
+    modeMap.set(stop.mode, (modeMap.get(stop.mode) ?? 0) + 1);
+  }
+  const contextAreaSqkm = circleAreaSqm(radiusMeters) / 1_000_000;
+  return {
+    uniqueStopCount: uniqueStops.size,
+    stopDensityPerSqkm:
+      Math.round((uniqueStops.size / Math.max(0.0001, contextAreaSqkm)) * 10) / 10,
+    modeCounts: [...modeMap.entries()]
+      .map(([mode, count]) => ({ mode, count }))
+      .sort((left, right) => right.count - left.count || left.mode.localeCompare(right.mode)),
+  };
+}
+
+function formatFamilyShares(
+  shares: Array<{ family: string; percent: number }>,
+): string {
+  return shares
+    .slice(0, 5)
+    .map((share) => `${share.family}: ${share.percent}`)
+    .join(" / ");
+}
+
+function formatModeMix(modeCounts: Array<{ mode: string; count: number }>): string {
+  if (!modeCounts.length) return "not available";
+  return modeCounts.map((item) => `${item.mode}: ${item.count}`).join(" / ");
+}
+
 function readClassValue(feature: Feature): string | null {
   const value =
     feature.properties?.urbanAtlasClass ??
@@ -329,6 +533,74 @@ function readClassValue(feature: Feature): string | null {
     feature.properties?.class ??
     feature.properties?.code;
   return value === undefined || value === null ? null : String(value).toLowerCase();
+}
+
+function readCodeValue(feature: Feature): string {
+  const value =
+    feature.properties?.code_2021 ??
+    feature.properties?.code_2018 ??
+    feature.properties?.code ??
+    feature.properties?.class_code;
+  return value === undefined || value === null ? "" : String(value).toLowerCase();
+}
+
+function classifyLandUseFamily(feature: Feature): string {
+  const code = readCodeValue(feature);
+  const label = readClassValue(feature) ?? "";
+  if (
+    code.startsWith("14") ||
+    code.startsWith("2") ||
+    code.startsWith("3") ||
+    code.startsWith("5") ||
+    /green|forest|wood|water|wetland|agricultur|pasture|meadow|grass|allotment|park|garden/.test(label)
+  ) {
+    return "green/blue";
+  }
+  if (
+    code.startsWith("122") ||
+    /road|rail|port|airport|transport|parking|bus|tram|subway/.test(label)
+  ) {
+    return "transport";
+  }
+  if (
+    code.startsWith("121") ||
+    /industrial|commercial|public|military|private units|retail|office/.test(label)
+  ) {
+    return "industrial/service";
+  }
+  if (
+    code.startsWith("134") ||
+    /without current use|construction|brownfield|vacant|dump|disused|abandoned/.test(label)
+  ) {
+    return "underused";
+  }
+  if (/sport|leisure|cemetery|school|university|hospital|civic|social/.test(label)) {
+    return "social/open";
+  }
+  if (
+    code.startsWith("111") ||
+    code.startsWith("112") ||
+    code.startsWith("113") ||
+    /urban fabric|residential|building|built/.test(label)
+  ) {
+    return "built/residential";
+  }
+  return "other";
+}
+
+function normalizeTransitMode(feature: Feature): string {
+  const mode = String(feature.properties?.transportMode ?? "").toLowerCase();
+  if (mode) return mode;
+  const railway = String(feature.properties?.railway ?? "").toLowerCase();
+  const route = String(feature.properties?.route ?? "").toLowerCase();
+  const highway = String(feature.properties?.highway ?? "").toLowerCase();
+  if (route === "tram" || railway === "tram_stop" || railway === "tram") return "tram";
+  if (route === "subway" || railway === "subway") return "subway";
+  if (route === "train" || railway === "station" || railway === "halt" || railway === "rail") {
+    return "rail";
+  }
+  if (route === "bus" || highway === "bus_stop") return "bus";
+  return "transit";
 }
 
 function isGreenFeature(feature: Feature): boolean {
@@ -347,6 +619,65 @@ function isGreenFeature(feature: Feature): boolean {
     );
   }
   return true;
+}
+
+function featureTouchesRadius(
+  feature: Feature,
+  selectedPoint: SelectedPoint,
+  radiusMeters: number,
+): boolean {
+  if (feature.geometry.type === "Point") {
+    return (
+      distanceBetweenCoordinates(
+        [selectedPoint.lon, selectedPoint.lat],
+        feature.geometry.coordinates,
+      ) <= radiusMeters
+    );
+  }
+  const bbox = featureBbox(feature);
+  if (!bbox) return false;
+  return bboxDistanceToPointMeters(bbox, [selectedPoint.lon, selectedPoint.lat]) <= radiusMeters;
+}
+
+function featureBbox(feature: Feature): [number, number, number, number] | null {
+  const coords: number[][] = [];
+  collectGeometryCoordinates(feature.geometry, coords);
+  if (!coords.length) return null;
+  const xs = coords.map(([x]) => x);
+  const ys = coords.map(([, y]) => y);
+  return [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
+}
+
+function collectGeometryCoordinates(
+  geometry: Feature["geometry"],
+  coords: number[][],
+): void {
+  if (geometry.type === "Point") coords.push(geometry.coordinates);
+  if (geometry.type === "LineString") coords.push(...geometry.coordinates);
+  if (geometry.type === "Polygon") {
+    for (const ring of geometry.coordinates) coords.push(...ring);
+  }
+  if (geometry.type === "MultiPolygon") {
+    for (const polygon of geometry.coordinates) {
+      for (const ring of polygon) coords.push(...ring);
+    }
+  }
+}
+
+function bboxDistanceToPointMeters(
+  bbox: [number, number, number, number],
+  point: number[],
+): number {
+  const clampedLon = Math.max(bbox[0], Math.min(point[0], bbox[2]));
+  const clampedLat = Math.max(bbox[1], Math.min(point[1], bbox[3]));
+  return distanceBetweenCoordinates(point, [clampedLon, clampedLat]);
+}
+
+function distanceBetweenCoordinates(left: number[], right: number[]): number {
+  const referenceLat = (left[1] + right[1]) / 2;
+  const leftMeters = projectMeters(left, referenceLat);
+  const rightMeters = projectMeters(right, referenceLat);
+  return Math.hypot(leftMeters.x - rightMeters.x, leftMeters.y - rightMeters.y);
 }
 
 function ringAreaSqm(ring: number[][]): number {

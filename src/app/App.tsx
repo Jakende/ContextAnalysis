@@ -1,12 +1,15 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { ExportPanel } from "../components/export/ExportPanel";
 import { FactSheetPanel } from "../components/factsheet/FactSheetPanel";
 import { MapView } from "../components/map/MapView";
 import { recomputeMSectionFromAnalysis } from "../lib/analysis/m/analyzeM";
 import { runLocationAnalysis } from "../lib/analysis/runAnalysis";
+import { resolvePointCache } from "../lib/api/pointCache";
 import { loadTerrainSamplesForSection } from "../lib/data/localSpatial";
+import { pointCacheResultsToRunEvents } from "../lib/data/sourceRun";
 import type {
   AnalysisResult,
+  AnalysisLoadStep,
   LayerId,
   LayerState,
   Scale,
@@ -29,6 +32,7 @@ export function App() {
   const [sectionSvg, setSectionSvg] = useState("");
   const [status, setStatus] = useState("Map initializing.");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisLoadSteps, setAnalysisLoadSteps] = useState<AnalysisLoadStep[]>([]);
   const [themeInvert, setThemeInvert] = useState(false);
   const sideStackRef = useRef<HTMLDivElement | null>(null);
 
@@ -42,20 +46,67 @@ export function App() {
       return;
     }
     setIsAnalyzing(true);
-    setStatus("Querying fresh Nominatim, Overpass, tile metadata, local datasets, and configured source adapters for this point.");
+    setAnalysisLoadSteps(createInitialLoadSteps());
+    setStatus("Analysis running.");
     try {
+      const requestedAt = new Date().toISOString();
+      setLoadStep(setAnalysisLoadSteps, "point-cache", "running", "Checking point cache coverage and resolving missing large datasets.");
+      const cacheResult = await resolvePointCache({
+        ...point,
+        radius: 1_000,
+        sources: ["overture", "urban-atlas"],
+      });
+      const failedCacheSources = cacheResult.results.filter((result) => result.status === "failed");
+      const skippedCacheSources = cacheResult.results.filter((result) => result.status === "skipped");
+      setLoadStep(
+        setAnalysisLoadSteps,
+        "point-cache",
+        failedCacheSources.length ? "failed" : "ok",
+        summarizePointCache(cacheResult.results, cacheResult.error),
+      );
+      if (skippedCacheSources.length || failedCacheSources.length) {
+        setStatus(compactPointCacheStatus(cacheResult.results, cacheResult.error));
+      }
+      const preflightSourceRun = pointCacheResultsToRunEvents({
+        requestedAt,
+        elapsedMs: cacheResult.elapsedMs,
+        results: cacheResult.results,
+        error: cacheResult.error,
+      });
+
       const { result, sectionSvg: nextSectionSvg } = await runLocationAnalysis({
         ...point,
         activeScale,
         layers,
         sectionLine,
+        preflightSourceRun,
+        onProgress: (step) =>
+          setLoadStep(setAnalysisLoadSteps, step.id, step.status, step.detail),
         enableGeocoding: true,
         enableOverpass: true,
       });
       setAnalysis(result);
       setSectionSvg(nextSectionSvg);
+      setAnalysisLoadSteps((current) =>
+        current.map((step) =>
+          step.status === "running" || step.status === "queued"
+            ? { ...step, status: "ok" }
+            : step,
+        ),
+      );
       setStatus("Analysis ready. XL/L/M scales and exports are available.");
     } catch (error) {
+      setAnalysisLoadSteps((current) =>
+        current.map((step) =>
+          step.status === "running"
+            ? {
+                ...step,
+                status: "failed",
+                detail: error instanceof Error ? error.message : String(error),
+              }
+            : step,
+        ),
+      );
       setStatus(error instanceof Error ? error.message : String(error));
     } finally {
       setIsAnalyzing(false);
@@ -67,6 +118,7 @@ export function App() {
     setSectionLine(null);
     setSectionSvg("");
     setIsAnalyzing(false);
+    setAnalysisLoadSteps([]);
     setStatus("Analysis closed. Search can zoom the map; click the canvas pin target for a new analysis.");
   }
 
@@ -134,30 +186,27 @@ export function App() {
 
   return (
     <main className="app-shell">
-      <section className="landing-strip" aria-label="Product overview">
+      <header className="top-rail" aria-label="Product overview">
         <div className="brand-block">
           <span className="label">Urban Context Analysis</span>
-          <h1>Kontextanalyse</h1>
-          <p>
-            Punkt setzen, Live-Daten abrufen, XL/L/M-Fact-Sheet exportieren.
-          </p>
+          <strong>Map-first urban context workspace</strong>
         </div>
         <button
           type="button"
-          className="theme-toggle"
+          className="theme-toggle ghost-button"
           onClick={() => setThemeInvert((current) => !current)}
         >
           {themeInvert ? "Dark" : "Light"} theme
         </button>
-      </section>
+      </header>
 
       <section className="workspace">
         <MapView
           analysis={analysis}
           activeScale={activeScale}
           layers={layers}
-          mode="direct"
           isAnalyzing={isAnalyzing}
+          analysisLoadSteps={analysisLoadSteps}
           analysisLocked={Boolean(analysis)}
           onPointSelected={handlePointSelected}
           onAnalysisClear={handleAnalysisClear}
@@ -176,10 +225,12 @@ export function App() {
             </div>
             <button
               type="button"
-              className="ghost-button"
+              className="icon-button"
+              aria-label="Fullscreen inspector"
+              title="Fullscreen inspector"
               onClick={() => requestElementFullscreen(sideStackRef.current)}
             >
-              Side fullscreen
+              <FullscreenIcon />
             </button>
           </div>
           {activeScale === "M" && layers.section && sectionSvg ? (
@@ -218,14 +269,88 @@ export function App() {
         <div>
           <span className="label">Attribution</span>
           <span>
-            OpenFreeMap, © OpenMapTiles, OpenStreetMap contributors / ODbL,
-            Destatis, GeoBasis-DE / BKG, LOD2 Bayern, Eurostat GISCO,
-            Copernicus, GHSL, DWD, Mobilithek.
+            OpenFreeMap, © OpenMapTiles, OpenStreetMap contributors / ODbL, Destatis, GeoBasis-DE / BKG, LOD2 Bayern, Eurostat GISCO, Copernicus, GHSL, DWD, Mobilithek.
           </span>
         </div>
       </footer>
     </main>
   );
+}
+
+function createInitialLoadSteps(): AnalysisLoadStep[] {
+  return [
+    {
+      id: "point-cache",
+      label: "Area cache resolver",
+      detail: "Checking Overture buildings and Urban Atlas cache coverage.",
+      status: "queued",
+    },
+    {
+      id: "geocoding",
+      label: "Nominatim reverse lookup",
+      detail: "Waiting for point-cache resolver.",
+      status: "queued",
+    },
+    {
+      id: "overpass",
+      label: "Overpass OSM modules",
+      detail: "Waiting for live feature query.",
+      status: "queued",
+    },
+    {
+      id: "local-data",
+      label: "Local and WMS datasets",
+      detail: "Waiting for sharded source reads.",
+      status: "queued",
+    },
+    {
+      id: "indicators",
+      label: "XL/L/M indicators",
+      detail: "Waiting for deterministic analysis.",
+      status: "queued",
+    },
+  ];
+}
+
+function setLoadStep(
+  setSteps: Dispatch<SetStateAction<AnalysisLoadStep[]>>,
+  id: string,
+  status: AnalysisLoadStep["status"],
+  detail: string,
+): void {
+  setSteps((current) =>
+    current.map((step) => (step.id === id ? { ...step, status, detail } : step)),
+  );
+}
+
+function summarizePointCache(
+  results: Array<{ source: string; status: string; message?: string }>,
+  error?: string,
+): string {
+  if (error && results.length === 0) return "Point cache resolver unavailable.";
+  if (!results.length) return "Point cache resolver returned no source results.";
+  return results
+    .map((result) => `${result.source}: ${result.status}${result.message ? ` (${compactMessage(result.message)})` : ""}`)
+    .join(" / ");
+}
+
+function compactPointCacheStatus(
+  results: Array<{ source: string; status: string; message?: string }>,
+  error?: string,
+): string {
+  if (error && results.length === 0) return "Point cache unavailable. Continuing with live/local sources.";
+  const failed = results.filter((result) => result.status === "failed");
+  const skipped = results.filter((result) => result.status === "skipped");
+  if (!failed.length && !skipped.length) return "Point cache ready.";
+  return [...failed, ...skipped]
+    .map((result) => `${result.source}: ${result.status}`)
+    .join(" / ");
+}
+
+function compactMessage(message: string): string {
+  if (/CDSE credentials/i.test(message)) return "CDSE credentials missing";
+  if (/Point cache updated/i.test(message)) return "updated";
+  return message.split(/\r?\n/)[0].slice(0, 90);
 }
 
 function requestElementFullscreen(element: HTMLElement | null): void {
@@ -235,6 +360,17 @@ function requestElementFullscreen(element: HTMLElement | null): void {
     return;
   }
   void element.requestFullscreen();
+}
+
+function FullscreenIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M4 9V4h5" />
+      <path d="M20 9V4h-5" />
+      <path d="M4 15v5h5" />
+      <path d="M20 15v5h-5" />
+    </svg>
+  );
 }
 
 function hasCalculatedSection(analysis: AnalysisResult | null): boolean {

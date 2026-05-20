@@ -118,15 +118,31 @@ function classifyTransportMode(tags?: Record<string, string>): string | undefine
   const route = tags.route;
   const railway = tags.railway;
   const highway = tags.highway;
+  const publicTransport = tags.public_transport;
   if (route === "subway" || railway === "subway") return "subway";
   if (route === "tram" || railway === "tram") return "tram";
   if (route === "light_rail" || railway === "light_rail") return "light_rail";
-  if (route === "train" || railway === "rail" || railway === "station" || railway === "halt") {
+  if (
+    route === "train" ||
+    railway === "rail" ||
+    railway === "station" ||
+    railway === "halt"
+  ) {
     return "rail";
   }
-  if (route === "bus" || highway === "bus_stop" || tags.bus === "yes" || tags.busway) {
+  if (
+    route === "bus" ||
+    highway === "bus_stop" ||
+    tags.bus === "yes" ||
+    tags.busway ||
+    tags["lanes:bus"] ||
+    tags["bus:lanes"] ||
+    tags["bus:lanes:forward"] ||
+    tags["bus:lanes:backward"]
+  ) {
     return "bus";
   }
+  if (publicTransport === "platform" || publicTransport === "stop_position") return "transit";
   return undefined;
 }
 
@@ -299,8 +315,10 @@ export const overpassModules: OverpassModule[] = [
     buildQuery: (params) =>
       buildQuery([
         `node["public_transport"="platform"]${around(params)};`,
+        `node["public_transport"="stop_position"]${around(params)};`,
         `node["highway"="bus_stop"]${around(params)};`,
         `node["railway"~"station|halt|tram_stop"]${around(params)};`,
+        `way["public_transport"="platform"]${around(params)};`,
       ]),
     parse: parseOverpassElements,
   },
@@ -308,14 +326,17 @@ export const overpassModules: OverpassModule[] = [
     id: "transportLines",
     scale: "L",
     radiusMeters: 1000,
-    buildQuery: (params) => `${buildHeader(18)}
+    buildQuery: (params) => `${buildHeader(20)}
 (
-  relation["type"="route"]["route"~"bus|tram|subway|light_rail|train"]${around(params)};
   way["railway"~"tram|light_rail|subway|rail"]${around(params)};
+  way["highway"="busway"]${around(params)};
   way["busway"]${around(params)};
   way["bus"="yes"]${around(params)};
+  way["lanes:bus"]${around(params)};
+  way["bus:lanes"]${around(params)};
+  way["public_transport"="platform"]${around(params)};
 );
-out body geom;`,
+${output()}`,
     parse: parseOverpassElements,
   },
   {
@@ -324,7 +345,15 @@ out body geom;`,
     radiusMeters: 500,
     buildQuery: (params) =>
       buildQuery([
-        `way["highway"~"cycleway|path|footway|pedestrian"]${around(params)};`,
+        `way["highway"~"cycleway|path|footway|pedestrian|busway"]${around(params)};`,
+        `way["cycleway"]${around(params)};`,
+        `way["cycleway:left"]${around(params)};`,
+        `way["cycleway:right"]${around(params)};`,
+        `way["cycleway:both"]${around(params)};`,
+        `way["busway"]${around(params)};`,
+        `way["bus"="yes"]${around(params)};`,
+        `way["lanes:bus"]${around(params)};`,
+        `way["bus:lanes"]${around(params)};`,
         `node["amenity"~"bicycle_parking|charging_station|parking"]${around(params)};`,
         `node["car_sharing"]${around(params)};`,
       ]),

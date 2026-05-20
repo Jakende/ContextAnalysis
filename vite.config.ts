@@ -1,5 +1,7 @@
 import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
+import { existsSync, readFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
 
 type ProbeRequest = {
   url?: string;
@@ -13,19 +15,39 @@ type ProbeResponse = {
   end: (body: string) => void;
 };
 
+type PointCachePayload = {
+  lat?: unknown;
+  lon?: unknown;
+  radius?: unknown;
+  sources?: unknown;
+};
+
+type FuaFeature = {
+  type: "Feature";
+  geometry?: {
+    type: string;
+    coordinates?: unknown;
+  };
+  properties?: Record<string, unknown>;
+};
+
 const SERVER_OVERPASS_ENDPOINTS = [
-  "https://overpass.kumi.systems/api/interpreter",
-  "https://overpass.private.coffee/api/interpreter",
   "https://overpass-api.de/api/interpreter",
+  "https://overpass.private.coffee/api/interpreter",
+  "https://overpass.kumi.systems/api/interpreter",
+  "https://overpass.openstreetmap.jp/api/interpreter",
 ] as const;
 
-const SERVER_OVERPASS_TIMEOUT_MS = 5_500;
+const SERVER_OVERPASS_TIMEOUT_MS = 15_000;
 const SERVER_NOMINATIM_TIMEOUT_MS = 5_000;
 const SERVER_NOMINATIM_USER_AGENT =
   "SD-Stadtdaten-ContextAnalysis/0.1 local-nominatim-proxy";
 
 export default defineConfig({
   plugins: [react(), localApiPlugin()],
+  build: {
+    chunkSizeWarningLimit: 1500,
+  },
   server: {
     host: "127.0.0.1",
     port: 5173,
@@ -49,6 +71,9 @@ function localApiPlugin(): Plugin {
       server.middlewares.use("/api/nominatim-search", (req, res) => {
         void handleNominatimSearch(req as ProbeRequest, res as ProbeResponse);
       });
+      server.middlewares.use("/api/point-cache", (req, res) => {
+        void handlePointCache(req as ProbeRequest, res as ProbeResponse);
+      });
     },
     configurePreviewServer(server) {
       server.middlewares.use("/api/source-probe", (req, res) => {
@@ -60,8 +85,126 @@ function localApiPlugin(): Plugin {
       server.middlewares.use("/api/nominatim-search", (req, res) => {
         void handleNominatimSearch(req as ProbeRequest, res as ProbeResponse);
       });
+      server.middlewares.use("/api/point-cache", (req, res) => {
+        void handlePointCache(req as ProbeRequest, res as ProbeResponse);
+      });
     },
   };
+}
+
+async function handlePointCache(
+  req: ProbeRequest,
+  res: ProbeResponse,
+): Promise<void> {
+  const started = Date.now();
+  try {
+    if (req.method !== "POST") {
+      writeJson(res, 405, { ok: false, error: "POST required", results: [] });
+      return;
+    }
+
+    const payload = JSON.parse(await readBody(req)) as PointCachePayload;
+    const lat = Number(payload.lat);
+    const lon = Number(payload.lon);
+    const radius = Number(payload.radius ?? 1_000);
+    const requestedSources = Array.isArray(payload.sources)
+      ? payload.sources.map((source) => String(source))
+      : ["overture", "urban-atlas"];
+
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+      writeJson(res, 400, { ok: false, error: "lat and lon are required", results: [] });
+      return;
+    }
+
+    const results = requestedSources.map((source) =>
+      runPointCacheSource({ source, lat, lon, radius }),
+    );
+
+    writeJson(res, 200, {
+      ok: results.every((result) => result.status === "ok" || result.status === "skipped"),
+      elapsedMs: Date.now() - started,
+      results,
+    });
+  } catch (error) {
+    writeJson(res, 200, {
+      ok: false,
+      elapsedMs: Date.now() - started,
+      error: error instanceof Error ? error.message : String(error),
+      results: [],
+    });
+  }
+}
+
+function runPointCacheSource(input: {
+  source: string;
+  lat: number;
+  lon: number;
+  radius: number;
+}) {
+  const args = [
+    "scripts/preprocess/resolve-point-cache.mjs",
+    "--lat",
+    String(input.lat),
+    "--lon",
+    String(input.lon),
+    "--radius",
+    String(input.radius),
+    "--sources",
+    input.source,
+  ];
+
+  if (input.source === "urban-atlas") {
+    const fuaName = findFuaNameForPoint(input.lon, input.lat);
+    if (!fuaName) {
+      return {
+        source: input.source,
+        status: "skipped",
+        message: "No GISCO FUA covers this point; Urban Atlas is only available for FUA areas.",
+      };
+    }
+    args.push("--urban-atlas-fua-name", fuaName, "--source-version", "2021");
+  }
+
+  const result = spawnSync("node", args, {
+    cwd: process.cwd(),
+    env: {
+      ...process.env,
+      AWS_DEFAULT_REGION: process.env.AWS_DEFAULT_REGION ?? "default",
+      AWS_S3_ENDPOINT: process.env.AWS_S3_ENDPOINT ?? "eodata.dataspace.copernicus.eu",
+      AWS_VIRTUAL_HOSTING: process.env.AWS_VIRTUAL_HOSTING ?? "FALSE",
+    },
+    encoding: "utf8",
+    maxBuffer: 1024 * 1024 * 8,
+  });
+
+  const stdout = result.stdout?.trim() ?? "";
+  const stderr = result.stderr?.trim() ?? "";
+  const failedText = stderr || stdout || "Point cache failed.";
+  const missingCdseCredentials =
+    input.source === "urban-atlas" &&
+    /CDSE S3 credentials|s3:\/\/EODATA|AWS_ACCESS_KEY_ID|AWS_SECRET_ACCESS_KEY/i.test(failedText);
+  if (missingCdseCredentials) {
+    return {
+      source: input.source,
+      status: "skipped",
+      message: "CDSE credentials not available in local server environment.",
+    };
+  }
+  return {
+    source: input.source,
+    status: result.status === 0 ? "ok" : "failed",
+    message: result.status === 0 ? "Point cache updated." : compactProcessMessage(failedText),
+    stdout: result.status === 0 ? stdout : undefined,
+    stderr: result.status === 0 ? stderr : undefined,
+  };
+}
+
+function compactProcessMessage(message: string): string {
+  return message
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .find((line) => line && !line.startsWith("at ") && !line.startsWith("file://"))
+    ?.slice(0, 180) ?? "Point cache failed.";
 }
 
 async function handleNominatimSearch(
@@ -275,6 +418,64 @@ async function handleOverpassProxy(
       endpointStatus,
     });
   }
+}
+
+function findFuaNameForPoint(lon: number, lat: number): string | null {
+  const path = "public/data/processed/eurostat-gisco-fua.geojson";
+  if (!existsSync(path)) return null;
+  try {
+    const collection = JSON.parse(readFileSync(path, "utf8")) as { features?: FuaFeature[] };
+    const feature = collection.features?.find((candidate) =>
+      geometryContainsPoint(candidate.geometry, [lon, lat]),
+    );
+    const name =
+      feature?.properties?.fua_name ??
+      feature?.properties?.FUA_NAME ??
+      feature?.properties?.URAU_NAME ??
+      feature?.properties?.name ??
+      feature?.properties?.label;
+    return typeof name === "string" && name.trim() ? name.trim() : null;
+  } catch {
+    return null;
+  }
+}
+
+function geometryContainsPoint(
+  geometry: FuaFeature["geometry"] | undefined,
+  point: [number, number],
+): boolean {
+  if (!geometry) return false;
+  if (geometry.type === "Polygon") {
+    return polygonContainsPoint(geometry.coordinates, point);
+  }
+  if (geometry.type === "MultiPolygon" && Array.isArray(geometry.coordinates)) {
+    return geometry.coordinates.some((polygon) => polygonContainsPoint(polygon, point));
+  }
+  return false;
+}
+
+function polygonContainsPoint(coordinates: unknown, point: [number, number]): boolean {
+  if (!Array.isArray(coordinates)) return false;
+  const rings = coordinates as number[][][];
+  if (!ringContainsPoint(rings[0] ?? [], point)) return false;
+  return !rings.slice(1).some((ring) => ringContainsPoint(ring, point));
+}
+
+function ringContainsPoint(ring: number[][], point: [number, number]): boolean {
+  let inside = false;
+  const [x, y] = point;
+  for (let index = 0, previous = ring.length - 1; index < ring.length; previous = index, index += 1) {
+    const xi = ring[index]?.[0];
+    const yi = ring[index]?.[1];
+    const xj = ring[previous]?.[0];
+    const yj = ring[previous]?.[1];
+    if (![xi, yi, xj, yj].every(Number.isFinite)) continue;
+    const intersects =
+      yi > y !== yj > y &&
+      x < ((xj - xi) * (y - yi)) / ((yj - yi) || Number.EPSILON) + xi;
+    if (intersects) inside = !inside;
+  }
+  return inside;
 }
 
 function readBody(req: ProbeRequest): Promise<string> {

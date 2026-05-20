@@ -16,6 +16,8 @@
     "preprocess:gtfs": "node scripts/preprocess/preprocess-gtfs-stops.mjs",
     "preprocess:thematic": "node scripts/preprocess/preprocess-thematic-geojson.mjs",
     "preprocess:point-cache": "node scripts/preprocess/resolve-point-cache.mjs",
+    "test:data-sources": "node scripts/validate/test-data-sources.mjs",
+    "test:data-sources:regression": "node scripts/validate/test-data-sources.mjs --preset regression",
     "validate:ui": "python3 scripts/validate/validate_ui_css.py src/styles/design-system.css src/styles/app.css"
   },
   "keywords": [],
@@ -29,11 +31,13 @@
     "@vitejs/plugin-react": "^6.0.1",
     "maplibre-gl": "^5.24.0",
     "playwright": "^1.59.1",
-    "plotly.js-dist-min": "^3.5.0",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
     "sql.js": "^1.14.1",
     "typescript": "^6.0.3",
     "vite": "^8.0.10"
+  },
+  "devDependencies": {
+    "@types/node": "^25.8.0"
   }
 }

@@ -1,13 +1,24 @@
-import { useEffect, useMemo, useRef, useState } from "react";
 import { sourceRegistry } from "../../lib/data/sourceRegistry";
 import type { AnalysisResult, DataSource, Indicator, Scale } from "../../lib/types";
 
-type PlotlyModule = typeof import("plotly.js-dist-min").default;
+type EvidenceDatum = {
+  id: string;
+  label: string;
+  value: number;
+  displayValue: string;
+  unit?: string;
+  max: number;
+  color: string;
+  sourceIds: string[];
+};
 
-const PLOTLY_CONFIG = {
-  displayModeBar: false,
-  responsive: true,
-  staticPlot: false,
+type SourceDatum = {
+  id: string;
+  label: string;
+  status: string;
+  value: number;
+  displayValue: string;
+  color: string;
 };
 
 export function AnalysisCharts({
@@ -17,422 +28,275 @@ export function AnalysisCharts({
   analysis: AnalysisResult;
   activeScale: Scale;
 }) {
-  const numericRef = useRef<HTMLDivElement | null>(null);
-  const confidenceRef = useRef<HTMLDivElement | null>(null);
-  const sourceRef = useRef<HTMLDivElement | null>(null);
-  const plotlyRef = useRef<PlotlyModule | null>(null);
-  const renderIdRef = useRef(0);
-  const observedWidthRef = useRef(0);
-  const [themeKey, setThemeKey] = useState(0);
-  const chartModel = useMemo(
-    () => createChartModel(analysis, activeScale),
-    [analysis, activeScale],
-  );
+  const evidence = createEvidenceData(analysis, activeScale);
+  const sources = createSourceData(analysis, activeScale, evidence);
 
-  useEffect(() => {
-    const observer = new MutationObserver(() => setThemeKey((current) => current + 1));
-    observer.observe(document.body, {
-      attributes: true,
-      attributeFilter: ["class"],
-    });
-    return () => observer.disconnect();
-  }, []);
-
-  useEffect(() => {
-    const observer = new ResizeObserver(() => {
-      const width = chartWidth(numericRef.current ?? confidenceRef.current ?? sourceRef.current);
-      if (Math.abs(width - observedWidthRef.current) < 2) return;
-      observedWidthRef.current = width;
-      setThemeKey((current) => current + 1);
-    });
-    for (const element of [
-      numericRef.current,
-      confidenceRef.current,
-      sourceRef.current,
-    ]) {
-      if (element) observer.observe(element);
-    }
-    return () => observer.disconnect();
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    const renderId = renderIdRef.current + 1;
-    renderIdRef.current = renderId;
-    const plotElements = [
-      numericRef.current,
-      confidenceRef.current,
-      sourceRef.current,
-    ].filter((element): element is HTMLDivElement => element !== null);
-
-    async function renderCharts() {
-      const module = await import("plotly.js-dist-min");
-      if (cancelled || renderIdRef.current !== renderId) return;
-      const plotly = module.default as PlotlyModule;
-      plotlyRef.current = plotly;
-      const theme = readPlotTheme();
-      const baseLayout = createBaseLayout(theme);
-
-      if (numericRef.current) {
-        const width = chartWidth(numericRef.current);
-        await plotly.react(
-          numericRef.current,
-          chartModel.numeric.values.length
-            ? [
-                {
-                  type: "bar",
-                  orientation: "h",
-                  x: chartModel.numeric.values,
-                  y: chartModel.numeric.labels,
-                  marker: { color: chartModel.numeric.colors },
-                  hovertemplate: "%{y}<br>%{x}<extra></extra>",
-                },
-              ]
-            : [],
-          {
-            ...baseLayout,
-            width,
-            height: 210,
-            title: { text: "Numerische Indikatoren", font: { size: 12 } },
-            xaxis: {
-              gridcolor: theme.grid,
-              zerolinecolor: theme.border,
-              tickfont: { color: theme.muted },
-            },
-            yaxis: {
-              automargin: true,
-              tickfont: { color: theme.ink, size: 10 },
-            },
-            annotations: chartModel.numeric.values.length
-              ? []
-              : [emptyAnnotation("Keine numerischen Werte fuer diese Ebene", theme)],
-          },
-          PLOTLY_CONFIG,
-        );
-        await plotly.Plots.resize(numericRef.current);
-      }
-
-      if (confidenceRef.current) {
-        const width = chartWidth(confidenceRef.current);
-        await plotly.react(
-          confidenceRef.current,
-          [
-            {
-              type: "pie",
-              labels: chartModel.confidence.labels,
-              values: chartModel.confidence.values,
-              hole: 0.58,
-              marker: { colors: chartModel.confidence.colors },
-              textinfo: "label+value",
-              hovertemplate: "%{label}: %{value}<extra></extra>",
-            },
-          ],
-          {
-            ...baseLayout,
-            width,
-            height: 190,
-            title: { text: "Konfidenz", font: { size: 12 } },
-            showlegend: false,
-          },
-          PLOTLY_CONFIG,
-        );
-        await plotly.Plots.resize(confidenceRef.current);
-      }
-
-      if (sourceRef.current) {
-        const width = chartWidth(sourceRef.current);
-        await plotly.react(
-          sourceRef.current,
-          [
-            {
-              type: "bar",
-              x: chartModel.source.labels,
-              y: chartModel.source.values,
-              marker: { color: chartModel.source.colors },
-              hovertemplate: "%{x}: %{y}<extra></extra>",
-            },
-          ],
-          {
-            ...baseLayout,
-            width,
-            height: 190,
-            title: { text: "Quellenstatus", font: { size: 12 } },
-            xaxis: {
-              gridcolor: theme.grid,
-              tickfont: { color: theme.muted, size: 10 },
-            },
-            yaxis: {
-              gridcolor: theme.grid,
-              zerolinecolor: theme.border,
-              tickfont: { color: theme.muted },
-              rangemode: "tozero",
-            },
-          },
-          PLOTLY_CONFIG,
-        );
-        await plotly.Plots.resize(sourceRef.current);
-      }
-    }
-
-    renderCharts();
-
-    return () => {
-      cancelled = true;
-      queueMicrotask(() => {
-        if (renderIdRef.current !== renderId) return;
-        const plotly = plotlyRef.current;
-        if (!plotly) return;
-        for (const element of plotElements) plotly.purge(element);
-      });
-    };
-  }, [chartModel, themeKey]);
+  if (!evidence.length && !sources.length) {
+    return null;
+  }
 
   return (
-    <section className="analysis-charts" aria-label="Plotly analysis charts">
+    <section className="analysis-charts" aria-label="Compact visual evidence">
       <div className="module-title">
         <h3>Grafische Auswertung</h3>
         <span className="confidence">{activeScale}</span>
       </div>
-      <div className="plotly-stack">
-        <div className="plotly-frame">
-          <div ref={numericRef} className="plotly-panel" />
-          <ChartSnapshot
-            title="Numerische Indikatoren"
-            labels={chartModel.numeric.labels}
-            values={chartModel.numeric.values}
-            colors={chartModel.numeric.colors}
-            orientation="horizontal"
+      <div className="compact-chart-stack">
+        {evidence.length ? (
+          <CompactEvidenceChart
+            title={chartTitleForScale(activeScale)}
+            description={chartDescriptionForScale(activeScale)}
+            data={evidence}
           />
-        </div>
-        <div className="plotly-frame">
-          <div ref={confidenceRef} className="plotly-panel" />
-          <ChartSnapshot
-            title="Konfidenz"
-            labels={chartModel.confidence.labels}
-            values={chartModel.confidence.values}
-            colors={chartModel.confidence.colors}
-            orientation="vertical"
+        ) : null}
+        {sources.length ? (
+          <CompactSourceChart
+            title="Datenbezug"
+            description="Nur Quellen mit geladenen Features oder direktem Bezug zu den dargestellten Kennwerten."
+            data={sources}
           />
-        </div>
-        <div className="plotly-frame">
-          <div ref={sourceRef} className="plotly-panel" />
-          <ChartSnapshot
-            title="Quellenstatus"
-            labels={chartModel.source.labels}
-            values={chartModel.source.values}
-            colors={chartModel.source.colors}
-            orientation="vertical"
-          />
-        </div>
+        ) : null}
       </div>
     </section>
   );
 }
 
-function ChartSnapshot({
+function CompactEvidenceChart({
   title,
-  labels,
-  values,
-  colors,
-  orientation,
+  description,
+  data,
 }: {
   title: string;
-  labels: string[];
-  values: number[];
-  colors: string[];
-  orientation: "horizontal" | "vertical";
+  description: string;
+  data: EvidenceDatum[];
 }) {
-  const maxValue = Math.max(1, ...values);
+  const rowHeight = 30;
+  const height = 58 + data.length * rowHeight;
   return (
-    <svg
-      className="chart-snapshot"
-      viewBox="0 0 360 200"
-      preserveAspectRatio="xMidYMid meet"
-      aria-hidden="true"
-    >
-      <text className="chart-title" x="12" y="22">
-        {title}
-      </text>
-      {orientation === "horizontal"
-        ? labels.map((label, index) => {
-            const y = 44 + index * 22;
-            const width = Math.max(2, (values[index] / maxValue) * 168);
-            return (
-              <g key={`${label}-${index}`}>
-                <text className="chart-label" x="12" y={y + 12}>
-                  {label}
-                </text>
-                <rect
-                  x="178"
-                  y={y}
-                  width={width}
-                  height="14"
-                  fill={colors[index] ?? "#ffffff"}
-                />
-                <text className="chart-value" x={184 + width} y={y + 12}>
-                  {formatChartValue(values[index])}
-                </text>
-              </g>
-            );
-          })
-        : labels.map((label, index) => {
-            const slot = 320 / Math.max(1, labels.length);
-            const barWidth = Math.min(44, slot * 0.5);
-            const x = 24 + index * slot + (slot - barWidth) / 2;
-            const height = Math.max(2, (values[index] / maxValue) * 104);
-            return (
-              <g key={`${label}-${index}`}>
-                <rect
-                  x={x}
-                  y={152 - height}
-                  width={barWidth}
-                  height={height}
-                  fill={colors[index] ?? "#ffffff"}
-                />
-                <text className="chart-value" x={x + barWidth / 2} y={140 - height}>
-                  {formatChartValue(values[index])}
-                </text>
-                <text className="chart-label" x={x + barWidth / 2} y="176">
-                  {label}
-                </text>
-              </g>
-            );
-          })}
-    </svg>
+    <figure className="compact-chart-frame">
+      <figcaption>
+        <strong>{title}</strong>
+        <span>{description}</span>
+      </figcaption>
+      <svg viewBox={`0 0 420 ${height}`} role="img" aria-label={title}>
+        <line className="compact-axis" x1="156" y1="42" x2="396" y2="42" />
+        {data.map((item, index) => {
+          const y = 58 + index * rowHeight;
+          const width = Math.max(3, Math.min(220, (item.value / item.max) * 220));
+          return (
+            <g key={item.id}>
+              <text className="compact-chart-label" x="12" y={y + 5}>
+                {item.label}
+              </text>
+              <rect className="compact-chart-track" x="156" y={y - 8} width="220" height="14" />
+              <rect x="156" y={y - 8} width={width} height="14" fill={item.color} />
+              <text className="compact-chart-value" x="386" y={y + 5}>
+                {item.displayValue}
+              </text>
+            </g>
+          );
+        })}
+      </svg>
+    </figure>
   );
 }
 
-function formatChartValue(value: number): string {
+function CompactSourceChart({
+  title,
+  description,
+  data,
+}: {
+  title: string;
+  description: string;
+  data: SourceDatum[];
+}) {
+  const rowHeight = 26;
+  const height = 58 + data.length * rowHeight;
+  const maxValue = Math.max(1, ...data.map((item) => item.value));
+  return (
+    <figure className="compact-chart-frame compact-source-chart">
+      <figcaption>
+        <strong>{title}</strong>
+        <span>{description}</span>
+      </figcaption>
+      <svg viewBox={`0 0 420 ${height}`} role="img" aria-label={title}>
+        {data.map((item, index) => {
+          const y = 54 + index * rowHeight;
+          const width = Math.max(3, Math.min(180, (item.value / maxValue) * 180));
+          return (
+            <g key={item.id}>
+              <rect x="12" y={y - 9} width="10" height="10" fill={item.color} />
+              <text className="compact-chart-label" x="30" y={y}>
+                {item.label}
+              </text>
+              <rect className="compact-chart-track" x="238" y={y - 10} width="142" height="12" />
+              <rect x="238" y={y - 10} width={width * (142 / 180)} height="12" fill={item.color} />
+              <text className="compact-chart-value" x="388" y={y}>
+                {item.displayValue}
+              </text>
+            </g>
+          );
+        })}
+      </svg>
+    </figure>
+  );
+}
+
+function createEvidenceData(analysis: AnalysisResult, activeScale: Scale): EvidenceDatum[] {
+  const indicators = analysis.indicators.filter((indicator) => indicator.scale === activeScale);
+  if (activeScale === "XL") {
+    return [
+      evidenceFromIndicator(indicators, "xl.population-density", 15_000),
+      evidenceFromIndicator(indicators, "xl.median-age", 75),
+      evidenceFromIndicator(indicators, "xl.median-rent", 30),
+      evidenceFromIndicator(indicators, "xl.rent-index", 160),
+      evidenceFromIndicator(indicators, "xl.zensus-grid-average", 100),
+      ...zensusWmsEvidence(indicators),
+    ].filter((item): item is EvidenceDatum => item !== null);
+  }
+  if (activeScale === "L") {
+    return [
+      evidenceFromIndicator(indicators, "l.green-percentage", 100),
+      evidenceFromIndicator(indicators, "l.land-use-mix", 1),
+      evidenceFromIndicator(indicators, "l.transit-stops", 30),
+      evidenceFromIndicator(indicators, "l.transit-stop-density", 80),
+      evidenceFromIndicator(indicators, "l.transit-lines", 20),
+      evidenceFromIndicator(indicators, "l.social-civic-pois", 80),
+      evidenceFromIndicator(indicators, "l.mobility-infrastructure", 80),
+    ].filter((item): item is EvidenceDatum => item !== null);
+  }
+  return [
+    evidenceFromIndicator(indicators, "m.street-width", 30),
+    evidenceFromIndicator(indicators, "m.tree-presence", 80),
+    evidenceFromIndicator(indicators, "m.building-height", 60),
+    evidenceFromIndicator(indicators, "m.section-line", 120),
+  ].filter((item): item is EvidenceDatum => item !== null);
+}
+
+function evidenceFromIndicator(
+  indicators: Indicator[],
+  id: string,
+  max: number,
+): EvidenceDatum | null {
+  const indicator = indicators.find((item) => item.id === id);
+  if (!indicator) return null;
+  const value = numericIndicatorValue(indicator);
+  if (value === null) return null;
+  return {
+    id: indicator.id,
+    label: compactLabel(indicator.label),
+    value: Math.max(0, value),
+    displayValue: formatValue(value, indicator.unit),
+    unit: indicator.unit,
+    max,
+    color: confidenceColor(indicator.confidence),
+    sourceIds: indicator.sourceIds,
+  };
+}
+
+function zensusWmsEvidence(indicators: Indicator[]): EvidenceDatum[] {
+  return indicators
+    .filter((indicator) => indicator.id.startsWith("xl.zensus-wms."))
+    .map((indicator) => evidenceFromIndicator([indicator], indicator.id, 100))
+    .filter((item): item is EvidenceDatum => item !== null)
+    .slice(0, 3);
+}
+
+function createSourceData(
+  analysis: AnalysisResult,
+  activeScale: Scale,
+  evidence: EvidenceDatum[],
+): SourceDatum[] {
+  const evidenceSourceIds = new Set(evidence.flatMap((item) => item.sourceIds));
+  const scaleSourceIds = new Set(
+    (Object.values(sourceRegistry) as DataSource[])
+      .filter((source) => source.scale.includes(activeScale))
+      .map((source) => source.id),
+  );
+  return analysis.provenance.sourceFetches
+    .filter(
+      (receipt) =>
+        evidenceSourceIds.has(receipt.sourceId) ||
+        (scaleSourceIds.has(receipt.sourceId) && (receipt.featureCount ?? receipt.recordCount ?? 0) > 0),
+    )
+    .map((receipt) => {
+      const count = receipt.featureCount ?? receipt.recordCount ?? (receipt.status === "ok" ? 1 : 0);
+      return {
+        id: receipt.sourceId,
+        label: compactLabel(receipt.label),
+        status: receipt.status,
+        value: Math.max(0, count),
+        displayValue:
+          receipt.featureCount !== undefined
+            ? `${formatCompactNumber(receipt.featureCount)} feat.`
+            : receipt.recordCount !== undefined
+              ? `${formatCompactNumber(receipt.recordCount)} rec.`
+              : receipt.status,
+        color: sourceStatusColor(receipt.status),
+      };
+    })
+    .slice(0, 6);
+}
+
+function numericIndicatorValue(indicator: Indicator): number | null {
+  if (typeof indicator.value === "number" && Number.isFinite(indicator.value)) {
+    return indicator.value;
+  }
+  if (typeof indicator.value === "string") {
+    const match = indicator.value.match(/-?\d+(?:[.,]\d+)?/);
+    if (!match) return null;
+    const parsed = Number(match[0].replace(",", "."));
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+}
+
+function formatValue(value: number, unit?: string): string {
+  const number = formatCompactNumber(value);
+  if (!unit || unit === "0-1") return number;
+  if (unit === "within radius") return number;
+  if (unit === "section length") return `${number} m`;
+  return `${number} ${unit}`;
+}
+
+function formatCompactNumber(value: number): string {
+  if (Math.abs(value) >= 1_000_000) return `${Math.round(value / 100_000) / 10}m`;
+  if (Math.abs(value) >= 10_000) return `${Math.round(value / 100) / 10}k`;
   if (Math.abs(value) >= 1000) return `${Math.round(value / 100) / 10}k`;
   if (Math.abs(value) >= 10) return String(Math.round(value));
   return String(Math.round(value * 10) / 10);
 }
 
-function createChartModel(analysis: AnalysisResult, activeScale: Scale) {
-  const indicators = analysis.indicators.filter(
-    (indicator) => indicator.scale === activeScale,
-  );
-  const numericIndicators = indicators
-    .filter((indicator): indicator is Indicator & { value: number } =>
-      typeof indicator.value === "number" && Number.isFinite(indicator.value),
-    )
-    .slice(0, 8)
-    .reverse();
-  const sourceIdsForScale = new Set(
-    (Object.values(sourceRegistry) as DataSource[])
-      .filter((source) => source.scale.includes(activeScale))
-      .map((source) => source.id),
-  );
-  const receiptsForScale = analysis.provenance.sourceFetches.filter((receipt) =>
-    sourceIdsForScale.has(receipt.sourceId),
-  );
-
-  return {
-    numeric: {
-      labels: numericIndicators.map((indicator) => shortLabel(indicator.label)),
-      values: numericIndicators.map((indicator) => indicator.value),
-      colors: numericIndicators.map((indicator) =>
-        confidenceColor(indicator.confidence),
-      ),
-    },
-    confidence: countValues(indicators.map((indicator) => indicator.confidence), [
-      "high",
-      "medium",
-      "low",
-    ]).withColorMap({
-      high: confidenceColor("high"),
-      medium: confidenceColor("medium"),
-      low: confidenceColor("low"),
-    }),
-    source: countValues(receiptsForScale.map((receipt) => receipt.status), [
-      "ok",
-      "cached",
-      "missing",
-      "failed",
-      "skipped",
-    ]).withColorMap({
-      ok: "#31d158",
-      cached: "#93c5fd",
-      missing: "#facc15",
-      failed: "#ef4444",
-      skipped: "#b3b3b3",
-    }),
-  };
-}
-
-function countValues(values: string[], order: string[]) {
-  const counts = new Map<string, number>();
-  for (const value of values) counts.set(value, (counts.get(value) ?? 0) + 1);
-  const labels = order.filter((value) => counts.has(value));
-  const finalLabels = labels.length ? labels : ["none"];
-  const finalValues = labels.length ? labels.map((value) => counts.get(value) ?? 0) : [0];
-
-  return {
-    labels: finalLabels,
-    values: finalValues,
-    withColorMap(colors: Record<string, string>) {
-      return {
-        labels: finalLabels,
-        values: finalValues,
-        colors: labels.length
-          ? finalLabels.map((label) => colors[label] ?? "#3a3a3a")
-          : ["#3a3a3a"],
-      };
-    },
-  };
-}
-
-function readPlotTheme() {
-  const style = getComputedStyle(document.body);
-  return {
-    surface: style.getPropertyValue("--surface-2").trim() || "#0f0f0f",
-    paper: style.getPropertyValue("--surface").trim() || "#000000",
-    ink: style.getPropertyValue("--ink").trim() || "#ffffff",
-    muted: style.getPropertyValue("--muted").trim() || "#b3b3b3",
-    border: style.getPropertyValue("--border").trim() || "#3a3a3a",
-    grid: style.getPropertyValue("--border").trim() || "#3a3a3a",
-    font: style.getPropertyValue("--font-mono").trim() || "monospace",
-  };
-}
-
-function createBaseLayout(theme: ReturnType<typeof readPlotTheme>) {
-  return {
-    autosize: true,
-    paper_bgcolor: theme.paper,
-    plot_bgcolor: theme.surface,
-    margin: { l: 12, r: 12, t: 34, b: 28 },
-    font: { family: theme.font, color: theme.ink, size: 11 },
-    title: { font: { color: theme.ink, size: 12 } },
-    hoverlabel: {
-      bgcolor: theme.paper,
-      bordercolor: theme.border,
-      font: { family: theme.font, color: theme.ink, size: 11 },
-    },
-  };
-}
-
-function chartWidth(element: HTMLElement | null): number {
-  return Math.max(280, Math.floor(element?.clientWidth || 320));
-}
-
-function emptyAnnotation(text: string, theme: ReturnType<typeof readPlotTheme>) {
-  return {
-    text,
-    showarrow: false,
-    xref: "paper",
-    yref: "paper",
-    x: 0.5,
-    y: 0.5,
-    font: { color: theme.muted, size: 11 },
-  };
+function compactLabel(label: string): string {
+  return label.length > 24 ? `${label.slice(0, 21)}...` : label;
 }
 
 function confidenceColor(confidence: "high" | "medium" | "low"): string {
-  if (confidence === "high") return "#31d158";
-  if (confidence === "medium") return "#facc15";
-  return "#ef4444";
+  if (confidence === "high") return "var(--seq-5)";
+  if (confidence === "medium") return "var(--seq-6)";
+  return "var(--seq-8)";
 }
 
-function shortLabel(label: string): string {
-  return label.length > 26 ? `${label.slice(0, 23)}...` : label;
+function sourceStatusColor(status: string): string {
+  if (status === "ok") return "var(--seq-5)";
+  if (status === "cached") return "var(--seq-4)";
+  if (status === "failed") return "var(--seq-9)";
+  if (status === "missing") return "var(--seq-6)";
+  return "var(--muted)";
+}
+
+function chartTitleForScale(activeScale: Scale): string {
+  if (activeScale === "XL") return "XL Strukturwerte";
+  if (activeScale === "L") return "L Umfeld-Evidenz";
+  return "M Strassenraum-Evidenz";
+}
+
+function chartDescriptionForScale(activeScale: Scale): string {
+  if (activeScale === "XL") {
+    return "Nur numerische CSV-/Zensuswerte mit realem Treffer; keine generischen Vergleichsbalken.";
+  }
+  if (activeScale === "L") {
+    return "Flächen-, Erreichbarkeits- und POI-Werte aus Urban Atlas, GTFS und Live-OSM.";
+  }
+  return "Nur gemessene oder geladene Korridorwerte aus Street, Building, Tree und Section.";
 }

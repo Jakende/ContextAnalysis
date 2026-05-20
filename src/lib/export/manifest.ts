@@ -16,6 +16,7 @@ export function createExportManifest(
     scales: ["XL", "L", "M"],
     sources: getSources(analysis.provenance.sourceIds),
     sourceFetches: analysis.provenance.sourceFetches,
+    dataSourceRun: analysis.provenance.dataSourceRun,
     overpassQueries: analysis.provenance.overpassQueries,
     files,
     caveats: analysis.provenance.caveats,

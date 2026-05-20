@@ -1,4 +1,4 @@
-import type { LayerId, LayerState } from "../../lib/types";
+import type { AnalysisResult, LayerId, LayerState, Scale } from "../../lib/types";
 
 const layers: Array<{ id: LayerId; label: string; method: string }> = [
   { id: "3D", label: "3D", method: "LOD2/OSM massing" },
@@ -10,13 +10,29 @@ const layers: Array<{ id: LayerId; label: string; method: string }> = [
 
 export function LayerTogglePanel({
   layers: state,
+  analysis,
+  activeScale,
   onToggle,
   onReset,
 }: {
   layers: LayerState;
+  analysis: AnalysisResult | null;
+  activeScale: Scale;
   onToggle: (id: LayerId) => void;
   onReset: () => void;
 }) {
+  const availableLayers = analysis
+    ? layers.filter((layer) => {
+        if (activeScale === "XL") return false;
+        if (activeScale === "L") return layer.id === "green";
+        return true;
+      })
+    : [];
+
+  if (!availableLayers.length) {
+    return null;
+  }
+
   return (
     <section className="layer-panel" aria-label="Layer toggles">
       <div className="panel-heading">
@@ -26,7 +42,7 @@ export function LayerTogglePanel({
         </button>
       </div>
       <div className="toggle-grid">
-        {layers.map((layer) => (
+        {availableLayers.map((layer) => (
           <button
             key={layer.id}
             type="button"

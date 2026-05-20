@@ -98,6 +98,7 @@ body {
   color: var(--ink);
   background: var(--surface);
   min-height: 100vh;
+  overflow: hidden;
 }
 
 h1 {

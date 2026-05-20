@@ -10,14 +10,17 @@ import {
   loadZensusGridForPoint,
 } from "../data/localSpatial";
 import { runSourceAdapters } from "../data/sourceAdapters";
+import { createDataSourceRunReport } from "../data/sourceRun";
 import { fetchZensusWmsIndicators } from "../data/zensusWms";
 import { runOverpassModules } from "../overpass/client";
 import type {
   AnalysisResult,
+  DataSourceRunEvent,
   LayerState,
   SectionLine,
   SelectedPoint,
   Scale,
+  AnalysisLoadStep,
 } from "../types";
 import { featureCollection, geometryToFeature, pointGeometry } from "./geometry";
 import { analyzeL } from "./l/analyzeL";
@@ -47,10 +50,18 @@ export async function runLocationAnalysis(input: {
   activeScale: Scale;
   layers?: LayerState;
   sectionLine?: SectionLine | null;
+  preflightSourceRun?: DataSourceRunEvent[];
+  onProgress?: (step: AnalysisLoadStep) => void;
   enableGeocoding?: boolean;
   enableOverpass?: boolean;
 }): Promise<{ result: AnalysisResult; sectionSvg: string }> {
   const computedAt = new Date().toISOString();
+  emitProgress(input.onProgress, {
+    id: "geocoding",
+    label: "Nominatim reverse lookup",
+    detail: "Fetching reverse address context from Nominatim without cache fallback.",
+    status: input.enableGeocoding === false ? "skipped" : "running",
+  });
   const geocoding =
     input.enableGeocoding === false
       ? {
@@ -63,6 +74,15 @@ export async function runLocationAnalysis(input: {
           sourceStatus: undefined,
         }
       : await reverseGeocode(input.lat, input.lon, { allowCache: false });
+  emitProgress(input.onProgress, {
+    id: "geocoding",
+    label: "Nominatim reverse lookup",
+    detail:
+      geocoding.status === "ok"
+        ? "Reverse address context loaded."
+        : "Reverse geocoding unavailable; analysis continues with coordinates.",
+    status: geocoding.status === "ok" ? "ok" : geocoding.status,
+  });
 
   const selectedPoint: SelectedPoint = {
     lat: input.lat,
@@ -74,11 +94,34 @@ export async function runLocationAnalysis(input: {
     point: pointGeometry(input.lat, input.lon),
   };
 
+  emitProgress(input.onProgress, {
+    id: "overpass",
+    label: "Overpass OSM modules",
+    detail: "Fetching OSM features through deterministic Overpass modules.",
+    status: input.enableOverpass === false ? "skipped" : "running",
+  });
   const overpass = await runOverpassModules({
     lat: input.lat,
     lon: input.lon,
     enabled: input.enableOverpass ?? true,
     allowCache: false,
+  });
+  emitProgress(input.onProgress, {
+    id: "overpass",
+    label: "Overpass OSM modules",
+    detail: `${Object.values(overpass.collections).reduce((total, collection) => total + collection.features.length, 0)} OSM feature(s) normalized.`,
+    status: overpass.provenance.some((query) => query.status === "ok" || query.status === "cached")
+      ? "ok"
+      : overpass.provenance.some((query) => query.status === "failed")
+        ? "failed"
+        : "skipped",
+  });
+
+  emitProgress(input.onProgress, {
+    id: "local-data",
+    label: "Local, WMS, and sharded datasets",
+    detail: "Loading Zensus WMS/grid, BKG, FUA, GTFS, Urban Atlas, and building sources.",
+    status: "running",
   });
   const zensusGrid = await loadZensusGridForPoint(selectedPoint);
   const zensusWmsIndicators = await fetchZensusWmsIndicators(selectedPoint, computedAt);
@@ -90,6 +133,19 @@ export async function runLocationAnalysis(input: {
   const terrainSamples = input.sectionLine
     ? await loadTerrainSamplesForSection(input.sectionLine)
     : [];
+  emitProgress(input.onProgress, {
+    id: "local-data",
+    label: "Local, WMS, and sharded datasets",
+    detail: `${bkgBoundaries.features.length} BKG / ${fuaGeometries.features.length} FUA / ${gtfsStops.features.length} GTFS / ${urbanAtlas.features.length} Urban Atlas / ${lod2Buildings.features.length} building feature(s).`,
+    status: "ok",
+  });
+
+  emitProgress(input.onProgress, {
+    id: "indicators",
+    label: "XL/L/M indicators",
+    detail: "Computing deterministic indicators and map overlays.",
+    status: "running",
+  });
   const analysisCollections: Record<string, FeatureCollection> = {
     ...overpass.collections,
     buildings: mergeCollections(
@@ -132,11 +188,26 @@ export async function runLocationAnalysis(input: {
     },
     overpassQueries: overpass.provenance,
     overpassCollections: overpass.collections,
+    localCollections: {
+      "bkg-geobasis": bkgBoundaries,
+      "eurostat-gisco-fua": fuaGeometries,
+      "zensus-grid-2022": zensusGrid,
+      "copernicus-urban-atlas": urbanAtlas,
+      "urban-atlas-2021-catalog": urbanAtlas,
+      "gtfs-de-local-transit": gtfsStops,
+      "mobilithek-gtfs": gtfsStops,
+    },
   });
   const xlSourceStatus = createXlSourceStatusModule(sourceFetches, computedAt);
   const fua = createFuaContextModule(fuaGeometries, computedAt);
   const zensus = createZensusGridModule(zensusGrid, computedAt);
   const zensusWms = createZensusWmsModule(zensusWmsIndicators, computedAt);
+  emitProgress(input.onProgress, {
+    id: "indicators",
+    label: "XL/L/M indicators",
+    detail: `${sourceFetches.length} source receipt(s), ${xl.indicators.length + fua.indicators.length + zensusWms.indicators.length + zensus.indicators.length + xlSourceStatus.indicators.length + l.indicators.length + m.indicators.length} indicator(s).`,
+    status: "ok",
+  });
 
   const allModules = [
     ...xl.modules,
@@ -160,6 +231,9 @@ export async function runLocationAnalysis(input: {
     ...new Set([
       ...allIndicators.flatMap((indicator) => indicator.sourceIds),
       ...sourceFetches.map((receipt) => receipt.sourceId),
+      ...(input.preflightSourceRun ?? []).flatMap((event) =>
+        event.sourceId ? [event.sourceId] : [],
+      ),
     ]),
   ];
 
@@ -210,6 +284,11 @@ export async function runLocationAnalysis(input: {
       createdAt: computedAt,
       sourceIds,
       sourceFetches,
+      dataSourceRun: createDataSourceRunReport({
+        createdAt: computedAt,
+        preflightEvents: input.preflightSourceRun,
+        sourceFetches,
+      }),
       overpassQueries: overpass.provenance,
       geocoding: {
         enabled: input.enableGeocoding !== false,
@@ -234,4 +313,11 @@ export async function runLocationAnalysis(input: {
 
 function mergeCollections(...collections: FeatureCollection[]): FeatureCollection {
   return featureCollection(collections.flatMap((collection) => collection.features));
+}
+
+function emitProgress(
+  onProgress: ((step: AnalysisLoadStep) => void) | undefined,
+  step: AnalysisLoadStep,
+): void {
+  onProgress?.(step);
 }
