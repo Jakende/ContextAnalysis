@@ -14,6 +14,7 @@
     "preprocess:srtm": "node scripts/preprocess/preprocess-srtm-samples.mjs",
     "preprocess:buildings": "node scripts/preprocess/preprocess-building-fallback.mjs",
     "preprocess:gtfs": "node scripts/preprocess/preprocess-gtfs-stops.mjs",
+    "preprocess:gtfs-lines": "node scripts/preprocess/preprocess-gtfs-lines.mjs",
     "preprocess:thematic": "node scripts/preprocess/preprocess-thematic-geojson.mjs",
     "preprocess:point-cache": "node scripts/preprocess/resolve-point-cache.mjs",
     "test:data-sources": "node scripts/validate/test-data-sources.mjs",

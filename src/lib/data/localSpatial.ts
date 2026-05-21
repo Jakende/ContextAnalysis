@@ -12,6 +12,8 @@ const BKG_BOUNDARIES_URL = "/data/processed/bkg-boundaries.geojson";
 const EUROSTAT_FUA_URL = "/data/processed/eurostat-gisco-fua.geojson";
 const GTFS_STOPS_URL = "/data/processed/gtfs-stops.geojson";
 const GTFS_STOPS_INDEX_URL = "/data/processed/gtfs-stops/index.json";
+const GTFS_LINES_URL = "/data/processed/gtfs-lines.geojson";
+const GTFS_LINES_INDEX_URL = "/data/processed/gtfs-lines/index.json";
 const URBAN_ATLAS_URL = "/data/processed/copernicus-urban-atlas.geojson";
 const URBAN_ATLAS_INDEX_URL = "/data/processed/copernicus-urban-atlas/index.json";
 const CACHE_MANIFEST_URL = "/data/processed/cache-manifest.json";
@@ -277,6 +279,57 @@ export async function loadGtfsStopsForPoint(
   return featureCollection(stops);
 }
 
+export async function loadGtfsLinesForPoint(
+  selectedPoint: SelectedPoint,
+  radiusMeters = 1_000,
+): Promise<FeatureCollection> {
+  const bbox = bboxAroundPoint(selectedPoint.lat, selectedPoint.lon, radiusMeters);
+  const collection =
+    (await fetchGtfsLineShardsForBbox(bbox)) ?? (await fetchFeatureCollection(GTFS_LINES_URL));
+  if (!collection) return featureCollection();
+
+  const lines = collection.features
+    .filter((feature) => feature.geometry.type === "LineString")
+    .flatMap((feature) => {
+      if (!geometryIntersectsBbox(feature.geometry, bbox)) return [];
+      if (feature.properties?.geometrySource === "stop_times") {
+        return createLocalGtfsStopTimeSegments(feature, bbox).map((segmentFeature, index) => ({
+          ...segmentFeature,
+          properties: {
+            ...segmentFeature.properties,
+            sourceId: segmentFeature.properties?.sourceId ?? "gtfs-de-local-transit",
+            transportMode: segmentFeature.properties?.transportMode ?? "transit",
+            clipSegmentIndex: index,
+          },
+        }));
+      }
+      const clippedSegments = clipLineStringFeatureToBbox(feature, bbox);
+      return clippedSegments.map((clippedFeature, index) => ({
+        ...clippedFeature,
+        properties: {
+          ...clippedFeature.properties,
+          sourceId: clippedFeature.properties?.sourceId ?? "gtfs-de-local-transit",
+          transportMode: clippedFeature.properties?.transportMode ?? "transit",
+          clipSegmentIndex: index,
+        },
+      }));
+    });
+  const deduped = new Map<string, Feature>();
+  for (const feature of lines) {
+    const properties = (feature.properties ?? {}) as Record<string, unknown>;
+    const key = String(
+      properties.route_id ??
+        properties.shape_id ??
+        properties.id ??
+        JSON.stringify(
+          clippedLineCoordinates(feature.geometry) ?? feature.geometry,
+        ),
+    );
+    if (!deduped.has(key)) deduped.set(key, feature);
+  }
+  return featureCollection([...deduped.values()]);
+}
+
 export async function loadUrbanAtlasForPoint(
   selectedPoint: SelectedPoint,
   radiusMeters = 1_000,
@@ -336,6 +389,12 @@ async function fetchGtfsShardsForBbox(
   bbox: [number, number, number, number],
 ): Promise<FeatureCollection | null> {
   return fetchFeatureShardsForBbox(GTFS_STOPS_INDEX_URL, bbox);
+}
+
+async function fetchGtfsLineShardsForBbox(
+  bbox: [number, number, number, number],
+): Promise<FeatureCollection | null> {
+  return fetchFeatureShardsForBbox(GTFS_LINES_INDEX_URL, bbox);
 }
 
 async function fetchFeatureShardsForBbox(
@@ -683,6 +742,163 @@ function geometryContainsPoint(geometry: Geometry, point: [number, number]): boo
     return geometry.geometries.some((item) => geometryContainsPoint(item, point));
   }
   return false;
+}
+
+function clipLineStringFeatureToBbox(
+  feature: Feature,
+  bbox: [number, number, number, number],
+): Feature[] {
+  if (feature.geometry.type !== "LineString") return [];
+  const segments = clipLineStringToBbox(feature.geometry.coordinates, bbox);
+  return segments.map((coordinates) => ({
+    ...feature,
+    geometry: {
+      type: "LineString",
+      coordinates,
+    },
+  }));
+}
+
+function createLocalGtfsStopTimeSegments(
+  feature: Feature,
+  bbox: [number, number, number, number],
+): Feature[] {
+  if (feature.geometry.type !== "LineString") return [];
+  const coordinates = feature.geometry.coordinates;
+  const localSegments: Feature[] = [];
+  for (let index = 1; index < coordinates.length; index += 1) {
+    const start = coordinates[index - 1];
+    const end = coordinates[index];
+    const clipped = clipSegmentToBbox(start, end, bbox);
+    if (!clipped) continue;
+    if (distanceMeters(start, end) > 800) continue;
+    const [clippedStart, clippedEnd] = clipped;
+    if (sameCoordinate(clippedStart, clippedEnd)) continue;
+    localSegments.push({
+      ...feature,
+      geometry: {
+        type: "LineString",
+        coordinates: [clippedStart, clippedEnd],
+      },
+      properties: {
+        ...feature.properties,
+        geometrySource: "stop_times_local_segment",
+      },
+    });
+  }
+  return localSegments;
+}
+
+function clippedLineCoordinates(geometry: Geometry): number[][] | null {
+  return geometry.type === "LineString" ? geometry.coordinates : null;
+}
+
+function clipLineStringToBbox(
+  coordinates: number[][],
+  bbox: [number, number, number, number],
+): number[][][] {
+  const segments: number[][][] = [];
+  let current: number[][] = [];
+  for (let index = 1; index < coordinates.length; index += 1) {
+    const clipped = clipSegmentToBbox(coordinates[index - 1], coordinates[index], bbox);
+    if (!clipped) {
+      if (current.length > 1) segments.push(current);
+      current = [];
+      continue;
+    }
+    const [start, end] = clipped;
+    if (!current.length) {
+      current.push(start, end);
+      continue;
+    }
+    const last = current[current.length - 1];
+    if (sameCoordinate(last, start)) {
+      if (!sameCoordinate(last, end)) current.push(end);
+      continue;
+    }
+    if (current.length > 1) segments.push(current);
+    current = [start, end];
+  }
+  if (current.length > 1) segments.push(current);
+  return segments
+    .map((segment) => dedupeSequentialCoordinates(segment))
+    .filter((segment) => segment.length > 1);
+}
+
+function clipSegmentToBbox(
+  start: number[],
+  end: number[],
+  bbox: [number, number, number, number],
+): [number[], number[]] | null {
+  const [west, south, east, north] = bbox;
+  let [x1, y1] = start;
+  let [x2, y2] = end;
+  let code1 = computeOutCode(x1, y1, bbox);
+  let code2 = computeOutCode(x2, y2, bbox);
+  while (true) {
+    if (!(code1 | code2)) {
+      return [
+        [x1, y1],
+        [x2, y2],
+      ];
+    }
+    if (code1 & code2) {
+      return null;
+    }
+    const outCode = code1 || code2;
+    let x = 0;
+    let y = 0;
+    if (outCode & 8) {
+      x = x1 + ((x2 - x1) * (north - y1)) / ((y2 - y1) || Number.EPSILON);
+      y = north;
+    } else if (outCode & 4) {
+      x = x1 + ((x2 - x1) * (south - y1)) / ((y2 - y1) || Number.EPSILON);
+      y = south;
+    } else if (outCode & 2) {
+      y = y1 + ((y2 - y1) * (east - x1)) / ((x2 - x1) || Number.EPSILON);
+      x = east;
+    } else if (outCode & 1) {
+      y = y1 + ((y2 - y1) * (west - x1)) / ((x2 - x1) || Number.EPSILON);
+      x = west;
+    }
+    if (outCode === code1) {
+      x1 = x;
+      y1 = y;
+      code1 = computeOutCode(x1, y1, bbox);
+    } else {
+      x2 = x;
+      y2 = y;
+      code2 = computeOutCode(x2, y2, bbox);
+    }
+  }
+}
+
+function computeOutCode(
+  x: number,
+  y: number,
+  bbox: [number, number, number, number],
+): number {
+  const [west, south, east, north] = bbox;
+  let code = 0;
+  if (x < west) code |= 1;
+  else if (x > east) code |= 2;
+  if (y < south) code |= 4;
+  else if (y > north) code |= 8;
+  return code;
+}
+
+function sameCoordinate(a: number[], b: number[]): boolean {
+  return a[0] === b[0] && a[1] === b[1];
+}
+
+function dedupeSequentialCoordinates(coordinates: number[][]): number[][] {
+  const output: number[][] = [];
+  for (const coordinate of coordinates) {
+    const previous = output[output.length - 1];
+    if (previous && sameCoordinate(previous, coordinate)) continue;
+    output.push(coordinate);
+  }
+  return output;
 }
 
 function polygonContainsPoint(polygon: number[][][], point: [number, number]): boolean {

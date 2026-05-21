@@ -64,7 +64,45 @@ export type SectionLine = {
   end: { lat: number; lon: number };
 };
 
-export type LayerId = "3D" | "trees" | "sun" | "section" | "green";
+export type LayerId =
+  | "3D"
+  | "trees"
+  | "sun"
+  | "section"
+  | "green"
+  | "blue"
+  | "xlContext"
+  | "zensusWms"
+  | "xlGrid"
+  | "xlSources"
+  | "urbanAtlas"
+  | "lBuffer"
+  | "transitLocal"
+  | "transitRegional"
+  | "transportAll"
+  | "transitBus"
+  | "transitTram"
+  | "transitSubway"
+  | "transitLightRail"
+  | "transitRail"
+  | "transitOther"
+  | "mobility"
+  | "mobilityBike"
+  | "mobilityPedestrian"
+  | "mobilitySupport"
+  | "pois"
+  | "poiEducation"
+  | "poiHealth"
+  | "poiCivic"
+  | "poiCommerce"
+  | "poiFoodCulture"
+  | "poiLeisureTourism"
+  | "development"
+  | "buildingFootprints"
+  | "streets"
+  | "barriers"
+  | "srtm"
+  | "googleSatellite";
 
 export type LayerState = Record<LayerId, boolean>;
 
@@ -176,9 +214,11 @@ export type MapOverlayCollection = {
   xlContext: FeatureCollection;
   xlGrid: FeatureCollection;
   xlSources: FeatureCollection;
+  urbanAtlas: FeatureCollection;
   lBuffer: FeatureCollection;
   mStreetSegment: FeatureCollection;
   green: FeatureCollection;
+  blue: FeatureCollection;
   trees: FeatureCollection;
   buildings: FeatureCollection;
   pois: FeatureCollection;
@@ -219,6 +259,7 @@ export type OverpassModule = {
   radiusMeters?: number;
   bboxRequired?: boolean;
   buildQuery: (params: QueryParams) => string;
+  buildFallbackQuery?: (params: QueryParams) => string;
   parse: (response: unknown) => FeatureCollection;
 };
 

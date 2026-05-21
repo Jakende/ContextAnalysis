@@ -247,13 +247,13 @@ export function analyzeL(
       )?.geometry,
       method:
         exactTransitLines !== undefined
-          ? "Loaded live Overpass rail/tram/subway ways, busway and bus-lane corridor ways, route-tagged ways, and public_transport platform ways within the L-scale context; geometries are grouped by transport mode for map rendering."
+          ? "Loaded live Overpass route relations for bus/tram/subway/light-rail/train plus physical rail, busway, bus-lane, and platform geometries inside the L-scale context; geometries are grouped by transport mode for map rendering."
           : "Live public-transport line retrieval was unavailable.",
-      sourceIds: ["osm-core", "osm-overpass", "mobilithek-gtfs", "gtfs-de-local-transit"],
+      sourceIds: ["osm-core", "osm-overpass"],
       confidence: exactTransitLines !== undefined ? "medium" : "low",
       caveats: [
         exactTransitLines !== undefined ? liveCaveat : fallbackCaveat,
-        "Live Overpass intentionally avoids full bus-route relation recursion because it is large and unstable; GTFS/Mobilithek preprocessing remains the authoritative next step for services and frequencies.",
+        "Displayed line geometry is taken from live Overpass/OSM corridor and route data; GTFS remains in use for stop access and mode availability, not for drawn line connections.",
       ],
       computedAt,
     }),
@@ -352,7 +352,10 @@ export function analyzeL(
   ];
 
   if (greenBlueRadius) {
-    overlays.green = featureCollection(greenBlueRadius.features.filter(isGreenFeature));
+    overlays.green = featureCollection(
+      greenBlueRadius.features.filter((feature) => isGreenFeature(feature) && !isBlueFeature(feature)),
+    );
+    overlays.blue = featureCollection(greenBlueRadius.features.filter(isBlueFeature));
   }
   if (liveTrees) {
     overlays.trees = liveTrees;
@@ -376,6 +379,7 @@ function createLOverlays(
   return {
     lBuffer,
     green: featureCollection(),
+    blue: featureCollection(),
     trees: featureCollection(),
   };
 }
@@ -612,13 +616,27 @@ function isGreenFeature(feature: Feature): boolean {
       classValue.startsWith("142") ||
       classValue.startsWith("2") ||
       classValue.startsWith("3") ||
-      classValue.startsWith("5") ||
       classValue.includes("green") ||
-      classValue.includes("forest") ||
-      classValue.includes("water")
+      classValue.includes("forest")
     );
   }
   return true;
+}
+
+function isBlueFeature(feature: Feature): boolean {
+  const sourceId = String(feature.properties?.sourceId ?? "");
+  const natural = String(feature.properties?.natural ?? "").toLowerCase();
+  const water = String(feature.properties?.water ?? "").toLowerCase();
+  const waterway = String(feature.properties?.waterway ?? "").toLowerCase();
+  const classValue = readClassValue(feature) ?? "";
+  if (sourceId === "copernicus-urban-atlas") {
+    return (
+      classValue.startsWith("5") ||
+      classValue.includes("water") ||
+      classValue.includes("wetland")
+    );
+  }
+  return natural === "water" || natural === "wetland" || Boolean(water) || Boolean(waterway);
 }
 
 function featureTouchesRadius(

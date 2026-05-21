@@ -12,7 +12,7 @@ const OVERPASS_ENDPOINTS = [
 ];
 const OVERPASS_CONCURRENCY = 2;
 const OVERPASS_PROXY_TIMEOUT_MS = 45_000;
-const OVERPASS_CACHE_VERSION = "v4-public-transport-lines";
+const OVERPASS_CACHE_VERSION = "v10-osm-layer-inventory";
 
 type OverpassProxyResponse = {
   ok: boolean;
@@ -99,35 +99,22 @@ async function runOneModule(
   const endpointStatus: OverpassProvenance["endpointStatus"] = [];
   let featureCollection: FeatureCollection | null = null;
   let selectedEndpoint: string | undefined;
+  let usedFallbackQuery = false;
 
-  const started = performance.now();
-  try {
-    const response = await fetchWithTimeout(
-      "/api/overpass",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ query, endpoints: OVERPASS_ENDPOINTS }),
-      },
-      OVERPASS_PROXY_TIMEOUT_MS,
-    );
-    const proxy = (await response.json()) as OverpassProxyResponse;
-    endpointStatus.push(...normalizeEndpointStatus(proxy, performance.now() - started));
-
-    if (response.ok && proxy.ok && proxy.data) {
-      featureCollection = module.parse(proxy.data);
-      selectedEndpoint = proxy.endpoint;
+  const primary = await fetchOverpassQuery(query, endpointStatus);
+  if (primary.ok && primary.proxy?.data) {
+    featureCollection = module.parse(primary.proxy.data);
+    selectedEndpoint = primary.proxy.endpoint;
+    if (input.allowCache) setCached(cacheKey, featureCollection);
+  } else if (module.buildFallbackQuery) {
+    const fallbackQuery = module.buildFallbackQuery(params);
+    const fallback = await fetchOverpassQuery(fallbackQuery, endpointStatus);
+    if (fallback.ok && fallback.proxy?.data) {
+      featureCollection = module.parse(fallback.proxy.data);
+      selectedEndpoint = fallback.proxy.endpoint;
+      usedFallbackQuery = true;
       if (input.allowCache) setCached(cacheKey, featureCollection);
     }
-  } catch (error) {
-    endpointStatus.push({
-      endpoint: "/api/overpass",
-      ok: false,
-      elapsedMs: Math.round(performance.now() - started),
-      error: error instanceof Error ? error.message : String(error),
-    });
   }
 
   if (featureCollection) {
@@ -146,7 +133,11 @@ async function runOneModule(
         ),
         featureCount: featureCollection.features.length,
         endpointStatus,
-        caveats: [],
+        caveats: usedFallbackQuery
+          ? [
+              "Primary Overpass route-relation query timed out or failed; fallback physical OSM public-transport corridor geometry was used for line display.",
+            ]
+          : [],
       },
     };
   }
@@ -191,6 +182,37 @@ async function runOneModule(
       ],
     },
   };
+}
+
+async function fetchOverpassQuery(
+  query: string,
+  endpointStatus: OverpassProvenance["endpointStatus"],
+): Promise<{ ok: boolean; proxy?: OverpassProxyResponse }> {
+  const started = performance.now();
+  try {
+    const response = await fetchWithTimeout(
+      "/api/overpass",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ query, endpoints: OVERPASS_ENDPOINTS }),
+      },
+      OVERPASS_PROXY_TIMEOUT_MS,
+    );
+    const proxy = (await response.json()) as OverpassProxyResponse;
+    endpointStatus.push(...normalizeEndpointStatus(proxy, performance.now() - started));
+    return { ok: response.ok && proxy.ok && Boolean(proxy.data), proxy };
+  } catch (error) {
+    endpointStatus.push({
+      endpoint: "/api/overpass",
+      ok: false,
+      elapsedMs: Math.round(performance.now() - started),
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return { ok: false };
+  }
 }
 
 function normalizeEndpointStatus(

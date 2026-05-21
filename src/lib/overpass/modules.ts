@@ -42,6 +42,7 @@ function parseOverpassElements(response: unknown): FeatureCollection {
     elements?: OverpassElement[];
   };
 
+  const relationWayHints = buildRelationWayHints(raw.elements ?? []);
   const features: Feature[] = [];
 
   for (const element of raw.elements ?? []) {
@@ -61,28 +62,19 @@ function parseOverpassElements(response: unknown): FeatureCollection {
       continue;
     }
 
-    if (element.type === "relation" && element.members) {
-      for (const member of element.members) {
-        if (member.type !== "way" || !member.geometry) continue;
-        const coordinates = sanitizeCoordinates(member.geometry);
-        if (coordinates.length > 1 && !hasLongJump(coordinates, 2_500)) {
-          features.push({
-            type: "Feature" as const,
-            geometry: { type: "LineString" as const, coordinates },
-            properties: normalizedProperties(element, {
-              ...element.tags,
-              relationId: String(element.id),
-              memberRef: String(member.ref),
-              memberRole: member.role ?? "",
-            }),
-          });
-        }
-      }
+    if (element.type === "relation") {
       continue;
     }
 
     if (element.type !== "way" || !element.geometry) continue;
 
+    const relationHint = relationWayHints.get(element.id);
+    const effectiveTags = relationHint
+      ? {
+          ...relationHint,
+          ...(element.tags ?? {}),
+        }
+      : element.tags;
     const coordinates = sanitizeCoordinates(element.geometry);
     if (coordinates.length > 1) {
       const closed = isClosedRing(coordinates);
@@ -92,7 +84,7 @@ function parseOverpassElements(response: unknown): FeatureCollection {
         geometry: closed
           ? { type: "Polygon" as const, coordinates: [coordinates] }
           : { type: "LineString" as const, coordinates },
-        properties: normalizedProperties(element, element.tags),
+        properties: normalizedProperties(element, effectiveTags),
       });
     }
   }
@@ -100,22 +92,62 @@ function parseOverpassElements(response: unknown): FeatureCollection {
   return featureCollection(features);
 }
 
+function buildRelationWayHints(
+  elements: OverpassElement[],
+): Map<number, Record<string, string>> {
+  const hints = new Map<number, Record<string, string>>();
+  for (const element of elements) {
+    if (element.type !== "relation" || !element.members?.length || !element.tags) continue;
+    const relationTags = pickRelationTransportTags(element.tags, element.id);
+    if (!Object.keys(relationTags).length) continue;
+    for (const member of element.members) {
+      if (member.type !== "way") continue;
+      const existing = hints.get(member.ref) ?? {};
+      hints.set(member.ref, {
+        ...existing,
+        ...relationTags,
+        memberRole: member.role ?? existing.memberRole ?? "",
+      });
+    }
+  }
+  return hints;
+}
+
+function pickRelationTransportTags(
+  tags: Record<string, string>,
+  relationId: number,
+): Record<string, string> {
+  const picked: Record<string, string> = {
+    relationId: String(relationId),
+  };
+  for (const key of ["route", "route_master", "ref", "name", "network", "operator"]) {
+    const value = tags[key];
+    if (value) picked[key] = value;
+  }
+  return picked;
+}
+
 function normalizedProperties(
   element: Pick<OverpassElement, "id" | "type">,
   tags?: Record<string, string>,
 ): Record<string, string | number> {
   const transportMode = classifyTransportMode(tags);
+  const mobilityMode = classifyMobilityMode(tags);
+  const poiCategory = classifyPoiCategory(tags);
   return {
     id: element.id,
     osmType: element.type,
     ...(tags ?? {}),
     ...(transportMode ? { transportMode } : {}),
+    ...(mobilityMode ? { mobilityMode } : {}),
+    ...(poiCategory ? { poiCategory } : {}),
   };
 }
 
 function classifyTransportMode(tags?: Record<string, string>): string | undefined {
   if (!tags) return undefined;
   const route = tags.route;
+  const routeMaster = tags.route_master;
   const railway = tags.railway;
   const highway = tags.highway;
   const publicTransport = tags.public_transport;
@@ -124,6 +156,7 @@ function classifyTransportMode(tags?: Record<string, string>): string | undefine
   if (route === "light_rail" || railway === "light_rail") return "light_rail";
   if (
     route === "train" ||
+    routeMaster === "train" ||
     railway === "rail" ||
     railway === "station" ||
     railway === "halt"
@@ -132,6 +165,7 @@ function classifyTransportMode(tags?: Record<string, string>): string | undefine
   }
   if (
     route === "bus" ||
+    routeMaster === "bus" ||
     highway === "bus_stop" ||
     tags.bus === "yes" ||
     tags.busway ||
@@ -143,6 +177,97 @@ function classifyTransportMode(tags?: Record<string, string>): string | undefine
     return "bus";
   }
   if (publicTransport === "platform" || publicTransport === "stop_position") return "transit";
+  return undefined;
+}
+
+function classifyMobilityMode(tags?: Record<string, string>): string | undefined {
+  if (!tags) return undefined;
+  const highway = tags.highway;
+  if (
+    highway === "cycleway" ||
+    tags.cycleway ||
+    tags["cycleway:left"] ||
+    tags["cycleway:right"] ||
+    tags["cycleway:both"] ||
+    tags.bicycle === "designated"
+  ) {
+    return "bike";
+  }
+  if (
+    highway === "footway" ||
+    highway === "pedestrian" ||
+    highway === "path" ||
+    tags.foot === "designated" ||
+    tags.sidewalk
+  ) {
+    return "pedestrian";
+  }
+  if (
+    tags.amenity === "bicycle_parking" ||
+    tags.amenity === "charging_station" ||
+    tags.amenity === "parking" ||
+    tags.car_sharing ||
+    tags.busway ||
+    tags["lanes:bus"] ||
+    tags["bus:lanes"]
+  ) {
+    return "support";
+  }
+  return undefined;
+}
+
+function classifyPoiCategory(tags?: Record<string, string>): string | undefined {
+  if (!tags) return undefined;
+  const amenity = tags.amenity;
+  const shop = tags.shop;
+  const tourism = tags.tourism;
+  const leisure = tags.leisure;
+  const healthcare = tags.healthcare;
+  const office = tags.office;
+
+  if (
+    ["school", "kindergarten", "childcare", "college", "university", "library"].includes(
+      amenity ?? "",
+    )
+  ) {
+    return "education";
+  }
+  if (
+    healthcare ||
+    ["hospital", "clinic", "doctors", "dentist", "pharmacy", "social_facility"].includes(
+      amenity ?? "",
+    )
+  ) {
+    return "health";
+  }
+  if (
+    ["townhall", "courthouse", "police", "fire_station", "post_office", "community_centre", "arts_centre", "place_of_worship"].includes(
+      amenity ?? "",
+    ) ||
+    office === "government"
+  ) {
+    return "civic";
+  }
+  if (shop || ["marketplace", "bank", "atm"].includes(amenity ?? "")) {
+    return "commerce";
+  }
+  if (
+    ["restaurant", "cafe", "bar", "pub", "fast_food", "biergarten", "food_court"].includes(
+      amenity ?? "",
+    ) ||
+    tourism === "gallery" ||
+    tourism === "museum"
+  ) {
+    return "food_culture";
+  }
+  if (
+    tourism ||
+    ["sports_centre", "fitness_centre", "playground", "pitch", "swimming_pool", "park", "garden", "recreation_ground"].includes(
+      leisure ?? "",
+    )
+  ) {
+    return "leisure_tourism";
+  }
   return undefined;
 }
 
@@ -262,12 +387,12 @@ export const overpassModules: OverpassModule[] = [
   },
   {
     id: "buildings",
-    scale: "M",
-    radiusMeters: 180,
+    scale: "L",
+    radiusMeters: 500,
     buildQuery: (params) =>
       buildQuery([
         `way["building"]${around(params)};`,
-        `relation["building"]${around(params)};`,
+        `way["building:part"]${around(params)};`,
       ]),
     parse: parseOverpassElements,
   },
@@ -290,7 +415,9 @@ export const overpassModules: OverpassModule[] = [
       buildQuery([
         `way["landuse"]${around(params)};`,
         `way["leisure"]${around(params)};`,
+        `way["natural"~"wood|water|wetland|scrub|grassland|heath|bare_rock|sand"]${around(params)};`,
         `way["amenity"]${around(params)};`,
+        `way["tourism"]${around(params)};`,
       ]),
     parse: parseOverpassElements,
   },
@@ -303,6 +430,7 @@ export const overpassModules: OverpassModule[] = [
         `way["leisure"~"park|garden|recreation_ground"]${around(params)};`,
         `way["landuse"~"forest|grass|meadow|allotments|recreation_ground|cemetery"]${around(params)};`,
         `way["natural"~"wood|water|wetland"]${around(params)};`,
+        `way["water"]${around(params)};`,
         `way["waterway"]${around(params)};`,
         `node["natural"="tree"]${around(params)};`,
       ]),
@@ -326,7 +454,29 @@ export const overpassModules: OverpassModule[] = [
     id: "transportLines",
     scale: "L",
     radiusMeters: 1000,
-    buildQuery: (params) => `${buildHeader(20)}
+    buildQuery: (params) => {
+      const routeAround = around({
+        ...params,
+        radiusMeters: Math.min(params.radiusMeters, 450),
+      });
+      return `${buildHeader(20)}
+relation["type"="route"]["route"~"bus|tram|subway|light_rail"]${routeAround}->.pt_routes;
+(
+  .pt_routes;
+  way(r.pt_routes)${around(params)};
+  way["railway"~"tram|light_rail|subway|rail"]${around(params)};
+  way["highway"="busway"]${around(params)};
+  way["busway"]${around(params)};
+  way["bus"="yes"]${around(params)};
+  way["lanes:bus"]${around(params)};
+  way["bus:lanes"]${around(params)};
+  way["bus:lanes:forward"]${around(params)};
+  way["bus:lanes:backward"]${around(params)};
+  way["public_transport"="platform"]${around(params)};
+);
+${output()}`;
+    },
+    buildFallbackQuery: (params) => `${buildHeader(16)}
 (
   way["railway"~"tram|light_rail|subway|rail"]${around(params)};
   way["highway"="busway"]${around(params)};
@@ -334,6 +484,8 @@ export const overpassModules: OverpassModule[] = [
   way["bus"="yes"]${around(params)};
   way["lanes:bus"]${around(params)};
   way["bus:lanes"]${around(params)};
+  way["bus:lanes:forward"]${around(params)};
+  way["bus:lanes:backward"]${around(params)};
   way["public_transport"="platform"]${around(params)};
 );
 ${output()}`,
@@ -346,14 +498,19 @@ ${output()}`,
     buildQuery: (params) =>
       buildQuery([
         `way["highway"~"cycleway|path|footway|pedestrian|busway"]${around(params)};`,
+        `way["sidewalk"]${around(params)};`,
         `way["cycleway"]${around(params)};`,
         `way["cycleway:left"]${around(params)};`,
         `way["cycleway:right"]${around(params)};`,
         `way["cycleway:both"]${around(params)};`,
+        `way["bicycle"="designated"]${around(params)};`,
+        `way["foot"="designated"]${around(params)};`,
         `way["busway"]${around(params)};`,
         `way["bus"="yes"]${around(params)};`,
         `way["lanes:bus"]${around(params)};`,
         `way["bus:lanes"]${around(params)};`,
+        `way["bus:lanes:forward"]${around(params)};`,
+        `way["bus:lanes:backward"]${around(params)};`,
         `node["amenity"~"bicycle_parking|charging_station|parking"]${around(params)};`,
         `node["car_sharing"]${around(params)};`,
       ]),
@@ -365,8 +522,13 @@ ${output()}`,
     radiusMeters: 500,
     buildQuery: (params) =>
       buildQuery([
-        `node["amenity"~"school|kindergarten|library|community_centre|clinic|doctors|theatre|cafe|restaurant"]${around(params)};`,
+        `nwr["amenity"~"school|kindergarten|childcare|college|university|library|hospital|clinic|doctors|dentist|pharmacy|social_facility|townhall|courthouse|police|fire_station|post_office|community_centre|arts_centre|place_of_worship|marketplace|bank|atm|theatre|cinema|restaurant|cafe|bar|pub|fast_food|biergarten|food_court"]${around(params)};`,
+        `nwr["healthcare"]${around(params)};`,
         `node["shop"]${around(params)};`,
+        `way["shop"]${around(params)};`,
+        `nwr["tourism"~"museum|gallery|attraction|viewpoint|hotel|hostel|guest_house|information"]${around(params)};`,
+        `nwr["leisure"~"sports_centre|fitness_centre|playground|pitch|swimming_pool|park|garden|recreation_ground"]${around(params)};`,
+        `nwr["office"~"government|coworking"]${around(params)};`,
       ]),
     parse: parseOverpassElements,
   },

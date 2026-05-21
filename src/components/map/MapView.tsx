@@ -1,8 +1,11 @@
-import maplibregl, { type GeoJSONSource, type Map as MapLibreMap } from "maplibre-gl";
+import maplibregl, {
+  type GeoJSONSource,
+  type Map as MapLibreMap,
+} from "maplibre-gl";
 import type { MutableRefObject } from "react";
 import { useEffect, useRef, useState } from "react";
 import { searchPlaces } from "../../lib/api/geocoding";
-import { srtmWmsTileUrl } from "../../lib/data/publicGeoServices";
+import { googleSatelliteTileUrl, srtmWmsTileUrl } from "../../lib/data/publicGeoServices";
 import { openFreeMapStyle } from "../../lib/tiles/openFreeMapStyle";
 import {
   ZENSUS_WMS_DISPLAY_LAYER,
@@ -31,9 +34,11 @@ const MAP_LAYER_COLORS = {
   zensusHigh: "#d45a33",
   zensusMissing: "#8a8f8a",
   xlSource: "#f97316",
+  urbanAtlas: "#8b5cf6",
   buffer: "#e5e7eb",
   selected: "#ffffff",
   green: "#31d158",
+  blue: "#0ea5e9",
   tree: "#16a34a",
   building: "#60a5fa",
   street: "#f8fafc",
@@ -44,11 +49,23 @@ const MAP_LAYER_COLORS = {
   transportRail: "#a78bfa",
   transportLightRail: "#31d158",
   mobility: "#22d3ee",
+  mobilityBike: "#06b6d4",
+  mobilityPedestrian: "#14b8a6",
+  mobilitySupport: "#f59e0b",
   poi: "#fb7185",
+  poiEducation: "#2563eb",
+  poiHealth: "#dc2626",
+  poiCivic: "#7c3aed",
+  poiCommerce: "#f97316",
+  poiFoodCulture: "#e11d48",
+  poiLeisureTourism: "#16a34a",
   barrier: "#ef4444",
   development: "#f97316",
   sun: "#fde047",
 } as const;
+
+const LOCAL_TRANSIT_MODES = ["bus", "tram", "subway", "transit"];
+const RAIL_TRANSIT_MODES = ["light_rail", "rail"];
 
 export function MapView({
   analysis,
@@ -275,15 +292,23 @@ export function MapView({
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !map.getSource("selected-point")) return;
+    if (!analysis) {
+      hideAnalysisLayers(map);
+      return;
+    }
     applyLayerVisibility(map, layers, activeScale);
-  }, [layers, activeScale]);
+  }, [analysis, layers, activeScale]);
 
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !map.isStyleLoaded()) return;
     updateZensusWmsLayer(map, zensusLayer);
+    if (!analysis) {
+      hideAnalysisLayers(map);
+      return;
+    }
     applyLayerVisibility(map, layers, activeScale);
-  }, [zensusLayer, layers, activeScale]);
+  }, [analysis, zensusLayer, layers, activeScale]);
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -612,13 +637,26 @@ function getLegendItems(
     }
   }
   if (activeScale === "L") {
-    if (layers.green) items.push({ label: "Green / blue", color: MAP_LAYER_COLORS.green });
-    items.push({ label: "Transit stops", color: MAP_LAYER_COLORS.transport });
-    const transportBreakdown = getTransportBreakdown(analysis);
-    for (const item of transportBreakdown) items.push(item);
-    items.push({ label: "Mobility", color: MAP_LAYER_COLORS.mobility });
-    items.push({ label: "POI / civic", color: MAP_LAYER_COLORS.poi });
-    items.push({ label: "Development hints", color: MAP_LAYER_COLORS.development });
+    if (layers.urbanAtlas) items.push({ label: "Urban Atlas", color: MAP_LAYER_COLORS.urbanAtlas });
+    if (layers.green) items.push({ label: "Green", color: MAP_LAYER_COLORS.green });
+    if (layers.blue) items.push({ label: "Blue / water", color: MAP_LAYER_COLORS.blue });
+    if (layers.buildingFootprints) items.push({ label: "OSM buildings", color: MAP_LAYER_COLORS.building });
+    if (layers.transportAll) items.push({ label: "All transport lines", color: "#ff7a00" });
+    if (layers.transitBus) items.push({ label: "Bus lines", color: MAP_LAYER_COLORS.transportBus });
+    if (layers.transitTram) items.push({ label: "Tram lines", color: MAP_LAYER_COLORS.transportTram });
+    if (layers.transitSubway) items.push({ label: "Subway lines", color: MAP_LAYER_COLORS.transportSubway });
+    if (layers.transitLightRail) items.push({ label: "Light rail", color: MAP_LAYER_COLORS.transportLightRail });
+    if (layers.transitRail) items.push({ label: "Rail lines", color: MAP_LAYER_COLORS.transportRail });
+    if (layers.mobilityBike) items.push({ label: "Bike routes", color: MAP_LAYER_COLORS.mobilityBike });
+    if (layers.mobilityPedestrian) items.push({ label: "Pedestrian routes", color: MAP_LAYER_COLORS.mobilityPedestrian });
+    if (layers.mobilitySupport) items.push({ label: "Mobility support", color: MAP_LAYER_COLORS.mobilitySupport });
+    if (layers.poiEducation) items.push({ label: "POI education", color: MAP_LAYER_COLORS.poiEducation });
+    if (layers.poiHealth) items.push({ label: "POI health", color: MAP_LAYER_COLORS.poiHealth });
+    if (layers.poiCivic) items.push({ label: "POI civic", color: MAP_LAYER_COLORS.poiCivic });
+    if (layers.poiCommerce) items.push({ label: "POI commerce", color: MAP_LAYER_COLORS.poiCommerce });
+    if (layers.poiFoodCulture) items.push({ label: "POI food/culture", color: MAP_LAYER_COLORS.poiFoodCulture });
+    if (layers.poiLeisureTourism) items.push({ label: "POI leisure/tourism", color: MAP_LAYER_COLORS.poiLeisureTourism });
+    if (layers.development) items.push({ label: "Development hints", color: MAP_LAYER_COLORS.development });
   }
   if (activeScale === "M") {
     items.push({ label: "Street segment", color: MAP_LAYER_COLORS.street });
@@ -688,7 +726,10 @@ function escapeHtml(value: string): string {
   });
 }
 
-function getTransportBreakdown(analysis: AnalysisResult): Array<{
+function getTransportBreakdown(
+  analysis: AnalysisResult,
+  activeModes: string[],
+): Array<{
   label: string;
   color: string;
   count: number;
@@ -706,6 +747,7 @@ function getTransportBreakdown(analysis: AnalysisResult): Array<{
       color: mode.color,
       count: analysis.overlays.transport.features.filter(
         (feature) =>
+          activeModes.includes(String(feature.properties?.transportMode ?? "")) &&
           feature.geometry.type === "LineString" &&
           feature.properties?.transportMode === mode.mode,
       ).length,
@@ -713,7 +755,12 @@ function getTransportBreakdown(analysis: AnalysisResult): Array<{
     .filter((item) => item.count > 0);
 }
 
+function transportModeFilter(modes: string[]) {
+  return ["match", ["get", "transportMode"], modes, true, false] as any;
+}
+
 function addAnalysisSourcesAndLayers(map: MapLibreMap): void {
+  ensureGoogleSatelliteLayer(map);
   ensureZensusWmsLayer(map, ZENSUS_WMS_DISPLAY_LAYER);
   ensureSrtmWmsLayer(map);
 
@@ -722,9 +769,11 @@ function addAnalysisSourcesAndLayers(map: MapLibreMap): void {
     "xl-context",
     "xl-grid",
     "xl-sources",
+    "urban-atlas-overlay",
     "l-buffer",
     "m-street-segment",
     "green-overlay",
+    "blue-overlay",
     "tree-overlay",
     "building-overlay",
     "poi-overlay",
@@ -860,6 +909,27 @@ function addAnalysisSourcesAndLayers(map: MapLibreMap): void {
     },
   });
   addLayerIfMissing(map, {
+    id: "urban-atlas-fill",
+    type: "fill",
+    source: "urban-atlas-overlay",
+    filter: ["==", ["geometry-type"], "Polygon"],
+    paint: {
+      "fill-color": MAP_LAYER_COLORS.urbanAtlas,
+      "fill-opacity": 0.16,
+    },
+  });
+  addLayerIfMissing(map, {
+    id: "urban-atlas-line",
+    type: "line",
+    source: "urban-atlas-overlay",
+    filter: ["==", ["geometry-type"], "Polygon"],
+    paint: {
+      "line-color": MAP_LAYER_COLORS.urbanAtlas,
+      "line-width": 0.8,
+      "line-opacity": 0.85,
+    },
+  });
+  addLayerIfMissing(map, {
     id: "l-buffer-line",
     type: "line",
     source: "l-buffer",
@@ -890,6 +960,25 @@ function addAnalysisSourcesAndLayers(map: MapLibreMap): void {
     },
   });
   addLayerIfMissing(map, {
+    id: "blue-fill",
+    type: "fill",
+    source: "blue-overlay",
+    paint: {
+      "fill-color": MAP_LAYER_COLORS.blue,
+      "fill-opacity": 0.3,
+    },
+  });
+  addLayerIfMissing(map, {
+    id: "blue-outline",
+    type: "line",
+    source: "blue-overlay",
+    paint: {
+      "line-color": MAP_LAYER_COLORS.blue,
+      "line-width": 1.1,
+      "line-opacity": 0.95,
+    },
+  });
+  addLayerIfMissing(map, {
     id: "mobility-lines",
     type: "line",
     source: "mobility-overlay",
@@ -900,6 +989,51 @@ function addAnalysisSourcesAndLayers(map: MapLibreMap): void {
       "line-dasharray": [2, 2],
     },
   });
+  addLayerIfMissing(map, {
+    id: "mobility-lines-bike",
+    type: "line",
+    source: "mobility-overlay",
+    filter: ["all", ["==", ["geometry-type"], "LineString"], ["==", ["get", "mobilityMode"], "bike"]],
+    paint: {
+      "line-color": MAP_LAYER_COLORS.mobilityBike,
+      "line-width": ["interpolate", ["linear"], ["zoom"], 12, 1.2, 15, 2.8, 17, 4.8],
+      "line-opacity": 0.9,
+    },
+  });
+  addLayerIfMissing(map, {
+    id: "mobility-lines-pedestrian",
+    type: "line",
+    source: "mobility-overlay",
+    filter: ["all", ["==", ["geometry-type"], "LineString"], ["==", ["get", "mobilityMode"], "pedestrian"]],
+    paint: {
+      "line-color": MAP_LAYER_COLORS.mobilityPedestrian,
+      "line-width": ["interpolate", ["linear"], ["zoom"], 12, 0.9, 15, 2.1, 17, 3.4],
+      "line-opacity": 0.74,
+      "line-dasharray": [2, 1.5],
+    },
+  });
+  addLayerIfMissing(map, {
+    id: "mobility-lines-support",
+    type: "line",
+    source: "mobility-overlay",
+    filter: ["all", ["==", ["geometry-type"], "LineString"], ["==", ["get", "mobilityMode"], "support"]],
+    paint: {
+      "line-color": MAP_LAYER_COLORS.mobilitySupport,
+      "line-width": 1.8,
+      "line-opacity": 0.75,
+      "line-dasharray": [1, 2],
+    },
+  });
+  addLayerIfMissing(map, {
+    id: "mobility-areas",
+    type: "fill",
+    source: "mobility-overlay",
+    filter: ["==", ["geometry-type"], "Polygon"],
+    paint: {
+      "fill-color": MAP_LAYER_COLORS.mobility,
+      "fill-opacity": 0.14,
+    },
+  }, "mobility-lines");
   addLayerIfMissing(map, {
     id: "barrier-lines",
     type: "line",
@@ -921,6 +1055,27 @@ function addAnalysisSourcesAndLayers(map: MapLibreMap): void {
     },
   });
   addLayerIfMissing(map, {
+    id: "building-footprints-fill",
+    type: "fill",
+    source: "building-overlay",
+    filter: ["==", ["geometry-type"], "Polygon"],
+    paint: {
+      "fill-color": "#9ca3af",
+      "fill-opacity": 0.26,
+    },
+  });
+  addLayerIfMissing(map, {
+    id: "building-footprints-outline",
+    type: "line",
+    source: "building-overlay",
+    filter: ["==", ["geometry-type"], "Polygon"],
+    paint: {
+      "line-color": "#374151",
+      "line-width": 0.8,
+      "line-opacity": 0.86,
+    },
+  });
+  addLayerIfMissing(map, {
     id: "poi-points",
     type: "circle",
     source: "poi-overlay",
@@ -933,10 +1088,185 @@ function addAnalysisSourcesAndLayers(map: MapLibreMap): void {
     },
   });
   addLayerIfMissing(map, {
-    id: "transport-lines",
+    id: "poi-education-points",
+    type: "circle",
+    source: "poi-overlay",
+    filter: ["all", ["==", ["geometry-type"], "Point"], ["==", ["get", "poiCategory"], "education"]],
+    paint: {
+      "circle-radius": 4.5,
+      "circle-color": MAP_LAYER_COLORS.poiEducation,
+      "circle-stroke-color": "#000000",
+      "circle-stroke-width": 1,
+    },
+  });
+  addLayerIfMissing(map, {
+    id: "poi-health-points",
+    type: "circle",
+    source: "poi-overlay",
+    filter: ["all", ["==", ["geometry-type"], "Point"], ["==", ["get", "poiCategory"], "health"]],
+    paint: {
+      "circle-radius": 4.5,
+      "circle-color": MAP_LAYER_COLORS.poiHealth,
+      "circle-stroke-color": "#000000",
+      "circle-stroke-width": 1,
+    },
+  });
+  addLayerIfMissing(map, {
+    id: "poi-civic-points",
+    type: "circle",
+    source: "poi-overlay",
+    filter: ["all", ["==", ["geometry-type"], "Point"], ["==", ["get", "poiCategory"], "civic"]],
+    paint: {
+      "circle-radius": 4.5,
+      "circle-color": MAP_LAYER_COLORS.poiCivic,
+      "circle-stroke-color": "#000000",
+      "circle-stroke-width": 1,
+    },
+  });
+  addLayerIfMissing(map, {
+    id: "poi-commerce-points",
+    type: "circle",
+    source: "poi-overlay",
+    filter: ["all", ["==", ["geometry-type"], "Point"], ["==", ["get", "poiCategory"], "commerce"]],
+    paint: {
+      "circle-radius": 3.8,
+      "circle-color": MAP_LAYER_COLORS.poiCommerce,
+      "circle-stroke-color": "#000000",
+      "circle-stroke-width": 0.8,
+    },
+  });
+  addLayerIfMissing(map, {
+    id: "poi-food-culture-points",
+    type: "circle",
+    source: "poi-overlay",
+    filter: ["all", ["==", ["geometry-type"], "Point"], ["==", ["get", "poiCategory"], "food_culture"]],
+    paint: {
+      "circle-radius": 3.8,
+      "circle-color": MAP_LAYER_COLORS.poiFoodCulture,
+      "circle-stroke-color": "#000000",
+      "circle-stroke-width": 0.8,
+    },
+  });
+  addLayerIfMissing(map, {
+    id: "poi-leisure-tourism-points",
+    type: "circle",
+    source: "poi-overlay",
+    filter: ["all", ["==", ["geometry-type"], "Point"], ["==", ["get", "poiCategory"], "leisure_tourism"]],
+    paint: {
+      "circle-radius": 4,
+      "circle-color": MAP_LAYER_COLORS.poiLeisureTourism,
+      "circle-stroke-color": "#000000",
+      "circle-stroke-width": 0.8,
+    },
+  });
+  addLayerIfMissing(map, {
+    id: "transport-lines-debug",
     type: "line",
     source: "transport-overlay",
     filter: ["==", ["geometry-type"], "LineString"],
+    paint: {
+      "line-color": "#ff7a00",
+      "line-width": [
+        "interpolate",
+        ["linear"],
+        ["zoom"],
+        12,
+        1,
+        15,
+        2.2,
+        17,
+        3.4,
+      ],
+      "line-opacity": 0.78,
+    },
+  });
+  addLayerIfMissing(map, {
+    id: "transport-lines-bus",
+    type: "line",
+    source: "transport-overlay",
+    filter: ["all", ["==", ["geometry-type"], "LineString"], ["==", ["get", "transportMode"], "bus"]],
+    paint: {
+      "line-color": MAP_LAYER_COLORS.transportBus,
+      "line-width": ["interpolate", ["linear"], ["zoom"], 12, 1.1, 15, 2.6, 17, 4.5],
+      "line-opacity": 0.92,
+      "line-offset": -1.5,
+    },
+  });
+  addLayerIfMissing(map, {
+    id: "transport-lines-tram",
+    type: "line",
+    source: "transport-overlay",
+    filter: ["all", ["==", ["geometry-type"], "LineString"], ["==", ["get", "transportMode"], "tram"]],
+    paint: {
+      "line-color": MAP_LAYER_COLORS.transportTram,
+      "line-width": ["interpolate", ["linear"], ["zoom"], 12, 1.2, 15, 2.8, 17, 5],
+      "line-opacity": 0.92,
+      "line-offset": 0,
+    },
+  });
+  addLayerIfMissing(map, {
+    id: "transport-lines-subway",
+    type: "line",
+    source: "transport-overlay",
+    filter: ["all", ["==", ["geometry-type"], "LineString"], ["==", ["get", "transportMode"], "subway"]],
+    paint: {
+      "line-color": MAP_LAYER_COLORS.transportSubway,
+      "line-width": ["interpolate", ["linear"], ["zoom"], 12, 1.2, 15, 2.8, 17, 5],
+      "line-opacity": 0.92,
+      "line-offset": 1.5,
+    },
+  });
+  addLayerIfMissing(map, {
+    id: "transport-lines-light-rail",
+    type: "line",
+    source: "transport-overlay",
+    filter: ["all", ["==", ["geometry-type"], "LineString"], ["==", ["get", "transportMode"], "light_rail"]],
+    paint: {
+      "line-color": MAP_LAYER_COLORS.transportLightRail,
+      "line-width": ["interpolate", ["linear"], ["zoom"], 12, 1, 15, 2.3, 17, 4],
+      "line-opacity": 0.86,
+      "line-dasharray": [4, 1.5],
+      "line-offset": 2.4,
+    },
+  });
+  addLayerIfMissing(map, {
+    id: "transport-lines-rail-only",
+    type: "line",
+    source: "transport-overlay",
+    filter: ["all", ["==", ["geometry-type"], "LineString"], ["==", ["get", "transportMode"], "rail"]],
+    paint: {
+      "line-color": MAP_LAYER_COLORS.transportRail,
+      "line-width": ["interpolate", ["linear"], ["zoom"], 12, 0.9, 15, 2, 17, 3.4],
+      "line-opacity": 0.78,
+      "line-dasharray": [3, 1.5],
+      "line-offset": 3.2,
+    },
+  });
+  addLayerIfMissing(map, {
+    id: "transport-lines-other",
+    type: "line",
+    source: "transport-overlay",
+    filter: [
+      "all",
+      ["==", ["geometry-type"], "LineString"],
+      ["!", transportModeFilter(["bus", "tram", "subway", "light_rail", "rail"])],
+    ],
+    paint: {
+      "line-color": MAP_LAYER_COLORS.transport,
+      "line-width": 1.4,
+      "line-opacity": 0.6,
+      "line-dasharray": [1, 2],
+    },
+  });
+  addLayerIfMissing(map, {
+    id: "transport-lines",
+    type: "line",
+    source: "transport-overlay",
+    filter: [
+      "all",
+      ["==", ["geometry-type"], "LineString"],
+      transportModeFilter(LOCAL_TRANSIT_MODES),
+    ],
     paint: {
       "line-color": [
         "match",
@@ -969,24 +1299,110 @@ function addAnalysisSourcesAndLayers(map: MapLibreMap): void {
         "match",
         ["get", "transportMode"],
         "bus",
-        -2,
+        -1.2,
         "tram",
         0,
         "subway",
-        2,
+        1.2,
         "light_rail",
-        4,
+        2.2,
         "rail",
-        6,
+        3.2,
         0,
       ],
     },
   });
   addLayerIfMissing(map, {
+    id: "transport-lines-rail",
+    type: "line",
+    source: "transport-overlay",
+    filter: [
+      "all",
+      ["==", ["geometry-type"], "LineString"],
+      transportModeFilter(RAIL_TRANSIT_MODES),
+    ],
+    paint: {
+      "line-color": [
+        "match",
+        ["get", "transportMode"],
+        "light_rail",
+        MAP_LAYER_COLORS.transportLightRail,
+        "rail",
+        MAP_LAYER_COLORS.transportRail,
+        MAP_LAYER_COLORS.transportRail,
+      ],
+      "line-width": [
+        "interpolate",
+        ["linear"],
+        ["zoom"],
+        12,
+        1,
+        15,
+        2.2,
+        17,
+        4,
+      ],
+      "line-opacity": 0.78,
+      "line-dasharray": [3, 1.5],
+    },
+  });
+  addLayerIfMissing(map, {
+    id: "transport-areas",
+    type: "fill",
+    source: "transport-overlay",
+    filter: [
+      "all",
+      ["==", ["geometry-type"], "Polygon"],
+      transportModeFilter(LOCAL_TRANSIT_MODES),
+    ],
+    paint: {
+      "fill-color": [
+        "match",
+        ["get", "transportMode"],
+        "bus",
+        MAP_LAYER_COLORS.transportBus,
+        "tram",
+        MAP_LAYER_COLORS.transportTram,
+        "subway",
+        MAP_LAYER_COLORS.transportSubway,
+        "light_rail",
+        MAP_LAYER_COLORS.transportLightRail,
+        "rail",
+        MAP_LAYER_COLORS.transportRail,
+        MAP_LAYER_COLORS.transport,
+      ],
+      "fill-opacity": 0.16,
+    },
+  }, "transport-lines");
+  addLayerIfMissing(map, {
+    id: "transport-areas-rail",
+    type: "fill",
+    source: "transport-overlay",
+    filter: [
+      "all",
+      ["==", ["geometry-type"], "Polygon"],
+      transportModeFilter(RAIL_TRANSIT_MODES),
+    ],
+    paint: {
+      "fill-color": [
+        "match",
+        ["get", "transportMode"],
+        "light_rail",
+        MAP_LAYER_COLORS.transportLightRail,
+        MAP_LAYER_COLORS.transportRail,
+      ],
+      "fill-opacity": 0.1,
+    },
+  }, "transport-lines-rail");
+  addLayerIfMissing(map, {
     id: "transport-points",
     type: "circle",
     source: "transport-overlay",
-    filter: ["==", ["geometry-type"], "Point"],
+    filter: [
+      "all",
+      ["==", ["geometry-type"], "Point"],
+      transportModeFilter([...LOCAL_TRANSIT_MODES, "station"]),
+    ],
     paint: {
       "circle-radius": 5,
       "circle-color": [
@@ -1009,6 +1425,22 @@ function addAnalysisSourcesAndLayers(map: MapLibreMap): void {
     },
   });
   addLayerIfMissing(map, {
+    id: "transport-points-rail",
+    type: "circle",
+    source: "transport-overlay",
+    filter: [
+      "all",
+      ["==", ["geometry-type"], "Point"],
+      transportModeFilter([...RAIL_TRANSIT_MODES, "station"]),
+    ],
+    paint: {
+      "circle-radius": 5.5,
+      "circle-color": MAP_LAYER_COLORS.transportRail,
+      "circle-stroke-color": "#000000",
+      "circle-stroke-width": 2,
+    },
+  });
+  addLayerIfMissing(map, {
     id: "mobility-points",
     type: "circle",
     source: "mobility-overlay",
@@ -1016,6 +1448,18 @@ function addAnalysisSourcesAndLayers(map: MapLibreMap): void {
     paint: {
       "circle-radius": 4,
       "circle-color": MAP_LAYER_COLORS.mobility,
+      "circle-stroke-color": "#000000",
+      "circle-stroke-width": 1,
+    },
+  });
+  addLayerIfMissing(map, {
+    id: "mobility-support-points",
+    type: "circle",
+    source: "mobility-overlay",
+    filter: ["all", ["==", ["geometry-type"], "Point"], ["==", ["get", "mobilityMode"], "support"]],
+    paint: {
+      "circle-radius": 4.5,
+      "circle-color": MAP_LAYER_COLORS.mobilitySupport,
       "circle-stroke-color": "#000000",
       "circle-stroke-width": 1,
     },
@@ -1272,9 +1716,37 @@ function ensureZensusWmsLayer(map: MapLibreMap, layer: string): void {
         "raster-opacity": 0.58,
         "raster-resampling": "nearest",
       },
+      layout: {
+        visibility: "none",
+      },
     },
     "xl-context-fill",
   );
+}
+
+function ensureGoogleSatelliteLayer(map: MapLibreMap): void {
+  const tileUrl = googleSatelliteTileUrl();
+  if (!tileUrl) return;
+  if (!map.getSource("google-satellite")) {
+    map.addSource("google-satellite", {
+      type: "raster",
+      tiles: [tileUrl],
+      tileSize: 256,
+      attribution: "Google Maps Platform",
+    });
+  }
+  addLayerIfMissing(map, {
+    id: "google-satellite-raster",
+    type: "raster",
+    source: "google-satellite",
+    paint: {
+      "raster-opacity": 0.86,
+      "raster-resampling": "linear",
+    },
+    layout: {
+      visibility: "none",
+    },
+  }, "landuse");
 }
 
 function ensureSrtmWmsLayer(map: MapLibreMap): void {
@@ -1293,6 +1765,9 @@ function ensureSrtmWmsLayer(map: MapLibreMap): void {
     paint: {
       "raster-opacity": 0.42,
       "raster-resampling": "linear",
+    },
+    layout: {
+      visibility: "none",
     },
   });
 }
@@ -1316,7 +1791,7 @@ function syncAnalysisToMap(
     markerRef.current?.remove();
     markerRef.current = null;
     clearAnalysisSources(map);
-    applyLayerVisibility(map, layers, activeScale);
+    hideAnalysisLayers(map);
     return;
   }
 
@@ -1328,9 +1803,11 @@ function syncAnalysisToMap(
   setSourceData(map, "xl-context", analysis.overlays.xlContext);
   setSourceData(map, "xl-grid", analysis.overlays.xlGrid);
   setSourceData(map, "xl-sources", analysis.overlays.xlSources);
+  setSourceData(map, "urban-atlas-overlay", analysis.overlays.urbanAtlas);
   setSourceData(map, "l-buffer", analysis.overlays.lBuffer);
   setSourceData(map, "m-street-segment", analysis.overlays.mStreetSegment);
   setSourceData(map, "green-overlay", analysis.overlays.green);
+  setSourceData(map, "blue-overlay", analysis.overlays.blue);
   setSourceData(map, "tree-overlay", analysis.overlays.trees);
   setSourceData(map, "building-overlay", analysis.overlays.buildings);
   setSourceData(map, "poi-overlay", analysis.overlays.pois);
@@ -1362,9 +1839,11 @@ function clearAnalysisSources(map: MapLibreMap): void {
     "xl-context",
     "xl-grid",
     "xl-sources",
+    "urban-atlas-overlay",
     "l-buffer",
     "m-street-segment",
     "green-overlay",
+    "blue-overlay",
     "tree-overlay",
     "building-overlay",
     "poi-overlay",
@@ -1411,36 +1890,132 @@ function applyLayerVisibility(
   layers: LayerState,
   activeScale: Scale,
 ): void {
-  setLayerVisibility(map, "building-extrusion", activeScale === "M" && layers["3D"]);
-  setLayerVisibility(map, "ofm-building-extrusion", activeScale === "M" && layers["3D"]);
-  setLayerVisibility(map, "tree-canopy-extrusion", activeScale === "M" && layers["3D"] && layers.trees);
-  setLayerVisibility(map, "tree-shadow-circles", activeScale === "M" && layers.trees);
-  setLayerVisibility(map, "tree-canopy-circles", activeScale === "M" && layers.trees);
-  setLayerVisibility(map, "tree-circles", activeScale !== "XL" && layers.trees);
-  setLayerVisibility(map, "sun-lines", activeScale === "M" && layers.sun);
-  setLayerVisibility(map, "section-user-line", activeScale === "M" && layers.section);
-  setLayerVisibility(map, "srtm-wms-raster", activeScale === "M" && layers.section);
-  setLayerVisibility(map, "green-fill", activeScale === "L" && layers.green);
-  setLayerVisibility(map, "green-outline", activeScale === "L" && layers.green);
-  setLayerVisibility(map, "xl-context-fill", activeScale === "XL");
-  setLayerVisibility(map, "xl-context-line", activeScale === "XL");
-  setLayerVisibility(map, "zensus-wms-raster", activeScale === "XL");
-  setLayerVisibility(map, "xl-grid-fill", activeScale === "XL");
-  setLayerVisibility(map, "xl-grid-line", activeScale === "XL");
-  setLayerVisibility(map, "xl-source-fill", activeScale === "XL");
-  setLayerVisibility(map, "xl-source-line", activeScale === "XL");
-  setLayerVisibility(map, "l-buffer-line", activeScale === "L");
-  setLayerVisibility(map, "poi-points", activeScale === "L");
-  setLayerVisibility(map, "transport-points", activeScale === "L");
-  setLayerVisibility(map, "transport-lines", activeScale === "L");
-  setLayerVisibility(map, "mobility-lines", activeScale === "L");
-  setLayerVisibility(map, "mobility-points", activeScale === "L");
-  setLayerVisibility(map, "development-fill", activeScale === "L");
-  setLayerVisibility(map, "development-points", activeScale === "L");
-  setLayerVisibility(map, "barrier-lines", activeScale === "M");
-  setLayerVisibility(map, "barrier-points", activeScale === "M");
-  setLayerVisibility(map, "m-street-line", activeScale === "M");
-  setLayerVisibility(map, "m-corridor-fill", activeScale === "M");
+  void activeScale;
+  setLayerVisibility(map, "building-extrusion", layers["3D"]);
+  setLayerVisibility(map, "ofm-building-extrusion", layers["3D"]);
+  setLayerVisibility(map, "google-satellite-raster", layers.googleSatellite);
+  setLayerVisibility(map, "tree-canopy-extrusion", layers["3D"] && layers.trees);
+  setLayerVisibility(map, "tree-shadow-circles", layers.trees);
+  setLayerVisibility(map, "tree-canopy-circles", layers.trees);
+  setLayerVisibility(map, "tree-circles", layers.trees);
+  setLayerVisibility(map, "sun-lines", layers.sun);
+  setLayerVisibility(map, "section-user-line", layers.section);
+  setLayerVisibility(map, "srtm-wms-raster", layers.srtm);
+  setLayerVisibility(map, "green-fill", layers.green);
+  setLayerVisibility(map, "green-outline", layers.green);
+  setLayerVisibility(map, "blue-fill", layers.blue);
+  setLayerVisibility(map, "blue-outline", layers.blue);
+  setLayerVisibility(map, "xl-context-fill", layers.xlContext);
+  setLayerVisibility(map, "xl-context-line", layers.xlContext);
+  setLayerVisibility(map, "zensus-wms-raster", layers.zensusWms);
+  setLayerVisibility(map, "xl-grid-fill", layers.xlGrid);
+  setLayerVisibility(map, "xl-grid-line", layers.xlGrid);
+  setLayerVisibility(map, "xl-source-fill", layers.xlSources);
+  setLayerVisibility(map, "xl-source-line", layers.xlSources);
+  setLayerVisibility(map, "urban-atlas-fill", layers.urbanAtlas);
+  setLayerVisibility(map, "urban-atlas-line", layers.urbanAtlas);
+  setLayerVisibility(map, "l-buffer-line", layers.lBuffer);
+  setLayerVisibility(map, "poi-points", layers.pois);
+  setLayerVisibility(map, "poi-education-points", layers.poiEducation);
+  setLayerVisibility(map, "poi-health-points", layers.poiHealth);
+  setLayerVisibility(map, "poi-civic-points", layers.poiCivic);
+  setLayerVisibility(map, "poi-commerce-points", layers.poiCommerce);
+  setLayerVisibility(map, "poi-food-culture-points", layers.poiFoodCulture);
+  setLayerVisibility(map, "poi-leisure-tourism-points", layers.poiLeisureTourism);
+  setLayerVisibility(map, "transport-lines-debug", layers.transportAll);
+  setLayerVisibility(map, "transport-lines-bus", layers.transitBus);
+  setLayerVisibility(map, "transport-lines-tram", layers.transitTram);
+  setLayerVisibility(map, "transport-lines-subway", layers.transitSubway);
+  setLayerVisibility(map, "transport-lines-light-rail", layers.transitLightRail);
+  setLayerVisibility(map, "transport-lines-rail-only", layers.transitRail);
+  setLayerVisibility(map, "transport-lines-other", layers.transitOther);
+  setLayerVisibility(map, "transport-points", layers.transitLocal);
+  setLayerVisibility(map, "transport-lines", layers.transitLocal);
+  setLayerVisibility(map, "transport-areas", layers.transitLocal);
+  setLayerVisibility(map, "transport-points-rail", layers.transitRegional);
+  setLayerVisibility(map, "transport-lines-rail", layers.transitRegional);
+  setLayerVisibility(map, "transport-areas-rail", layers.transitRegional);
+  setLayerVisibility(map, "mobility-lines", layers.mobility);
+  setLayerVisibility(map, "mobility-lines-bike", layers.mobilityBike);
+  setLayerVisibility(map, "mobility-lines-pedestrian", layers.mobilityPedestrian);
+  setLayerVisibility(map, "mobility-lines-support", layers.mobilitySupport);
+  setLayerVisibility(map, "mobility-areas", layers.mobility);
+  setLayerVisibility(map, "mobility-points", layers.mobility);
+  setLayerVisibility(map, "mobility-support-points", layers.mobilitySupport);
+  setLayerVisibility(map, "development-fill", layers.development);
+  setLayerVisibility(map, "development-points", layers.development);
+  setLayerVisibility(map, "building-footprints-fill", layers.buildingFootprints);
+  setLayerVisibility(map, "building-footprints-outline", layers.buildingFootprints);
+  setLayerVisibility(map, "barrier-lines", false);
+  setLayerVisibility(map, "barrier-points", false);
+  setLayerVisibility(map, "m-street-line", layers.streets);
+  setLayerVisibility(map, "m-corridor-fill", layers.streets);
+}
+
+function hideAnalysisLayers(map: MapLibreMap): void {
+  for (const id of [
+    "google-satellite-raster",
+    "building-extrusion",
+    "ofm-building-extrusion",
+    "tree-canopy-extrusion",
+    "tree-shadow-circles",
+    "tree-canopy-circles",
+    "tree-circles",
+    "sun-lines",
+    "section-user-line",
+    "srtm-wms-raster",
+    "green-fill",
+    "green-outline",
+    "blue-fill",
+    "blue-outline",
+    "xl-context-fill",
+    "xl-context-line",
+    "zensus-wms-raster",
+    "xl-grid-fill",
+    "xl-grid-line",
+    "xl-source-fill",
+    "xl-source-line",
+    "urban-atlas-fill",
+    "urban-atlas-line",
+    "l-buffer-line",
+    "poi-points",
+    "poi-education-points",
+    "poi-health-points",
+    "poi-civic-points",
+    "poi-commerce-points",
+    "poi-food-culture-points",
+    "poi-leisure-tourism-points",
+    "transport-lines-debug",
+    "transport-lines-bus",
+    "transport-lines-tram",
+    "transport-lines-subway",
+    "transport-lines-light-rail",
+    "transport-lines-rail-only",
+    "transport-lines-other",
+    "transport-points",
+    "transport-lines",
+    "transport-areas",
+    "transport-points-rail",
+    "transport-lines-rail",
+    "transport-areas-rail",
+    "mobility-lines",
+    "mobility-lines-bike",
+    "mobility-lines-pedestrian",
+    "mobility-lines-support",
+    "mobility-areas",
+    "mobility-points",
+    "mobility-support-points",
+    "development-fill",
+    "development-points",
+    "building-footprints-fill",
+    "building-footprints-outline",
+    "barrier-lines",
+    "barrier-points",
+    "m-street-line",
+    "m-corridor-fill",
+  ]) {
+    setLayerVisibility(map, id, false);
+  }
 }
 
 function applyBaseMapTheme(map: MapLibreMap, invert: boolean): void {

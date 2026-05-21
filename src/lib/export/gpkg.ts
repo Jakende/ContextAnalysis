@@ -54,6 +54,12 @@ export async function analysisToGpkgBlob(
       collection: onlyGeometry(analysis.overlays.xlSources, "Polygon"),
     },
     {
+      name: "urban_atlas",
+      geometryType: "POLYGON",
+      collection: onlyGeometry(analysis.overlays.urbanAtlas, "Polygon"),
+      styleRole: "urban-atlas",
+    },
+    {
       name: "m_street_segment",
       geometryType: "LINESTRING",
       collection: onlyGeometry(analysis.overlays.mStreetSegment, "LineString"),
@@ -118,10 +124,16 @@ export async function analysisToGpkgBlob(
       styleRole: "barrier",
     },
     {
-      name: "green_blue",
+      name: "green",
       geometryType: "POLYGON",
       collection: onlyGeometry(analysis.overlays.green, "Polygon"),
       styleRole: "green",
+    },
+    {
+      name: "blue_water",
+      geometryType: "POLYGON",
+      collection: onlyGeometry(analysis.overlays.blue, "Polygon"),
+      styleRole: "blue",
     },
     {
       name: "buildings",
@@ -391,7 +403,9 @@ function styleForFeature(table: GeometryTable, feature: Feature): {
     };
   }
   const styles: Record<string, { color: string; opacity: number; width: number; symbol: string }> = {
-    green: { color: "#31d158", opacity: 0.42, width: 0.8, symbol: "green-blue-fill" },
+    "urban-atlas": { color: "#8b5cf6", opacity: 0.24, width: 0.8, symbol: "urban-atlas-purple-fill" },
+    green: { color: "#31d158", opacity: 0.42, width: 0.8, symbol: "green-fill" },
+    blue: { color: "#0ea5e9", opacity: 0.42, width: 0.9, symbol: "water-blue-fill" },
     transport: { color: "#facc15", opacity: 0.95, width: 5, symbol: "transit-stop-circle" },
     "transport-line": { color: "#facc15", opacity: 0.92, width: 2.8, symbol: "transit-line-by-mode" },
     mobility: { color: "#22d3ee", opacity: 0.9, width: table.geometryType === "LINESTRING" ? 2.2 : 4, symbol: "mobility-cyan" },
