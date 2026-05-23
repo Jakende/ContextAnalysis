@@ -661,9 +661,17 @@ function featureBbox(feature: Feature): [number, number, number, number] | null 
   const coords: number[][] = [];
   collectGeometryCoordinates(feature.geometry, coords);
   if (!coords.length) return null;
-  const xs = coords.map(([x]) => x);
-  const ys = coords.map(([, y]) => y);
-  return [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
+  let west = Infinity;
+  let south = Infinity;
+  let east = -Infinity;
+  let north = -Infinity;
+  for (const [x, y] of coords) {
+    west = Math.min(west, x);
+    south = Math.min(south, y);
+    east = Math.max(east, x);
+    north = Math.max(north, y);
+  }
+  return [west, south, east, north];
 }
 
 function collectGeometryCoordinates(

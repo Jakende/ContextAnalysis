@@ -125,14 +125,18 @@ export async function svgToPngBlob(svg: string): Promise<Blob> {
 function getBounds(features: Feature[]): [number, number, number, number] {
   const coords: number[][] = [];
   for (const feature of features) collectCoords(feature.geometry, coords);
-  const xs = coords.map(([x]) => x);
-  const ys = coords.map(([, y]) => y);
-  return [
-    Math.min(...xs),
-    Math.min(...ys),
-    Math.max(...xs),
-    Math.max(...ys),
-  ];
+  if (!coords.length) return [0, 0, 0, 0];
+  let west = Infinity;
+  let south = Infinity;
+  let east = -Infinity;
+  let north = -Infinity;
+  for (const [x, y] of coords) {
+    west = Math.min(west, x);
+    south = Math.min(south, y);
+    east = Math.max(east, x);
+    north = Math.max(north, y);
+  }
+  return [west, south, east, north];
 }
 
 function collectCoords(geometry: Geometry, coords: number[][]): void {

@@ -287,6 +287,11 @@ function convertWithOgr2ogr(inputPath, workingDirValue, bboxValue) {
         String(bboxValue.south),
         String(bboxValue.east),
         String(bboxValue.north),
+        "-clipdst",
+        String(bboxValue.west),
+        String(bboxValue.south),
+        String(bboxValue.east),
+        String(bboxValue.north),
       ]
     : [];
   const result = spawnSync(

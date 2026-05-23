@@ -440,12 +440,17 @@ function boundsFor(collection: FeatureCollection): [number, number, number, numb
   const coords: number[][] = [];
   for (const feature of collection.features) collectCoords(feature.geometry, coords);
   if (!coords.length) return [0, 0, 0, 0];
-  return [
-    Math.min(...coords.map(([x]) => x)),
-    Math.min(...coords.map(([, y]) => y)),
-    Math.max(...coords.map(([x]) => x)),
-    Math.max(...coords.map(([, y]) => y)),
-  ];
+  let west = Infinity;
+  let south = Infinity;
+  let east = -Infinity;
+  let north = -Infinity;
+  for (const [x, y] of coords) {
+    west = Math.min(west, x);
+    south = Math.min(south, y);
+    east = Math.max(east, x);
+    north = Math.max(north, y);
+  }
+  return [west, south, east, north];
 }
 
 function collectCoords(geometry: Geometry, coords: number[][]): void {
