@@ -23,6 +23,41 @@ export const sourceRegistry = {
     scale: ["XL", "L", "M"],
     updateMode: "live",
   },
+  "osm-raster-tiles": {
+    id: "osm-raster-tiles",
+    label: "OpenStreetMap raster tile fallback",
+    type: "tile-service",
+    url: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+    license: "ODbL",
+    attribution: "OpenStreetMap contributors / ODbL",
+    scale: ["XL", "L", "M"],
+    updateMode: "live",
+    notes:
+      "Visual fallback background only. Analysis logic must not depend on rendered tile availability.",
+  },
+  "versatiles-vector": {
+    id: "versatiles-vector",
+    label: "VersaTiles OpenStreetMap vector fallback",
+    type: "tile-service",
+    url: "https://tiles.versatiles.org/tiles/osm/tiles.json",
+    license: "ODbL-compatible source attribution",
+    attribution: "OpenStreetMap contributors, VersaTiles",
+    scale: ["XL", "L", "M"],
+    updateMode: "live",
+    notes:
+      "Visual vector fallback background only. Analysis logic must not depend on rendered tile availability.",
+  },
+  "esri-world-imagery": {
+    id: "esri-world-imagery",
+    label: "Esri World Imagery satellite fallback",
+    type: "tile-service",
+    url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer",
+    attribution: "Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community",
+    scale: ["XL", "L", "M"],
+    updateMode: "live",
+    notes:
+      "Visual satellite background only. Analysis logic must not depend on rendered tile availability.",
+  },
   "osm-nominatim": {
     id: "osm-nominatim",
     label: "OpenStreetMap Nominatim",

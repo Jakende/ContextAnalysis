@@ -205,6 +205,7 @@
 .map-status,
 .map-legend,
 .map-attribution,
+.background-switcher,
 .analysis-loading-overlay {
   position: absolute;
   z-index: 2;
@@ -683,6 +684,40 @@
   max-width: min(360px, calc(100vw - 40px));
   background: var(--surface);
   overflow: hidden;
+}
+
+.background-switcher {
+  right: 44px;
+  bottom: var(--space-2);
+  display: grid;
+  grid-template-columns: auto auto auto auto;
+  align-items: center;
+  gap: 1px;
+  padding: 0;
+  background: var(--border);
+  overflow: hidden;
+}
+
+.background-switcher .label {
+  padding: 0 8px;
+  background: var(--surface);
+  line-height: 28px;
+}
+
+.background-switcher button {
+  min-height: 28px;
+  padding: 0 9px;
+  border: 0;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.background-switcher button[aria-pressed="true"] {
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
 }
 
 .map-attribution > summary {

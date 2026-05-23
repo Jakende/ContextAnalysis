@@ -9,11 +9,15 @@ import {
   fetchBuffer,
   fetchText,
   firstString,
+  loadLocalEnv,
   parseArgs,
+  parseBbox,
   readJson,
   requireArg,
   writeJson,
 } from "./shared.mjs";
+
+loadLocalEnv();
 
 const PROVIDERS = {
   "urban-atlas": {
@@ -56,12 +60,13 @@ const out = args.out ?? provider.out;
 const singleFile = args["single-file"] === "true";
 const shardDegrees = Number(args["shard-degrees"] ?? 0.05);
 const sourceVersion = args["source-version"] ?? new Date().toISOString().slice(0, 10);
+const clipBbox = parseBbox(args.bbox);
 
 const workingDir = await mkdtemp(join(tmpdir(), "uca-thematic-"));
 
 try {
   const input = await resolveInputPath(args, providerKey, workingDir);
-  const collection = assertFeatureCollection(await loadVectorCollection(input, workingDir), input);
+  const collection = assertFeatureCollection(await loadVectorCollection(input, workingDir, clipBbox), input);
 
   const normalized =
     providerKey === "dwd"
@@ -79,11 +84,16 @@ try {
           }),
         );
 
+  const outputFeatures = clipBbox
+    ? normalized.features.filter((feature) => featureIntersectsBbox(feature, clipBbox))
+    : normalized.features;
+  const outputCollection = { ...normalized, features: outputFeatures };
+
   if (singleFile || !out.endsWith("index.json")) {
-    await writeJson(out, normalized);
-    console.log(`Wrote ${normalized.features.length} ${provider.sourceId} features to ${out}`);
+    await writeJson(out, outputCollection);
+    console.log(`Wrote ${outputFeatures.length} ${provider.sourceId} features to ${out}`);
   } else {
-    await writeShardedGeoJson(out, normalized.features, {
+    await writeShardedGeoJson(out, outputFeatures, {
       sourceId: provider.sourceId,
       sourceVersion,
       shardDegrees,
@@ -163,15 +173,18 @@ async function resolveInputPath(argsValue, providerKeyValue, workingDirValue) {
   );
 }
 
-async function loadVectorCollection(inputPath, workingDirValue) {
+async function loadVectorCollection(inputPath, workingDirValue, bboxValue) {
   const extension = extname(inputPath).toLowerCase();
   if (extension === ".json" || extension === ".geojson") {
     return readJson(inputPath);
   }
-  return convertWithOgr2ogr(inputPath, workingDirValue);
+  return convertWithOgr2ogr(inputPath, workingDirValue, bboxValue);
 }
 
 async function downloadToWorkdir(url, workingDirValue) {
+  if (url.startsWith("/vsi")) {
+    return url;
+  }
   const fileName = basename(new URL(url).pathname) || "downloaded-vector";
   const target = join(workingDirValue, fileName);
   console.log(`Downloading thematic source from ${url}`);
@@ -239,9 +252,13 @@ function firstUrl(row) {
 }
 
 function s3PathToVsiPath(s3Path) {
-  return s3Path
+  const vsiPath = s3Path
     .replace(/^s3:\/\/EODATA\//i, "/vsis3/eodata/")
     .replace(/^s3:\/\/eodata\//i, "/vsis3/eodata/");
+  if (!extname(vsiPath)) {
+    return `${vsiPath}/${basename(vsiPath)}.fgb`;
+  }
+  return vsiPath;
 }
 
 function normalizeSearchValue(value) {
@@ -257,18 +274,51 @@ function normalizeSearchValue(value) {
     .replace(/^_+|_+$/g, "");
 }
 
-function convertWithOgr2ogr(inputPath, workingDirValue) {
+function convertWithOgr2ogr(inputPath, workingDirValue, bboxValue) {
   ensureCommand("ogr2ogr");
   const convertedPath = join(workingDirValue, "converted.geojson");
+  const inputOptions = inputPath.startsWith("/vsis3/") ? ["-if", "FlatGeobuf"] : [];
+  const spatialOptions = bboxValue
+    ? [
+        "-spat_srs",
+        "EPSG:4326",
+        "-spat",
+        String(bboxValue.west),
+        String(bboxValue.south),
+        String(bboxValue.east),
+        String(bboxValue.north),
+      ]
+    : [];
   const result = spawnSync(
     "ogr2ogr",
-    ["-f", "GeoJSON", "-t_srs", "EPSG:4326", convertedPath, inputPath],
+    [
+      "-f",
+      "GeoJSON",
+      "-t_srs",
+      "EPSG:4326",
+      "-skipfailures",
+      ...inputOptions,
+      ...spatialOptions,
+      convertedPath,
+      inputPath,
+    ],
     { encoding: "utf8" },
   );
   if (result.status !== 0) {
     throw new Error(`ogr2ogr failed: ${result.stderr || result.stdout}`);
   }
   return readJson(convertedPath);
+}
+
+function featureIntersectsBbox(feature, bboxValue) {
+  const bbox = geometryBbox(feature.geometry);
+  if (!bbox) return false;
+  return (
+    bbox[0] <= bboxValue.east &&
+    bbox[2] >= bboxValue.west &&
+    bbox[1] <= bboxValue.north &&
+    bbox[3] >= bboxValue.south
+  );
 }
 
 function publicShardUrl(indexDir, fileName) {

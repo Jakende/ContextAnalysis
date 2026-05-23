@@ -25,6 +25,7 @@ import type { Scale } from "../../lib/types";
 
 const DEFAULT_CENTER: [number, number] = [11.5755, 48.1397];
 const DEFAULT_ZOOM = 12;
+type BackgroundMode = "osmRaster" | "vector" | "googleSatellite";
 
 const MAP_LAYER_COLORS = {
   xl: "#93c5fd",
@@ -122,6 +123,7 @@ export function MapView({
   const [sectionDrawMode, setSectionDrawMode] = useState(false);
   const [sectionDraftStart, setSectionDraftStart] = useState<SectionLine["start"] | null>(null);
   const [zensusLayer, setZensusLayer] = useState(ZENSUS_WMS_DISPLAY_LAYER);
+  const [backgroundMode, setBackgroundMode] = useState<BackgroundMode>("osmRaster");
 
   useEffect(() => {
     zensusLayerRef.current = zensusLayer;
@@ -171,6 +173,13 @@ export function MapView({
       "bottom-left",
     );
 
+    map.on("error", (event) => {
+      const message = event.error?.message ?? "";
+      if (/tile|source|openfreemap|openstreetmap|googleapis/i.test(message)) {
+        onStatusRef.current(`Map background issue: ${message}`);
+      }
+    });
+
     map.on("click", (event) => {
       if (showXlFeatureInfo(map, event)) return;
       if (sectionDrawModeRef.current) {
@@ -207,6 +216,7 @@ export function MapView({
       addAnalysisSourcesAndLayers(map);
       updateZensusWmsLayer(map, zensusLayerRef.current);
       applyBaseMapTheme(map, themeInvertRef.current);
+      applyBackgroundMode(map, "osmRaster");
       syncAnalysisToMap(
         map,
         analysisRef.current,
@@ -287,7 +297,14 @@ export function MapView({
     const map = mapRef.current;
     if (!map || !map.getLayer("background")) return;
     applyBaseMapTheme(map, themeInvert);
-  }, [themeInvert]);
+    applyBackgroundMode(map, backgroundMode);
+  }, [themeInvert, backgroundMode]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !map.getLayer("background")) return;
+    applyBackgroundMode(map, backgroundMode);
+  }, [backgroundMode]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -482,8 +499,44 @@ export function MapView({
           </p>
         </div>
       </details>
+      <BackgroundSwitcher value={backgroundMode} onChange={setBackgroundMode} />
       {isAnalyzing ? <AnalysisLoadingOverlay steps={analysisLoadSteps} /> : null}
     </section>
+  );
+}
+
+function BackgroundSwitcher({
+  value,
+  onChange,
+}: {
+  value: BackgroundMode;
+  onChange: (value: BackgroundMode) => void;
+}) {
+  return (
+    <div className="background-switcher panel" aria-label="Background map">
+      <span className="label">Base</span>
+      <button
+        type="button"
+        aria-pressed={value === "osmRaster"}
+        onClick={() => onChange("osmRaster")}
+      >
+        OSM
+      </button>
+      <button
+        type="button"
+        aria-pressed={value === "vector"}
+        onClick={() => onChange("vector")}
+      >
+        Vec
+      </button>
+      <button
+        type="button"
+        aria-pressed={value === "googleSatellite"}
+        onClick={() => onChange("googleSatellite")}
+      >
+        Sat
+      </button>
+    </div>
   );
 }
 
@@ -760,6 +813,9 @@ function transportModeFilter(modes: string[]) {
 }
 
 function addAnalysisSourcesAndLayers(map: MapLibreMap): void {
+  ensureOsmRasterLayer(map);
+  ensureVersaTilesVectorLayer(map);
+  ensureSatelliteRasterLayer(map);
   ensureGoogleSatelliteLayer(map);
   ensureZensusWmsLayer(map, ZENSUS_WMS_DISPLAY_LAYER);
   ensureSrtmWmsLayer(map);
@@ -1724,6 +1780,132 @@ function ensureZensusWmsLayer(map: MapLibreMap, layer: string): void {
   );
 }
 
+function ensureOsmRasterLayer(map: MapLibreMap): void {
+  if (!map.getSource("osm-raster")) {
+    map.addSource("osm-raster", {
+      type: "raster",
+      tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+      tileSize: 256,
+      attribution: "© OpenStreetMap contributors",
+    });
+  }
+  addLayerIfMissing(map, {
+    id: "osm-raster-basemap",
+    type: "raster",
+    source: "osm-raster",
+    paint: {
+      "raster-opacity": 1,
+      "raster-resampling": "linear",
+    },
+    layout: {
+      visibility: "visible",
+    },
+  }, "landuse");
+}
+
+function ensureVersaTilesVectorLayer(map: MapLibreMap): void {
+  if (!map.getSource("versatiles-vector")) {
+    map.addSource("versatiles-vector", {
+      type: "vector",
+      tiles: ["https://tiles.versatiles.org/tiles/osm/{z}/{x}/{y}"],
+      minzoom: 0,
+      maxzoom: 14,
+      attribution: "© OpenStreetMap contributors, VersaTiles",
+    });
+  }
+  addLayerIfMissing(map, {
+    id: "versatiles-ocean",
+    type: "fill",
+    source: "versatiles-vector",
+    "source-layer": "ocean",
+    paint: { "fill-color": "#d8e8ef", "fill-opacity": 1 },
+    layout: { visibility: "none" },
+  }, "landuse");
+  addLayerIfMissing(map, {
+    id: "versatiles-land",
+    type: "fill",
+    source: "versatiles-vector",
+    "source-layer": "land",
+    paint: {
+      "fill-color": [
+        "match",
+        ["get", "kind"],
+        "forest",
+        "#d7ecd3",
+        "park",
+        "#d7ecd3",
+        "grass",
+        "#e0efd7",
+        "residential",
+        "#eeeae1",
+        "commercial",
+        "#eee5dc",
+        "industrial",
+        "#eaded3",
+        "#f3f1ea",
+      ],
+      "fill-opacity": 0.92,
+    },
+    layout: { visibility: "none" },
+  }, "landuse");
+  addLayerIfMissing(map, {
+    id: "versatiles-water",
+    type: "fill",
+    source: "versatiles-vector",
+    "source-layer": "water_polygons",
+    paint: { "fill-color": "#bcd9ec", "fill-opacity": 0.95 },
+    layout: { visibility: "none" },
+  }, "landuse");
+  addLayerIfMissing(map, {
+    id: "versatiles-streets",
+    type: "line",
+    source: "versatiles-vector",
+    "source-layer": "streets",
+    paint: {
+      "line-color": "#404040",
+      "line-opacity": 0.82,
+      "line-width": ["interpolate", ["linear"], ["zoom"], 8, 0.35, 14, 1.2, 17, 3.2],
+    },
+    layout: { visibility: "none" },
+  }, "landuse");
+  addLayerIfMissing(map, {
+    id: "versatiles-buildings",
+    type: "fill",
+    source: "versatiles-vector",
+    "source-layer": "buildings",
+    minzoom: 13,
+    paint: {
+      "fill-color": "#d5d5d5",
+      "fill-outline-color": "#9b9b9b",
+      "fill-opacity": 0.88,
+    },
+    layout: { visibility: "none" },
+  }, "landuse");
+}
+
+function ensureSatelliteRasterLayer(map: MapLibreMap): void {
+  if (!map.getSource("satellite-raster")) {
+    map.addSource("satellite-raster", {
+      type: "raster",
+      tiles: [
+        "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+      ],
+      tileSize: 256,
+      attribution: "Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community",
+    });
+  }
+  addLayerIfMissing(map, {
+    id: "satellite-raster-basemap",
+    type: "raster",
+    source: "satellite-raster",
+    paint: {
+      "raster-opacity": 1,
+      "raster-resampling": "linear",
+    },
+    layout: { visibility: "none" },
+  }, "landuse");
+}
+
 function ensureGoogleSatelliteLayer(map: MapLibreMap): void {
   const tileUrl = googleSatelliteTileUrl();
   if (!tileUrl) return;
@@ -1747,6 +1929,28 @@ function ensureGoogleSatelliteLayer(map: MapLibreMap): void {
       visibility: "none",
     },
   }, "landuse");
+}
+
+function applyBackgroundMode(map: MapLibreMap, mode: BackgroundMode): void {
+  const osmRaster = mode === "osmRaster";
+  const vector = mode === "vector";
+  const satellite = mode === "googleSatellite";
+  setLayerVisibility(map, "osm-raster-basemap", osmRaster);
+  setLayerVisibility(map, "satellite-raster-basemap", satellite);
+  setLayerVisibility(map, "google-satellite-raster", false);
+  for (const id of ["versatiles-ocean", "versatiles-land", "versatiles-water", "versatiles-streets", "versatiles-buildings"]) {
+    setLayerVisibility(map, id, vector);
+  }
+  for (const id of ["landuse", "parks", "water", "buildings-base"]) {
+    setLayerVisibility(map, id, false);
+  }
+  for (const id of ["roads-secondary", "roads-main", "boundaries", "place-labels"]) {
+    setLayerVisibility(map, id, satellite);
+  }
+  setPaint(map, "roads-secondary", "line-opacity", satellite ? 0.42 : 1);
+  setPaint(map, "roads-main", "line-opacity", satellite ? 0.66 : 0.62);
+  setPaint(map, "boundaries", "line-opacity", satellite ? 0.58 : 1);
+  setPaint(map, "place-labels", "text-halo-width", satellite ? 1.6 : 1);
 }
 
 function ensureSrtmWmsLayer(map: MapLibreMap): void {
@@ -1893,7 +2097,6 @@ function applyLayerVisibility(
   void activeScale;
   setLayerVisibility(map, "building-extrusion", layers["3D"]);
   setLayerVisibility(map, "ofm-building-extrusion", layers["3D"]);
-  setLayerVisibility(map, "google-satellite-raster", layers.googleSatellite);
   setLayerVisibility(map, "tree-canopy-extrusion", layers["3D"] && layers.trees);
   setLayerVisibility(map, "tree-shadow-circles", layers.trees);
   setLayerVisibility(map, "tree-canopy-circles", layers.trees);
@@ -1954,7 +2157,6 @@ function applyLayerVisibility(
 
 function hideAnalysisLayers(map: MapLibreMap): void {
   for (const id of [
-    "google-satellite-raster",
     "building-extrusion",
     "ofm-building-extrusion",
     "tree-canopy-extrusion",
@@ -2059,6 +2261,68 @@ function applyBaseMapTheme(map: MapLibreMap, invert: boolean): void {
   setPaint(map, "boundaries", "line-color", theme.boundary);
   setPaint(map, "place-labels", "text-color", theme.text);
   setPaint(map, "place-labels", "text-halo-color", theme.halo);
+  applyVectorFallbackTheme(map, invert);
+}
+
+function applyVectorFallbackTheme(map: MapLibreMap, invert: boolean): void {
+  const theme = invert
+    ? {
+        ocean: "#d8e8ef",
+        landDefault: "#f3f1ea",
+        forest: "#d7ecd3",
+        park: "#d7ecd3",
+        grass: "#e0efd7",
+        residential: "#eeeae1",
+        commercial: "#eee5dc",
+        industrial: "#eaded3",
+        water: "#bcd9ec",
+        street: "#404040",
+        streetOpacity: 0.78,
+        building: "#d5d5d5",
+        buildingOutline: "#9b9b9b",
+        buildingOpacity: 0.78,
+      }
+    : {
+        ocean: "#071014",
+        landDefault: "#131512",
+        forest: "#122817",
+        park: "#15311b",
+        grass: "#1d3420",
+        residential: "#171717",
+        commercial: "#1f1b17",
+        industrial: "#201817",
+        water: "#0f2b3b",
+        street: "#6b6b6b",
+        streetOpacity: 0.58,
+        building: "#252525",
+        buildingOutline: "#555555",
+        buildingOpacity: 0.7,
+      };
+
+  setPaint(map, "versatiles-ocean", "fill-color", theme.ocean);
+  setPaint(map, "versatiles-land", "fill-color", [
+    "match",
+    ["get", "kind"],
+    "forest",
+    theme.forest,
+    "park",
+    theme.park,
+    "grass",
+    theme.grass,
+    "residential",
+    theme.residential,
+    "commercial",
+    theme.commercial,
+    "industrial",
+    theme.industrial,
+    theme.landDefault,
+  ]);
+  setPaint(map, "versatiles-water", "fill-color", theme.water);
+  setPaint(map, "versatiles-streets", "line-color", theme.street);
+  setPaint(map, "versatiles-streets", "line-opacity", theme.streetOpacity);
+  setPaint(map, "versatiles-buildings", "fill-color", theme.building);
+  setPaint(map, "versatiles-buildings", "fill-outline-color", theme.buildingOutline);
+  setPaint(map, "versatiles-buildings", "fill-opacity", theme.buildingOpacity);
 }
 
 function setPaint(

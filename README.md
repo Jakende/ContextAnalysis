@@ -59,6 +59,11 @@ VITE_OLLAMA_TIMEOUT_MS=120000
 
 If Ollama is unavailable, deterministic Markdown export still works.
 
+For local credentials, copy `.env.example` to `.env.local`. Keep `.env.local`
+out of Git; it may contain CDSE S3 keys for Urban Atlas preprocessing or an
+optional Google Maps Platform Map Tiles API key for the satellite background.
+The local server creates the required Google tile session automatically.
+
 ## Data and analysis
 
 The project is designed around a mandatory source registry in `src/lib/data/sourceRegistry.ts`. Every indicator, layer, and export path references those source IDs.

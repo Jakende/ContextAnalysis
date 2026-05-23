@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 import { existsSync } from "node:fs";
 import { spawnSync } from "node:child_process";
-import { parseArgs, readJson, requireArg, writeJson } from "./shared.mjs";
+import { loadLocalEnv, parseArgs, readJson, requireArg, writeJson } from "./shared.mjs";
+
+loadLocalEnv();
 
 const MANIFEST_PATH = "public/data/processed/cache-manifest.json";
 const DEFAULT_SOURCES = ["overture"];
@@ -30,7 +32,7 @@ for (const source of sources) {
     continue;
   }
   if (source === "urban-atlas") {
-    entries.push(await resolveUrbanAtlas({ key, sourceVersion }));
+    entries.push(await resolveUrbanAtlas({ bbox, key, sourceVersion }));
     continue;
   }
   throw new Error(`Unsupported --sources entry ${source}. Use overture,urban-atlas`);
@@ -61,7 +63,7 @@ async function resolveOvertureBuildings({ bbox: bboxValue, key: keyValue, source
   };
 }
 
-async function resolveUrbanAtlas({ key: keyValue, sourceVersion: version }) {
+async function resolveUrbanAtlas({ bbox: bboxValue, key: keyValue, sourceVersion: version }) {
   const input = args["urban-atlas-input"];
   const fuaCode = args["urban-atlas-fua-code"];
   const fuaName = args["urban-atlas-fua-name"];
@@ -78,6 +80,10 @@ async function resolveUrbanAtlas({ key: keyValue, sourceVersion: version }) {
     "urban-atlas",
     "--out",
     out,
+    "--single-file",
+    "true",
+    "--bbox",
+    bboxValue.join(","),
     "--source-version",
     version,
   ];
@@ -85,11 +91,10 @@ async function resolveUrbanAtlas({ key: keyValue, sourceVersion: version }) {
   if (fuaCode) commandArgs.push("--fua-code", fuaCode);
   if (fuaName) commandArgs.push("--fua-name", fuaName);
   run("node", commandArgs);
-  const index = await readJson(out);
   return {
     sourceId: "copernicus-urban-atlas",
     indexUrl: publicUrl(out),
-    bbox: indexBbox(index),
+    bbox: bboxValue,
     sourceVersion: version,
     generatedAt: new Date().toISOString(),
     label: `Copernicus Urban Atlas ${fuaCode ?? fuaName ?? keyValue}`,

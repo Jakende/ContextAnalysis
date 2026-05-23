@@ -19,7 +19,6 @@ const layerControls: LayerControl[] = [
   { id: "xlGrid", label: "Zensus grid", source: "xlGrid", scale: "XL", geometry: "Polygon" },
   { id: "xlSources", label: "XL sources", source: "xlSources", scale: "XL", geometry: "Polygon" },
   { id: "urbanAtlas", label: "Urban Atlas", source: "urbanAtlas", scale: "L", geometry: "Polygon" },
-  { id: "googleSatellite", label: "Google satellite", source: "wms", scale: "ALL" },
   { id: "lBuffer", label: "L radius", source: "lBuffer", scale: "L", geometry: "Polygon" },
   { id: "green", label: "Green", source: "green", scale: "L", geometry: "Polygon" },
   { id: "blue", label: "Blue / water", source: "blue", scale: "L", geometry: "Polygon" },

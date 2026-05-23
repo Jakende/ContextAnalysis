@@ -74,7 +74,6 @@ const DEFAULT_LAYER_STATE: LayerState = {
   streets: true,
   barriers: false,
   srtm: true,
-  googleSatellite: false,
 };
 
 export async function runLocationAnalysis(input: {

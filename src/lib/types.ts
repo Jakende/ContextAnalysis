@@ -101,8 +101,7 @@ export type LayerId =
   | "buildingFootprints"
   | "streets"
   | "barriers"
-  | "srtm"
-  | "googleSatellite";
+  | "srtm";
 
 export type LayerState = Record<LayerId, boolean>;
 

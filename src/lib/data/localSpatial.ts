@@ -467,7 +467,26 @@ async function fetchFeatureShardsForBboxWithStatus(
         error: `HTTP ${response.status}`,
       };
     }
-    const index = (await response.json()) as FeatureShardIndex;
+    const index = (await response.json()) as FeatureShardIndex | FeatureCollection;
+    if (index.type === "FeatureCollection") {
+      const features = index.features.filter((feature) =>
+        feature.geometry ? geometryIntersectsBbox(feature.geometry, bbox) : false,
+      );
+      return {
+        sourceId,
+        indexUrl,
+        status: features.length > 0 ? "ok" : "empty",
+        featureCount: index.features.length,
+        shardCount: 1,
+        selectedShardCount: features.length > 0 ? 1 : 0,
+        loadedFeatureCount: features.length,
+        collection: featureCollection(features),
+        caveats:
+          features.length > 0
+            ? []
+            : ["The point cache is present, but no features intersect the selected analysis area."],
+      };
+    }
     if (index.type !== "FeatureShardIndex" || !Array.isArray(index.shards)) {
       return {
         sourceId,

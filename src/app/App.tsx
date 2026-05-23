@@ -54,7 +54,6 @@ const DEFAULT_LAYERS: LayerState = {
   streets: true,
   barriers: false,
   srtm: true,
-  googleSatellite: false,
 };
 
 export function App() {

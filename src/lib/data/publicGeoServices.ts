@@ -32,9 +32,5 @@ export function srtmWmsTileUrl(layer = SRTM_WMS_LAYER): string {
 }
 
 export function googleSatelliteTileUrl(): string | null {
-  const session = import.meta.env.VITE_GOOGLE_MAP_TILES_SESSION as string | undefined;
-  const key = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined;
-  if (!session || !key) return null;
-  const params = new URLSearchParams({ session, key });
-  return `https://tile.googleapis.com/v1/2dtiles/{z}/{x}/{y}?${params.toString()}`;
+  return "/api/google-satellite/{z}/{x}/{y}";
 }

@@ -1,4 +1,4 @@
-import { defineConfig, type Plugin } from "vite";
+import { defineConfig, loadEnv, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import { existsSync, readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
@@ -12,7 +12,7 @@ type ProbeRequest = {
 type ProbeResponse = {
   statusCode: number;
   setHeader: (name: string, value: string) => void;
-  end: (body: string) => void;
+  end: (body: string | Uint8Array) => void;
 };
 
 type PointCachePayload = {
@@ -42,20 +42,32 @@ const SERVER_OVERPASS_TIMEOUT_MS = 15_000;
 const SERVER_NOMINATIM_TIMEOUT_MS = 5_000;
 const SERVER_NOMINATIM_USER_AGENT =
   "SD-Stadtdaten-ContextAnalysis/0.1 local-nominatim-proxy";
+const SERVER_GOOGLE_TILE_TIMEOUT_MS = 10_000;
 
-export default defineConfig({
-  plugins: [react(), localApiPlugin()],
-  build: {
-    chunkSizeWarningLimit: 1500,
-  },
-  server: {
-    host: "127.0.0.1",
-    port: 5173,
-  },
-  preview: {
-    host: "127.0.0.1",
-    port: 4173,
-  },
+let googleTileSession:
+  | {
+      token: string;
+      expiresAt: number;
+    }
+  | null = null;
+
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), "");
+  process.env = { ...env, ...process.env };
+  return {
+    plugins: [react(), localApiPlugin()],
+    build: {
+      chunkSizeWarningLimit: 1500,
+    },
+    server: {
+      host: "127.0.0.1",
+      port: 5173,
+    },
+    preview: {
+      host: "127.0.0.1",
+      port: 4173,
+    },
+  };
 });
 
 function localApiPlugin(): Plugin {
@@ -74,6 +86,9 @@ function localApiPlugin(): Plugin {
       server.middlewares.use("/api/point-cache", (req, res) => {
         void handlePointCache(req as ProbeRequest, res as ProbeResponse);
       });
+      server.middlewares.use("/api/google-satellite", (req, res) => {
+        void handleGoogleSatelliteTile(req as ProbeRequest, res as ProbeResponse);
+      });
     },
     configurePreviewServer(server) {
       server.middlewares.use("/api/source-probe", (req, res) => {
@@ -87,6 +102,9 @@ function localApiPlugin(): Plugin {
       });
       server.middlewares.use("/api/point-cache", (req, res) => {
         void handlePointCache(req as ProbeRequest, res as ProbeResponse);
+      });
+      server.middlewares.use("/api/google-satellite", (req, res) => {
+        void handleGoogleSatelliteTile(req as ProbeRequest, res as ProbeResponse);
       });
     },
   };
@@ -418,6 +436,114 @@ async function handleOverpassProxy(
       endpointStatus,
     });
   }
+}
+
+async function handleGoogleSatelliteTile(
+  req: ProbeRequest,
+  res: ProbeResponse,
+): Promise<void> {
+  try {
+    if (req.method && req.method !== "GET") {
+      writeJson(res, 405, { ok: false, error: "GET required" });
+      return;
+    }
+
+    const key = process.env.VITE_GOOGLE_MAPS_API_KEY ?? process.env.GOOGLE_MAPS_API_KEY;
+    if (!key) {
+      writeJson(res, 404, {
+        ok: false,
+        error: "Missing GOOGLE_MAPS_API_KEY in .env.local.",
+      });
+      return;
+    }
+
+    const requestUrl = new URL(req.url ?? "", "http://127.0.0.1");
+    const [z, x, y] = requestUrl.pathname.split("/").filter(Boolean);
+    if (!z || !x || !y || ![z, x, y].every((value) => /^\d+$/.test(value))) {
+      writeJson(res, 400, { ok: false, error: "Expected /api/google-satellite/{z}/{x}/{y}" });
+      return;
+    }
+
+    const session = await getGoogleTileSession(key);
+    const tileParams = new URLSearchParams({
+      session,
+      key,
+    });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), SERVER_GOOGLE_TILE_TIMEOUT_MS);
+    const response = await fetch(
+      `https://tile.googleapis.com/v1/2dtiles/${z}/${x}/${y}?${tileParams.toString()}`,
+      {
+        method: "GET",
+        redirect: "follow",
+        signal: controller.signal,
+        headers: {
+          Accept: "image/*,*/*",
+        },
+      },
+    );
+    clearTimeout(timeout);
+
+    if (!response.ok) {
+      const message = await response.text().catch(() => "");
+      writeJson(res, response.status, {
+        ok: false,
+        error: message || `Google Map Tiles returned HTTP ${response.status}`,
+      });
+      return;
+    }
+
+    const contentType = response.headers.get("content-type") ?? "image/png";
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    res.statusCode = 200;
+    res.setHeader("content-type", contentType);
+    res.setHeader("cache-control", "public, max-age=3600");
+    res.end(bytes);
+  } catch (error) {
+    writeJson(res, 502, {
+      ok: false,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+}
+
+async function getGoogleTileSession(key: string): Promise<string> {
+  const now = Date.now();
+  if (googleTileSession && googleTileSession.expiresAt > now + 60_000) {
+    return googleTileSession.token;
+  }
+
+  const params = new URLSearchParams({ key });
+  const response = await fetch(
+    `https://tile.googleapis.com/v1/createSession?${params.toString()}`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        mapType: "satellite",
+        language: "de-DE",
+        region: "DE",
+      }),
+    },
+  );
+  const payload = (await response.json()) as {
+    session?: string;
+    expiry?: string;
+    error?: { message?: string };
+  };
+  if (!response.ok || !payload.session) {
+    throw new Error(
+      payload.error?.message ?? `Google Map Tiles createSession failed with HTTP ${response.status}`,
+    );
+  }
+
+  googleTileSession = {
+    token: payload.session,
+    expiresAt: payload.expiry ? Date.parse(payload.expiry) : now + 55 * 60 * 1000,
+  };
+  return googleTileSession.token;
 }
 
 function findFuaNameForPoint(lon: number, lat: number): string | null {
