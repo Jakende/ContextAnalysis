@@ -455,10 +455,14 @@ function boundsFor(collection: FeatureCollection): [number, number, number, numb
 
 function collectCoords(geometry: Geometry, coords: number[][]): void {
   if (geometry.type === "Point") coords.push(geometry.coordinates);
-  if (geometry.type === "LineString") coords.push(...geometry.coordinates);
+  if (geometry.type === "LineString") pushCoordinates(coords, geometry.coordinates);
   if (geometry.type === "Polygon") {
-    for (const ring of geometry.coordinates) coords.push(...ring);
+    for (const ring of geometry.coordinates) pushCoordinates(coords, ring);
   }
+}
+
+function pushCoordinates(target: number[][], coordinates: number[][]): void {
+  for (const coordinate of coordinates) target.push(coordinate);
 }
 
 function geometryToGeoPackageBinary(geometry: Geometry): Uint8Array {

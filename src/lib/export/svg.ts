@@ -141,15 +141,19 @@ function getBounds(features: Feature[]): [number, number, number, number] {
 
 function collectCoords(geometry: Geometry, coords: number[][]): void {
   if (geometry.type === "Point") coords.push(geometry.coordinates);
-  if (geometry.type === "LineString") coords.push(...geometry.coordinates);
+  if (geometry.type === "LineString") pushCoordinates(coords, geometry.coordinates);
   if (geometry.type === "Polygon") {
-    for (const ring of geometry.coordinates) coords.push(...ring);
+    for (const ring of geometry.coordinates) pushCoordinates(coords, ring);
   }
   if (geometry.type === "MultiPolygon") {
     for (const polygon of geometry.coordinates) {
-      for (const ring of polygon) coords.push(...ring);
+      for (const ring of polygon) pushCoordinates(coords, ring);
     }
   }
+}
+
+function pushCoordinates(target: number[][], coordinates: number[][]): void {
+  for (const coordinate of coordinates) target.push(coordinate);
 }
 
 function createProjector(

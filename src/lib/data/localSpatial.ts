@@ -965,18 +965,37 @@ function getGeometryBbox(geometry: Geometry): [number, number, number, number] |
 }
 
 function flattenCoordinates(geometry: Geometry): number[][] {
-  if (geometry.type === "Point") return [geometry.coordinates];
+  const output: number[][] = [];
+  collectCoordinates(geometry, output);
+  return output;
+}
+
+function collectCoordinates(geometry: Geometry, output: number[][]): void {
+  if (geometry.type === "Point") {
+    output.push(geometry.coordinates);
+    return;
+  }
   if (geometry.type === "LineString" || geometry.type === "MultiPoint") {
-    return geometry.coordinates;
+    pushCoordinates(output, geometry.coordinates);
+    return;
   }
   if (geometry.type === "Polygon" || geometry.type === "MultiLineString") {
-    return geometry.coordinates.flat();
+    for (const ring of geometry.coordinates) pushCoordinates(output, ring);
+    return;
   }
-  if (geometry.type === "MultiPolygon") return geometry.coordinates.flat(2);
+  if (geometry.type === "MultiPolygon") {
+    for (const polygon of geometry.coordinates) {
+      for (const ring of polygon) pushCoordinates(output, ring);
+    }
+    return;
+  }
   if (geometry.type === "GeometryCollection") {
-    return geometry.geometries.flatMap(flattenCoordinates);
+    for (const item of geometry.geometries) collectCoordinates(item, output);
   }
-  return [];
+}
+
+function pushCoordinates(target: number[][], coordinates: number[][]): void {
+  for (const coordinate of coordinates) target.push(coordinate);
 }
 
 function projectMeters(coordinate: number[], referenceLat: number) {
