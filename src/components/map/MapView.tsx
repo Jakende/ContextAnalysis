@@ -2004,23 +2004,7 @@ function syncAnalysisToMap(
     type: "FeatureCollection",
     features: [analysis.overlays.selectedPoint],
   });
-  setSourceData(map, "xl-context", analysis.overlays.xlContext);
-  setSourceData(map, "xl-grid", analysis.overlays.xlGrid);
-  setSourceData(map, "xl-sources", analysis.overlays.xlSources);
-  setSourceData(map, "urban-atlas-overlay", analysis.overlays.urbanAtlas);
-  setSourceData(map, "l-buffer", analysis.overlays.lBuffer);
-  setSourceData(map, "m-street-segment", analysis.overlays.mStreetSegment);
-  setSourceData(map, "green-overlay", analysis.overlays.green);
-  setSourceData(map, "blue-overlay", analysis.overlays.blue);
-  setSourceData(map, "tree-overlay", analysis.overlays.trees);
-  setSourceData(map, "building-overlay", analysis.overlays.buildings);
-  setSourceData(map, "poi-overlay", analysis.overlays.pois);
-  setSourceData(map, "transport-overlay", analysis.overlays.transport);
-  setSourceData(map, "mobility-overlay", analysis.overlays.mobility);
-  setSourceData(map, "barrier-overlay", analysis.overlays.barriers);
-  setSourceData(map, "development-overlay", analysis.overlays.development);
-  setSourceData(map, "sun-overlay", analysis.overlays.sun);
-  setSourceData(map, "section-line-overlay", analysis.overlays.sectionLine);
+  syncScaleSources(map, analysis, activeScale);
 
   markerRef.current?.remove();
   markerRef.current = new maplibregl.Marker({ color: "#ffffff" })
@@ -2034,6 +2018,37 @@ function syncAnalysisToMap(
     duration: 650,
   });
   applyLayerVisibility(map, layers, activeScale);
+}
+
+function syncScaleSources(
+  map: MapLibreMap,
+  analysis: AnalysisResult,
+  activeScale: Scale,
+): void {
+  const empty: GeoJSON.FeatureCollection = { type: "FeatureCollection", features: [] };
+  const isXl = activeScale === "XL";
+  const isL = activeScale === "L";
+  const isM = activeScale === "M";
+
+  setSourceData(map, "xl-context", isXl ? analysis.overlays.xlContext : empty);
+  setSourceData(map, "xl-grid", isXl ? analysis.overlays.xlGrid : empty);
+  setSourceData(map, "xl-sources", isXl ? analysis.overlays.xlSources : empty);
+
+  setSourceData(map, "urban-atlas-overlay", isL ? analysis.overlays.urbanAtlas : empty);
+  setSourceData(map, "l-buffer", isL ? analysis.overlays.lBuffer : empty);
+  setSourceData(map, "green-overlay", isL ? analysis.overlays.green : empty);
+  setSourceData(map, "blue-overlay", isL ? analysis.overlays.blue : empty);
+  setSourceData(map, "poi-overlay", isL ? analysis.overlays.pois : empty);
+  setSourceData(map, "transport-overlay", isL ? analysis.overlays.transport : empty);
+  setSourceData(map, "mobility-overlay", isL ? analysis.overlays.mobility : empty);
+  setSourceData(map, "barrier-overlay", empty);
+  setSourceData(map, "development-overlay", isL ? analysis.overlays.development : empty);
+
+  setSourceData(map, "m-street-segment", isM ? analysis.overlays.mStreetSegment : empty);
+  setSourceData(map, "tree-overlay", isM ? analysis.overlays.trees : empty);
+  setSourceData(map, "building-overlay", isL || isM ? analysis.overlays.buildings : empty);
+  setSourceData(map, "sun-overlay", isM ? analysis.overlays.sun : empty);
+  setSourceData(map, "section-line-overlay", isM ? analysis.overlays.sectionLine : empty);
 }
 
 function clearAnalysisSources(map: MapLibreMap): void {
@@ -2094,65 +2109,68 @@ function applyLayerVisibility(
   layers: LayerState,
   activeScale: Scale,
 ): void {
-  void activeScale;
-  setLayerVisibility(map, "building-extrusion", layers["3D"]);
-  setLayerVisibility(map, "ofm-building-extrusion", layers["3D"]);
-  setLayerVisibility(map, "tree-canopy-extrusion", layers["3D"] && layers.trees);
-  setLayerVisibility(map, "tree-shadow-circles", layers.trees);
-  setLayerVisibility(map, "tree-canopy-circles", layers.trees);
-  setLayerVisibility(map, "tree-circles", layers.trees);
-  setLayerVisibility(map, "sun-lines", layers.sun);
-  setLayerVisibility(map, "section-user-line", layers.section);
-  setLayerVisibility(map, "srtm-wms-raster", layers.srtm);
-  setLayerVisibility(map, "green-fill", layers.green);
-  setLayerVisibility(map, "green-outline", layers.green);
-  setLayerVisibility(map, "blue-fill", layers.blue);
-  setLayerVisibility(map, "blue-outline", layers.blue);
-  setLayerVisibility(map, "xl-context-fill", layers.xlContext);
-  setLayerVisibility(map, "xl-context-line", layers.xlContext);
-  setLayerVisibility(map, "zensus-wms-raster", layers.zensusWms);
-  setLayerVisibility(map, "xl-grid-fill", layers.xlGrid);
-  setLayerVisibility(map, "xl-grid-line", layers.xlGrid);
-  setLayerVisibility(map, "xl-source-fill", layers.xlSources);
-  setLayerVisibility(map, "xl-source-line", layers.xlSources);
-  setLayerVisibility(map, "urban-atlas-fill", layers.urbanAtlas);
-  setLayerVisibility(map, "urban-atlas-line", layers.urbanAtlas);
-  setLayerVisibility(map, "l-buffer-line", layers.lBuffer);
-  setLayerVisibility(map, "poi-points", layers.pois);
-  setLayerVisibility(map, "poi-education-points", layers.poiEducation);
-  setLayerVisibility(map, "poi-health-points", layers.poiHealth);
-  setLayerVisibility(map, "poi-civic-points", layers.poiCivic);
-  setLayerVisibility(map, "poi-commerce-points", layers.poiCommerce);
-  setLayerVisibility(map, "poi-food-culture-points", layers.poiFoodCulture);
-  setLayerVisibility(map, "poi-leisure-tourism-points", layers.poiLeisureTourism);
-  setLayerVisibility(map, "transport-lines-debug", layers.transportAll);
-  setLayerVisibility(map, "transport-lines-bus", layers.transitBus);
-  setLayerVisibility(map, "transport-lines-tram", layers.transitTram);
-  setLayerVisibility(map, "transport-lines-subway", layers.transitSubway);
-  setLayerVisibility(map, "transport-lines-light-rail", layers.transitLightRail);
-  setLayerVisibility(map, "transport-lines-rail-only", layers.transitRail);
-  setLayerVisibility(map, "transport-lines-other", layers.transitOther);
-  setLayerVisibility(map, "transport-points", layers.transitLocal);
-  setLayerVisibility(map, "transport-lines", layers.transitLocal);
-  setLayerVisibility(map, "transport-areas", layers.transitLocal);
-  setLayerVisibility(map, "transport-points-rail", layers.transitRegional);
-  setLayerVisibility(map, "transport-lines-rail", layers.transitRegional);
-  setLayerVisibility(map, "transport-areas-rail", layers.transitRegional);
-  setLayerVisibility(map, "mobility-lines", layers.mobility);
-  setLayerVisibility(map, "mobility-lines-bike", layers.mobilityBike);
-  setLayerVisibility(map, "mobility-lines-pedestrian", layers.mobilityPedestrian);
-  setLayerVisibility(map, "mobility-lines-support", layers.mobilitySupport);
-  setLayerVisibility(map, "mobility-areas", layers.mobility);
-  setLayerVisibility(map, "mobility-points", layers.mobility);
-  setLayerVisibility(map, "mobility-support-points", layers.mobilitySupport);
-  setLayerVisibility(map, "development-fill", layers.development);
-  setLayerVisibility(map, "development-points", layers.development);
-  setLayerVisibility(map, "building-footprints-fill", layers.buildingFootprints);
-  setLayerVisibility(map, "building-footprints-outline", layers.buildingFootprints);
+  const isXl = activeScale === "XL";
+  const isL = activeScale === "L";
+  const isM = activeScale === "M";
+
+  setLayerVisibility(map, "building-extrusion", isM && layers["3D"]);
+  setLayerVisibility(map, "ofm-building-extrusion", isM && layers["3D"]);
+  setLayerVisibility(map, "tree-canopy-extrusion", isM && layers["3D"] && layers.trees);
+  setLayerVisibility(map, "tree-shadow-circles", isM && layers.trees);
+  setLayerVisibility(map, "tree-canopy-circles", isM && layers.trees);
+  setLayerVisibility(map, "tree-circles", isM && layers.trees);
+  setLayerVisibility(map, "sun-lines", isM && layers.sun);
+  setLayerVisibility(map, "section-user-line", isM && layers.section);
+  setLayerVisibility(map, "srtm-wms-raster", isM && layers.srtm);
+  setLayerVisibility(map, "green-fill", isL && layers.green);
+  setLayerVisibility(map, "green-outline", isL && layers.green);
+  setLayerVisibility(map, "blue-fill", isL && layers.blue);
+  setLayerVisibility(map, "blue-outline", isL && layers.blue);
+  setLayerVisibility(map, "xl-context-fill", isXl && layers.xlContext);
+  setLayerVisibility(map, "xl-context-line", isXl && layers.xlContext);
+  setLayerVisibility(map, "zensus-wms-raster", isXl && layers.zensusWms);
+  setLayerVisibility(map, "xl-grid-fill", isXl && layers.xlGrid);
+  setLayerVisibility(map, "xl-grid-line", isXl && layers.xlGrid);
+  setLayerVisibility(map, "xl-source-fill", isXl && layers.xlSources);
+  setLayerVisibility(map, "xl-source-line", isXl && layers.xlSources);
+  setLayerVisibility(map, "urban-atlas-fill", isL && layers.urbanAtlas);
+  setLayerVisibility(map, "urban-atlas-line", isL && layers.urbanAtlas);
+  setLayerVisibility(map, "l-buffer-line", isL && layers.lBuffer);
+  setLayerVisibility(map, "poi-points", isL && layers.pois);
+  setLayerVisibility(map, "poi-education-points", isL && layers.poiEducation);
+  setLayerVisibility(map, "poi-health-points", isL && layers.poiHealth);
+  setLayerVisibility(map, "poi-civic-points", isL && layers.poiCivic);
+  setLayerVisibility(map, "poi-commerce-points", isL && layers.poiCommerce);
+  setLayerVisibility(map, "poi-food-culture-points", isL && layers.poiFoodCulture);
+  setLayerVisibility(map, "poi-leisure-tourism-points", isL && layers.poiLeisureTourism);
+  setLayerVisibility(map, "transport-lines-debug", isL && layers.transportAll);
+  setLayerVisibility(map, "transport-lines-bus", isL && layers.transitBus);
+  setLayerVisibility(map, "transport-lines-tram", isL && layers.transitTram);
+  setLayerVisibility(map, "transport-lines-subway", isL && layers.transitSubway);
+  setLayerVisibility(map, "transport-lines-light-rail", isL && layers.transitLightRail);
+  setLayerVisibility(map, "transport-lines-rail-only", isL && layers.transitRail);
+  setLayerVisibility(map, "transport-lines-other", isL && layers.transitOther);
+  setLayerVisibility(map, "transport-points", isL && layers.transitLocal);
+  setLayerVisibility(map, "transport-lines", isL && layers.transitLocal);
+  setLayerVisibility(map, "transport-areas", isL && layers.transitLocal);
+  setLayerVisibility(map, "transport-points-rail", isL && layers.transitRegional);
+  setLayerVisibility(map, "transport-lines-rail", isL && layers.transitRegional);
+  setLayerVisibility(map, "transport-areas-rail", isL && layers.transitRegional);
+  setLayerVisibility(map, "mobility-lines", isL && layers.mobility);
+  setLayerVisibility(map, "mobility-lines-bike", isL && layers.mobilityBike);
+  setLayerVisibility(map, "mobility-lines-pedestrian", isL && layers.mobilityPedestrian);
+  setLayerVisibility(map, "mobility-lines-support", isL && layers.mobilitySupport);
+  setLayerVisibility(map, "mobility-areas", isL && layers.mobility);
+  setLayerVisibility(map, "mobility-points", isL && layers.mobility);
+  setLayerVisibility(map, "mobility-support-points", isL && layers.mobilitySupport);
+  setLayerVisibility(map, "development-fill", isL && layers.development);
+  setLayerVisibility(map, "development-points", isL && layers.development);
+  setLayerVisibility(map, "building-footprints-fill", isL && layers.buildingFootprints);
+  setLayerVisibility(map, "building-footprints-outline", isL && layers.buildingFootprints);
   setLayerVisibility(map, "barrier-lines", false);
   setLayerVisibility(map, "barrier-points", false);
-  setLayerVisibility(map, "m-street-line", layers.streets);
-  setLayerVisibility(map, "m-corridor-fill", layers.streets);
+  setLayerVisibility(map, "m-street-line", isM && layers.streets);
+  setLayerVisibility(map, "m-corridor-fill", isM && layers.streets);
 }
 
 function hideAnalysisLayers(map: MapLibreMap): void {

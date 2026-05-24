@@ -6,12 +6,13 @@ import { createIndicator } from "../analysis/indicators/createIndicator";
 export const ZENSUS_WMS_BASE_URL = "https://www.wms.nrw.de/wms/zensusatlas";
 export const ZENSUS_WMS_CAPABILITIES_URL =
   `${ZENSUS_WMS_BASE_URL}?service=WMS&request=GetCapabilities&version=1.3.0`;
-export const ZENSUS_WMS_DISPLAY_LAYER = "bevoelkerung_1km";
+export const ZENSUS_WMS_DISPLAY_LAYER = "bevoelkerung";
 
 export type ZensusWmsMetric = {
   id: string;
   label: string;
   layer: string;
+  queryLayer: string;
   unit?: string;
   classes: Array<{ color: string; label: string }>;
 };
@@ -20,7 +21,8 @@ export const ZENSUS_WMS_METRICS: ZensusWmsMetric[] = [
   {
     id: "population",
     label: "Bevölkerung",
-    layer: "bevoelkerung_1km",
+    layer: "bevoelkerung",
+    queryLayer: "bevoelkerung_1km",
     unit: "residents",
     classes: [
       { color: "#ccebc5", label: "niedrig" },
@@ -34,7 +36,8 @@ export const ZENSUS_WMS_METRICS: ZensusWmsMetric[] = [
   {
     id: "average-age",
     label: "Durchschnittsalter",
-    layer: "durchschnittsalter_1km",
+    layer: "durchschnittsalter",
+    queryLayer: "durchschnittsalter_1km",
     unit: "years",
     classes: [
       { color: "#ffffe5", label: "bis 40" },
@@ -49,7 +52,8 @@ export const ZENSUS_WMS_METRICS: ZensusWmsMetric[] = [
   {
     id: "net-cold-rent",
     label: "Durchschnittsmiete",
-    layer: "durchschnittMiete_1km",
+    layer: "durchschnittMiete",
+    queryLayer: "durchschnittMiete_1km",
     unit: "EUR/m2",
     classes: [
       { color: "#ffffcc", label: "sehr niedrig" },
@@ -67,7 +71,8 @@ export const ZENSUS_WMS_METRICS: ZensusWmsMetric[] = [
   {
     id: "vacancy-rate",
     label: "Leerstandsquote",
-    layer: "leerstandsquote_1km",
+    layer: "leerstandsquote",
+    queryLayer: "leerstandsquote_1km",
     unit: "%",
     classes: [
       { color: "#ffffe5", label: "bis 2 %" },
@@ -88,7 +93,7 @@ export async function fetchZensusWmsIndicators(
   const responses = await Promise.all(
     ZENSUS_WMS_METRICS.map(async (metric) => ({
       metric,
-      value: await fetchZensusMetricValue(selectedPoint, metric.layer),
+      value: await fetchZensusMetricValue(selectedPoint, metric.queryLayer),
     })),
   );
 

@@ -62,30 +62,31 @@ export function LayerTogglePanel({
   onReset: () => void;
 }) {
   if (!analysis) return null;
+  const visibleControls = layerControls.filter(
+    (layer) => layer.scale === activeScale || layer.scale === "ALL",
+  );
 
   return (
-    <section className="layer-panel layer-panel-diagnostic" aria-label="Layer toggles">
+    <section className="layer-panel" aria-label="Layer toggles">
       <div className="panel-heading">
-        <span className="label">Layers / debug</span>
+        <span className="label">{activeScale} layers</span>
         <button type="button" className="ghost-button" onClick={onReset}>
-          All
+          Reset
         </button>
       </div>
       <div className="diagnostic-layer-list">
-        {layerControls.map((layer) => {
+        {visibleControls.map((layer) => {
           const count = getLayerCount(analysis, layer);
-          const isCurrentScale = layer.scale === activeScale || layer.scale === "ALL";
           return (
             <button
               key={layer.id}
               type="button"
-              className={isCurrentScale ? "is-current-scale" : ""}
+              className="is-current-scale"
               aria-pressed={state[layer.id]}
               onClick={() => onToggle(layer.id)}
             >
               <span className="layer-switch-indicator" aria-hidden="true" />
               <span className="layer-name">{layer.label}</span>
-              <small>{layer.scale}</small>
               <strong>{count}</strong>
             </button>
           );
