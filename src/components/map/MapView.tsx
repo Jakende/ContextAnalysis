@@ -60,6 +60,8 @@ const MAP_LAYER_COLORS = {
   poiCommerce: "#f97316",
   poiFoodCulture: "#e11d48",
   poiLeisureTourism: "#16a34a",
+  gastronomy: "#d946ef",
+  parking: "#64748b",
   barrier: "#ef4444",
   development: "#f97316",
   sun: "#fde047",
@@ -709,13 +711,19 @@ function getLegendItems(
     if (layers.poiCommerce) items.push({ label: "POI commerce", color: MAP_LAYER_COLORS.poiCommerce });
     if (layers.poiFoodCulture) items.push({ label: "POI food/culture", color: MAP_LAYER_COLORS.poiFoodCulture });
     if (layers.poiLeisureTourism) items.push({ label: "POI leisure/tourism", color: MAP_LAYER_COLORS.poiLeisureTourism });
+    if (layers.gastronomy) items.push({ label: "Gastronomy", color: MAP_LAYER_COLORS.gastronomy });
+    if (layers.parkingAreas) items.push({ label: "Parking areas", color: MAP_LAYER_COLORS.parking });
     if (layers.development) items.push({ label: "Development hints", color: MAP_LAYER_COLORS.development });
   }
   if (activeScale === "M") {
     items.push({ label: "Street segment", color: MAP_LAYER_COLORS.street });
+    if (layers.green) items.push({ label: "L green", color: MAP_LAYER_COLORS.green });
+    if (layers.blue) items.push({ label: "L blue / water", color: MAP_LAYER_COLORS.blue });
+    if (layers.gastronomy) items.push({ label: "L gastronomy", color: MAP_LAYER_COLORS.gastronomy });
+    if (layers.parkingAreas) items.push({ label: "L parking areas", color: MAP_LAYER_COLORS.parking });
+    if (layers.buildingFootprints) items.push({ label: "L OSM buildings", color: MAP_LAYER_COLORS.building });
     if (layers["3D"]) items.push({ label: "3D buildings", color: MAP_LAYER_COLORS.building });
     if (layers.trees) items.push({ label: "Trees", color: MAP_LAYER_COLORS.tree });
-    items.push({ label: "Barriers", color: MAP_LAYER_COLORS.barrier });
     if (layers.sun) items.push({ label: "Sun hints", color: MAP_LAYER_COLORS.sun });
   }
   return items;
@@ -833,6 +841,8 @@ function addAnalysisSourcesAndLayers(map: MapLibreMap): void {
     "tree-overlay",
     "building-overlay",
     "poi-overlay",
+    "gastronomy-overlay",
+    "parking-overlay",
     "transport-overlay",
     "mobility-overlay",
     "barrier-overlay",
@@ -1213,6 +1223,39 @@ function addAnalysisSourcesAndLayers(map: MapLibreMap): void {
       "circle-color": MAP_LAYER_COLORS.poiLeisureTourism,
       "circle-stroke-color": "#000000",
       "circle-stroke-width": 0.8,
+    },
+  });
+  addLayerIfMissing(map, {
+    id: "gastronomy-points",
+    type: "circle",
+    source: "gastronomy-overlay",
+    filter: ["==", ["geometry-type"], "Point"],
+    paint: {
+      "circle-radius": 4.4,
+      "circle-color": MAP_LAYER_COLORS.gastronomy,
+      "circle-stroke-color": "#000000",
+      "circle-stroke-width": 1,
+    },
+  });
+  addLayerIfMissing(map, {
+    id: "parking-area-fill",
+    type: "fill",
+    source: "parking-overlay",
+    filter: ["==", ["geometry-type"], "Polygon"],
+    paint: {
+      "fill-color": MAP_LAYER_COLORS.parking,
+      "fill-opacity": 0.28,
+    },
+  });
+  addLayerIfMissing(map, {
+    id: "parking-area-outline",
+    type: "line",
+    source: "parking-overlay",
+    filter: ["==", ["geometry-type"], "Polygon"],
+    paint: {
+      "line-color": "#1f2937",
+      "line-width": 0.9,
+      "line-opacity": 0.82,
     },
   });
   addLayerIfMissing(map, {
@@ -2029,20 +2072,23 @@ function syncScaleSources(
   const isXl = activeScale === "XL";
   const isL = activeScale === "L";
   const isM = activeScale === "M";
+  const showLContext = isL || isM;
 
   setSourceData(map, "xl-context", isXl ? analysis.overlays.xlContext : empty);
   setSourceData(map, "xl-grid", isXl ? analysis.overlays.xlGrid : empty);
   setSourceData(map, "xl-sources", isXl ? analysis.overlays.xlSources : empty);
 
-  setSourceData(map, "urban-atlas-overlay", isL ? analysis.overlays.urbanAtlas : empty);
-  setSourceData(map, "l-buffer", isL ? analysis.overlays.lBuffer : empty);
-  setSourceData(map, "green-overlay", isL ? analysis.overlays.green : empty);
-  setSourceData(map, "blue-overlay", isL ? analysis.overlays.blue : empty);
-  setSourceData(map, "poi-overlay", isL ? analysis.overlays.pois : empty);
-  setSourceData(map, "transport-overlay", isL ? analysis.overlays.transport : empty);
-  setSourceData(map, "mobility-overlay", isL ? analysis.overlays.mobility : empty);
+  setSourceData(map, "urban-atlas-overlay", showLContext ? analysis.overlays.urbanAtlas : empty);
+  setSourceData(map, "l-buffer", showLContext ? analysis.overlays.lBuffer : empty);
+  setSourceData(map, "green-overlay", showLContext ? analysis.overlays.green : empty);
+  setSourceData(map, "blue-overlay", showLContext ? analysis.overlays.blue : empty);
+  setSourceData(map, "poi-overlay", showLContext ? analysis.overlays.pois : empty);
+  setSourceData(map, "gastronomy-overlay", showLContext ? analysis.overlays.gastronomy : empty);
+  setSourceData(map, "parking-overlay", showLContext ? analysis.overlays.parkingAreas : empty);
+  setSourceData(map, "transport-overlay", showLContext ? analysis.overlays.transport : empty);
+  setSourceData(map, "mobility-overlay", showLContext ? analysis.overlays.mobility : empty);
   setSourceData(map, "barrier-overlay", empty);
-  setSourceData(map, "development-overlay", isL ? analysis.overlays.development : empty);
+  setSourceData(map, "development-overlay", showLContext ? analysis.overlays.development : empty);
 
   setSourceData(map, "m-street-segment", isM ? analysis.overlays.mStreetSegment : empty);
   setSourceData(map, "tree-overlay", isM ? analysis.overlays.trees : empty);
@@ -2066,6 +2112,8 @@ function clearAnalysisSources(map: MapLibreMap): void {
     "tree-overlay",
     "building-overlay",
     "poi-overlay",
+    "gastronomy-overlay",
+    "parking-overlay",
     "transport-overlay",
     "mobility-overlay",
     "barrier-overlay",
@@ -2112,6 +2160,7 @@ function applyLayerVisibility(
   const isXl = activeScale === "XL";
   const isL = activeScale === "L";
   const isM = activeScale === "M";
+  const showLContext = isL || isM;
 
   setLayerVisibility(map, "building-extrusion", isM && layers["3D"]);
   setLayerVisibility(map, "ofm-building-extrusion", isM && layers["3D"]);
@@ -2122,10 +2171,10 @@ function applyLayerVisibility(
   setLayerVisibility(map, "sun-lines", isM && layers.sun);
   setLayerVisibility(map, "section-user-line", isM && layers.section);
   setLayerVisibility(map, "srtm-wms-raster", isM && layers.srtm);
-  setLayerVisibility(map, "green-fill", isL && layers.green);
-  setLayerVisibility(map, "green-outline", isL && layers.green);
-  setLayerVisibility(map, "blue-fill", isL && layers.blue);
-  setLayerVisibility(map, "blue-outline", isL && layers.blue);
+  setLayerVisibility(map, "green-fill", showLContext && layers.green);
+  setLayerVisibility(map, "green-outline", showLContext && layers.green);
+  setLayerVisibility(map, "blue-fill", showLContext && layers.blue);
+  setLayerVisibility(map, "blue-outline", showLContext && layers.blue);
   setLayerVisibility(map, "xl-context-fill", isXl && layers.xlContext);
   setLayerVisibility(map, "xl-context-line", isXl && layers.xlContext);
   setLayerVisibility(map, "zensus-wms-raster", isXl && layers.zensusWms);
@@ -2133,40 +2182,43 @@ function applyLayerVisibility(
   setLayerVisibility(map, "xl-grid-line", isXl && layers.xlGrid);
   setLayerVisibility(map, "xl-source-fill", isXl && layers.xlSources);
   setLayerVisibility(map, "xl-source-line", isXl && layers.xlSources);
-  setLayerVisibility(map, "urban-atlas-fill", isL && layers.urbanAtlas);
-  setLayerVisibility(map, "urban-atlas-line", isL && layers.urbanAtlas);
-  setLayerVisibility(map, "l-buffer-line", isL && layers.lBuffer);
-  setLayerVisibility(map, "poi-points", isL && layers.pois);
-  setLayerVisibility(map, "poi-education-points", isL && layers.poiEducation);
-  setLayerVisibility(map, "poi-health-points", isL && layers.poiHealth);
-  setLayerVisibility(map, "poi-civic-points", isL && layers.poiCivic);
-  setLayerVisibility(map, "poi-commerce-points", isL && layers.poiCommerce);
-  setLayerVisibility(map, "poi-food-culture-points", isL && layers.poiFoodCulture);
-  setLayerVisibility(map, "poi-leisure-tourism-points", isL && layers.poiLeisureTourism);
-  setLayerVisibility(map, "transport-lines-debug", isL && layers.transportAll);
-  setLayerVisibility(map, "transport-lines-bus", isL && layers.transitBus);
-  setLayerVisibility(map, "transport-lines-tram", isL && layers.transitTram);
-  setLayerVisibility(map, "transport-lines-subway", isL && layers.transitSubway);
-  setLayerVisibility(map, "transport-lines-light-rail", isL && layers.transitLightRail);
-  setLayerVisibility(map, "transport-lines-rail-only", isL && layers.transitRail);
-  setLayerVisibility(map, "transport-lines-other", isL && layers.transitOther);
-  setLayerVisibility(map, "transport-points", isL && layers.transitLocal);
-  setLayerVisibility(map, "transport-lines", isL && layers.transitLocal);
-  setLayerVisibility(map, "transport-areas", isL && layers.transitLocal);
-  setLayerVisibility(map, "transport-points-rail", isL && layers.transitRegional);
-  setLayerVisibility(map, "transport-lines-rail", isL && layers.transitRegional);
-  setLayerVisibility(map, "transport-areas-rail", isL && layers.transitRegional);
-  setLayerVisibility(map, "mobility-lines", isL && layers.mobility);
-  setLayerVisibility(map, "mobility-lines-bike", isL && layers.mobilityBike);
-  setLayerVisibility(map, "mobility-lines-pedestrian", isL && layers.mobilityPedestrian);
-  setLayerVisibility(map, "mobility-lines-support", isL && layers.mobilitySupport);
-  setLayerVisibility(map, "mobility-areas", isL && layers.mobility);
-  setLayerVisibility(map, "mobility-points", isL && layers.mobility);
-  setLayerVisibility(map, "mobility-support-points", isL && layers.mobilitySupport);
-  setLayerVisibility(map, "development-fill", isL && layers.development);
-  setLayerVisibility(map, "development-points", isL && layers.development);
-  setLayerVisibility(map, "building-footprints-fill", isL && layers.buildingFootprints);
-  setLayerVisibility(map, "building-footprints-outline", isL && layers.buildingFootprints);
+  setLayerVisibility(map, "urban-atlas-fill", showLContext && layers.urbanAtlas);
+  setLayerVisibility(map, "urban-atlas-line", showLContext && layers.urbanAtlas);
+  setLayerVisibility(map, "l-buffer-line", showLContext && layers.lBuffer);
+  setLayerVisibility(map, "poi-points", showLContext && layers.pois);
+  setLayerVisibility(map, "poi-education-points", showLContext && layers.poiEducation);
+  setLayerVisibility(map, "poi-health-points", showLContext && layers.poiHealth);
+  setLayerVisibility(map, "poi-civic-points", showLContext && layers.poiCivic);
+  setLayerVisibility(map, "poi-commerce-points", showLContext && layers.poiCommerce);
+  setLayerVisibility(map, "poi-food-culture-points", showLContext && layers.poiFoodCulture);
+  setLayerVisibility(map, "poi-leisure-tourism-points", showLContext && layers.poiLeisureTourism);
+  setLayerVisibility(map, "gastronomy-points", showLContext && layers.gastronomy);
+  setLayerVisibility(map, "parking-area-fill", showLContext && layers.parkingAreas);
+  setLayerVisibility(map, "parking-area-outline", showLContext && layers.parkingAreas);
+  setLayerVisibility(map, "transport-lines-debug", showLContext && layers.transportAll);
+  setLayerVisibility(map, "transport-lines-bus", showLContext && layers.transitBus);
+  setLayerVisibility(map, "transport-lines-tram", showLContext && layers.transitTram);
+  setLayerVisibility(map, "transport-lines-subway", showLContext && layers.transitSubway);
+  setLayerVisibility(map, "transport-lines-light-rail", showLContext && layers.transitLightRail);
+  setLayerVisibility(map, "transport-lines-rail-only", showLContext && layers.transitRail);
+  setLayerVisibility(map, "transport-lines-other", showLContext && layers.transitOther);
+  setLayerVisibility(map, "transport-points", showLContext && layers.transitLocal);
+  setLayerVisibility(map, "transport-lines", showLContext && layers.transitLocal);
+  setLayerVisibility(map, "transport-areas", showLContext && layers.transitLocal);
+  setLayerVisibility(map, "transport-points-rail", showLContext && layers.transitRegional);
+  setLayerVisibility(map, "transport-lines-rail", showLContext && layers.transitRegional);
+  setLayerVisibility(map, "transport-areas-rail", showLContext && layers.transitRegional);
+  setLayerVisibility(map, "mobility-lines", showLContext && layers.mobility);
+  setLayerVisibility(map, "mobility-lines-bike", showLContext && layers.mobilityBike);
+  setLayerVisibility(map, "mobility-lines-pedestrian", showLContext && layers.mobilityPedestrian);
+  setLayerVisibility(map, "mobility-lines-support", showLContext && layers.mobilitySupport);
+  setLayerVisibility(map, "mobility-areas", showLContext && layers.mobility);
+  setLayerVisibility(map, "mobility-points", showLContext && layers.mobility);
+  setLayerVisibility(map, "mobility-support-points", showLContext && layers.mobilitySupport);
+  setLayerVisibility(map, "development-fill", showLContext && layers.development);
+  setLayerVisibility(map, "development-points", showLContext && layers.development);
+  setLayerVisibility(map, "building-footprints-fill", showLContext && layers.buildingFootprints);
+  setLayerVisibility(map, "building-footprints-outline", showLContext && layers.buildingFootprints);
   setLayerVisibility(map, "barrier-lines", false);
   setLayerVisibility(map, "barrier-points", false);
   setLayerVisibility(map, "m-street-line", isM && layers.streets);
@@ -2205,6 +2257,9 @@ function hideAnalysisLayers(map: MapLibreMap): void {
     "poi-commerce-points",
     "poi-food-culture-points",
     "poi-leisure-tourism-points",
+    "gastronomy-points",
+    "parking-area-fill",
+    "parking-area-outline",
     "transport-lines-debug",
     "transport-lines-bus",
     "transport-lines-tram",

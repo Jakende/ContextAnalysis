@@ -343,9 +343,9 @@
 
 .map-left {
   top: 76px;
-  bottom: 148px;
+  bottom: 132px;
   left: var(--space-2);
-  width: 244px;
+  width: min(292px, calc(100% - 24px));
   display: flex;
   min-height: 0;
 }
@@ -355,11 +355,14 @@
 }
 
 .layer-panel {
+  width: 100%;
+  min-height: 0;
   display: grid;
   gap: var(--space-2);
   padding: var(--space-2);
   border: 1px solid var(--border);
   background: var(--surface);
+  overflow: hidden;
 }
 
 .layer-panel-diagnostic {
@@ -373,6 +376,21 @@
   justify-content: space-between;
   align-items: center;
   gap: var(--space-3);
+}
+
+.panel-heading > div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.panel-heading strong {
+  overflow: hidden;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-transform: uppercase;
 }
 
 .ghost-button {
@@ -400,16 +418,34 @@
   text-align: left;
 }
 
-.diagnostic-layer-list {
+.layer-picker-list {
+  min-height: 0;
+  display: grid;
+  gap: var(--space-2);
+  overflow: auto;
+  scrollbar-gutter: stable;
+}
+
+.layer-picker-group {
   display: grid;
   gap: 1px;
   border: 1px solid var(--border);
   background: var(--border);
 }
 
-.diagnostic-layer-list button {
+.layer-picker-group-title {
+  padding: 5px 7px;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.layer-picker-group button {
   display: grid;
-  grid-template-columns: 12px minmax(0, 1fr) 28px 38px;
+  grid-template-columns: 12px minmax(0, 1fr) auto 36px;
   gap: var(--space-1);
   align-items: center;
   min-height: 30px;
@@ -420,27 +456,32 @@
   text-align: left;
 }
 
-.diagnostic-layer-list button[aria-pressed="false"] {
+.layer-picker-group button[aria-pressed="false"] {
   color: var(--muted);
 }
 
-.diagnostic-layer-list button[aria-pressed="false"] .layer-switch-indicator {
+.layer-picker-group button[aria-pressed="false"] .layer-switch-indicator {
   background: transparent;
 }
 
-.diagnostic-layer-list button.is-current-scale .layer-name {
+.layer-picker-group button[data-empty="true"] {
+  color: var(--muted);
+}
+
+.layer-picker-group button[aria-pressed="true"] .layer-name {
   text-decoration: underline;
+  text-decoration-thickness: 2px;
   text-underline-offset: 3px;
 }
 
-.diagnostic-layer-list .layer-switch-indicator {
+.layer-picker-group .layer-switch-indicator {
   width: 10px;
   height: 10px;
   border: 1px solid var(--ink);
   background: var(--seq-6);
 }
 
-.diagnostic-layer-list .layer-name {
+.layer-picker-group .layer-name {
   min-width: 0;
   overflow: hidden;
   font-size: 11px;
@@ -451,24 +492,25 @@
   text-transform: uppercase;
 }
 
-.diagnostic-layer-list small,
-.diagnostic-layer-list strong {
+.layer-picker-group small,
+.layer-picker-group strong {
   color: var(--muted);
   font-size: 10px;
   text-align: right;
+  white-space: nowrap;
 }
 
-.diagnostic-layer-list strong {
+.layer-picker-group strong {
   color: var(--ink);
   font-weight: 700;
 }
 
 .map-status {
   left: var(--space-2);
-  bottom: var(--space-2);
+  bottom: 42px;
   display: grid;
   gap: var(--space-1);
-  width: min(240px, calc(100% - 96px));
+  width: min(232px, calc(100% - 96px));
   padding: var(--space-2);
   line-height: 1.35;
 }
@@ -668,13 +710,16 @@
 
 .map-legend {
   right: var(--space-2);
-  bottom: 88px;
+  bottom: 42px;
   display: grid;
   gap: var(--space-1);
-  min-width: 220px;
-  max-width: 320px;
+  min-width: 208px;
+  max-width: min(308px, calc(100% - 276px));
+  max-height: min(46vh, 420px);
   padding: var(--space-2);
   background: var(--surface);
+  overflow: auto;
+  scrollbar-gutter: stable;
 }
 
 .map-attribution {
@@ -1444,6 +1489,14 @@
   .side-stack:fullscreen .export-grid {
     grid-template-columns: 1fr;
   }
+
+  .map-status {
+    width: min(220px, calc(50% - 16px));
+  }
+
+  .map-legend {
+    max-width: min(300px, calc(50% - 16px));
+  }
 }
 
 @media (max-width: 720px) {
@@ -1498,8 +1551,24 @@
 
   .map-left {
     top: 178px;
-    bottom: 150px;
+    bottom: 216px;
     width: calc(100% - 32px);
+  }
+
+  .map-status {
+    left: var(--space-2);
+    right: var(--space-2);
+    bottom: 50px;
+    width: auto;
+  }
+
+  .map-legend {
+    left: var(--space-2);
+    right: var(--space-2);
+    bottom: 154px;
+    min-width: 0;
+    max-width: none;
+    max-height: 200px;
   }
 
   .toggle-grid,

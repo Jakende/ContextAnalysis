@@ -97,7 +97,9 @@ export type LayerId =
   | "poiCommerce"
   | "poiFoodCulture"
   | "poiLeisureTourism"
+  | "gastronomy"
   | "development"
+  | "parkingAreas"
   | "buildingFootprints"
   | "streets"
   | "barriers"
@@ -221,6 +223,8 @@ export type MapOverlayCollection = {
   trees: FeatureCollection;
   buildings: FeatureCollection;
   pois: FeatureCollection;
+  gastronomy: FeatureCollection;
+  parkingAreas: FeatureCollection;
   transport: FeatureCollection;
   mobility: FeatureCollection;
   barriers: FeatureCollection;

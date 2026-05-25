@@ -82,6 +82,8 @@ export function analysisToGeoJson(analysis: AnalysisResult): string {
     ...analysis.overlays.trees.features,
     ...analysis.overlays.buildings.features,
     ...analysis.overlays.pois.features,
+    ...analysis.overlays.gastronomy.features,
+    ...analysis.overlays.parkingAreas.features,
     ...analysis.overlays.transport.features,
     ...analysis.overlays.mobility.features,
     ...analysis.overlays.barriers.features,

@@ -221,7 +221,7 @@ function overpassToReceipt(
       0,
     ),
     method:
-      "Ran deterministic Overpass modules for land use, green/blue, transit stops, transit lines, mobility, POIs, development hints, streets, buildings, trees, and barriers.",
+      "Ran deterministic Overpass modules for land use, green/blue, transit stops, transit lines, mobility, POIs, gastronomy, parking areas, development hints, streets, buildings, trees, and barriers.",
     caveats: queries.flatMap((query) => query.caveats),
     error:
       failedQueries.length > 0 && okQueries.length === 0

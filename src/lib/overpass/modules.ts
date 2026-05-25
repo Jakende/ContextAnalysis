@@ -134,6 +134,8 @@ function normalizedProperties(
   const transportMode = classifyTransportMode(tags);
   const mobilityMode = classifyMobilityMode(tags);
   const poiCategory = classifyPoiCategory(tags);
+  const heightMeters = readHeightMeters(tags);
+  const buildingLevels = readNumber(tags?.["building:levels"] ?? tags?.levels);
   return {
     id: element.id,
     osmType: element.type,
@@ -141,7 +143,21 @@ function normalizedProperties(
     ...(transportMode ? { transportMode } : {}),
     ...(mobilityMode ? { mobilityMode } : {}),
     ...(poiCategory ? { poiCategory } : {}),
+    ...(heightMeters !== undefined ? { heightMeters } : {}),
+    ...(buildingLevels !== undefined ? { buildingLevels } : {}),
   };
+}
+
+function readHeightMeters(tags?: Record<string, string>): number | undefined {
+  return readNumber(tags?.height ?? tags?.["building:height"]);
+}
+
+function readNumber(value?: string): number | undefined {
+  if (!value) return undefined;
+  const normalized = value.replace(",", ".").match(/-?\d+(\.\d+)?/u)?.[0];
+  if (!normalized) return undefined;
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : undefined;
 }
 
 function classifyTransportMode(tags?: Record<string, string>): string | undefined {
@@ -254,7 +270,12 @@ function classifyPoiCategory(tags?: Record<string, string>): string | undefined 
   if (
     ["restaurant", "cafe", "bar", "pub", "fast_food", "biergarten", "food_court"].includes(
       amenity ?? "",
-    ) ||
+    )
+  ) {
+    return "gastronomy";
+  }
+  if (
+    ["theatre", "cinema", "arts_centre"].includes(amenity ?? "") ||
     tourism === "gallery" ||
     tourism === "museum"
   ) {
@@ -529,6 +550,32 @@ ${output()}`,
         `nwr["tourism"~"museum|gallery|attraction|viewpoint|hotel|hostel|guest_house|information"]${around(params)};`,
         `nwr["leisure"~"sports_centre|fitness_centre|playground|pitch|swimming_pool|park|garden|recreation_ground"]${around(params)};`,
         `nwr["office"~"government|coworking"]${around(params)};`,
+      ]),
+    parse: parseOverpassElements,
+  },
+  {
+    id: "gastronomy",
+    scale: "L",
+    radiusMeters: 500,
+    buildQuery: (params) =>
+      buildQuery([
+        `node["amenity"~"restaurant|cafe|bar|pub|fast_food|biergarten|food_court"]${around(params)};`,
+        `way["amenity"~"restaurant|cafe|bar|pub|fast_food|biergarten|food_court"]${around(params)};`,
+      ]),
+    parse: parseOverpassElements,
+  },
+  {
+    id: "parkingAreas",
+    scale: "L",
+    radiusMeters: 650,
+    buildQuery: (params) =>
+      buildQuery([
+        `way["amenity"="parking"]${around(params)};`,
+        `way["parking"]${around(params)};`,
+        `way["parking:lane"]${around(params)};`,
+        `way["parking:both"]${around(params)};`,
+        `way["parking:left"]${around(params)};`,
+        `way["parking:right"]${around(params)};`,
       ]),
     parse: parseOverpassElements,
   },

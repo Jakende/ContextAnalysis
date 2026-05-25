@@ -71,6 +71,18 @@ export async function analysisToGpkgBlob(
       styleRole: "poi",
     },
     {
+      name: "osm_gastronomy",
+      geometryType: "POINT",
+      collection: onlyGeometry(analysis.overlays.gastronomy, "Point"),
+      styleRole: "gastronomy",
+    },
+    {
+      name: "osm_parking_areas",
+      geometryType: "POLYGON",
+      collection: onlyGeometry(analysis.overlays.parkingAreas, "Polygon"),
+      styleRole: "parking",
+    },
+    {
       name: "osm_streets",
       geometryType: "LINESTRING",
       collection: onlyGeometry(analysis.overlays.mStreetSegment, "LineString"),
@@ -331,6 +343,7 @@ function createFeatureTable(
   table: GeometryTable,
   createdAt: string,
 ): void {
+  const propertyColumns = collectPropertyColumns(table.collection);
   db.run(`CREATE TABLE ${table.name} (
     fid INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT,
@@ -340,6 +353,7 @@ function createFeatureTable(
     style_width REAL,
     style_symbol TEXT,
     properties_json TEXT,
+    ${propertyColumns.map((column) => `${quoteIdent(column.columnName)} TEXT`).join(",\n    ")}${propertyColumns.length ? "," : ""}
     geom BLOB NOT NULL
   )`);
 
@@ -364,8 +378,12 @@ function createFeatureTable(
 
   for (const feature of table.collection.features) {
     const style = styleForFeature(table, feature);
+    const dynamicColumnNames = propertyColumns.map((column) => quoteIdent(column.columnName));
+    const dynamicValues = propertyColumns.map((column) =>
+      serializePropertyValue(feature.properties?.[column.propertyName]),
+    );
     db.run(
-      `INSERT INTO ${table.name} (name, style_role, style_color, style_opacity, style_width, style_symbol, properties_json, geom) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO ${table.name} (name, style_role, style_color, style_opacity, style_width, style_symbol, properties_json${dynamicColumnNames.length ? `, ${dynamicColumnNames.join(", ")}` : ""}, geom) VALUES (${["?", "?", "?", "?", "?", "?", "?", ...dynamicColumnNames.map(() => "?"), "?"].join(", ")})`,
       [
         String(feature.properties?.name ?? feature.properties?.id ?? table.name),
         style.role,
@@ -374,6 +392,7 @@ function createFeatureTable(
         style.width,
         style.symbol,
         JSON.stringify(feature.properties ?? {}),
+        ...dynamicValues,
         geometryToGeoPackageBinary(feature.geometry),
       ],
     );
@@ -410,12 +429,70 @@ function styleForFeature(table: GeometryTable, feature: Feature): {
     "transport-line": { color: "#facc15", opacity: 0.92, width: 2.8, symbol: "transit-line-by-mode" },
     mobility: { color: "#22d3ee", opacity: 0.9, width: table.geometryType === "LINESTRING" ? 2.2 : 4, symbol: "mobility-cyan" },
     poi: { color: "#fb7185", opacity: 0.9, width: 3, symbol: "poi-pink-circle" },
+    gastronomy: { color: "#d946ef", opacity: 0.92, width: 3.2, symbol: "gastronomy-magenta-circle" },
+    parking: { color: "#64748b", opacity: 0.34, width: 0.9, symbol: "parking-gray-fill" },
     development: { color: "#f97316", opacity: 0.38, width: 1.2, symbol: "development-orange" },
     barrier: { color: "#ef4444", opacity: 0.9, width: 1.8, symbol: "barrier-red" },
     building: { color: "#60a5fa", opacity: 0.62, width: 0.7, symbol: "building-blue-extrusion-source" },
     tree: { color: "#16a34a", opacity: 0.95, width: 4.5, symbol: "tree-green-circle" },
   };
   return { role, ...(styles[role] ?? { color: "#ffffff", opacity: 0.8, width: 1, symbol: "default" }) };
+}
+
+function collectPropertyColumns(
+  collection: FeatureCollection,
+): Array<{ propertyName: string; columnName: string }> {
+  const used = new Set([
+    "fid",
+    "name",
+    "style_role",
+    "style_color",
+    "style_opacity",
+    "style_width",
+    "style_symbol",
+    "properties_json",
+    "geom",
+  ]);
+  const columns: Array<{ propertyName: string; columnName: string }> = [];
+  const byPropertyName = new Map<string, string>();
+  for (const feature of collection.features) {
+    for (const key of Object.keys(feature.properties ?? {})) {
+      if (byPropertyName.has(key)) continue;
+      const baseName = sanitizeColumnName(key);
+      if (!baseName) continue;
+      let columnName = baseName;
+      let suffix = 2;
+      while (used.has(columnName)) {
+        columnName = `${baseName}_${suffix}`;
+        suffix += 1;
+      }
+      used.add(columnName);
+      byPropertyName.set(key, columnName);
+      columns.push({ propertyName: key, columnName });
+    }
+  }
+  return columns;
+}
+
+function sanitizeColumnName(key: string): string {
+  const normalized = key
+    .trim()
+    .replace(/[^a-zA-Z0-9_]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .toLowerCase();
+  if (!normalized) return "";
+  return /^[a-z_]/.test(normalized) ? normalized.slice(0, 58) : `p_${normalized}`.slice(0, 58);
+}
+
+function quoteIdent(identifier: string): string {
+  return `"${identifier.replace(/"/g, '""')}"`;
+}
+
+function serializePropertyValue(value: unknown): string | null {
+  if (value === undefined || value === null) return null;
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  return JSON.stringify(value);
 }
 
 function zensusColor(value: number): string {

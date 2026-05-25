@@ -69,7 +69,9 @@ const DEFAULT_LAYER_STATE: LayerState = {
   poiCommerce: false,
   poiFoodCulture: false,
   poiLeisureTourism: false,
+  gastronomy: false,
   development: false,
+  parkingAreas: false,
   buildingFootprints: false,
   streets: true,
   barriers: false,
@@ -298,6 +300,8 @@ export async function runLocationAnalysis(input: {
         m.overlays.buildings,
       ),
       pois: mergeCollections(overpass.collections.pois ?? featureCollection()),
+      gastronomy: mergeCollections(overpass.collections.gastronomy ?? featureCollection()),
+      parkingAreas: mergeCollections(overpass.collections.parkingAreas ?? featureCollection()),
       transport: mergeCollections(
         analysisCollections.transportStops,
         analysisCollections.transportLines ?? featureCollection(),
