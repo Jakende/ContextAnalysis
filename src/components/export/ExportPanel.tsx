@@ -76,6 +76,10 @@ export function ExportPanel({
           onStatus(`Ollama unavailable; deterministic report exported. ${report.error}`);
           return;
         }
+        if (report.status === "fallback") {
+          onStatus(report.error ?? "Ollama report empty; deterministic report exported.");
+          return;
+        }
       }
       onStatus(`${kind.toUpperCase()} export ready.`);
     } catch (error) {

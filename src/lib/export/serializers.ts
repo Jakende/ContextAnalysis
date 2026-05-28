@@ -124,8 +124,16 @@ export function analysisToMarkdown(analysis: AnalysisResult): string {
     "# Urban Context Analysis",
     "",
     `Generated: ${new Date().toISOString()}`,
+    "",
+    "## Location",
     `Selected point: ${analysis.selectedPoint.lat.toFixed(5)}, ${analysis.selectedPoint.lon.toFixed(5)}`,
     analysis.selectedPoint.address ? `Address: ${analysis.selectedPoint.address}` : "Address: not available",
+    analysis.selectedPoint.municipality
+      ? `Municipality: ${analysis.selectedPoint.municipality}`
+      : "Municipality: not available",
+    analysis.selectedPoint.district
+      ? `District: ${analysis.selectedPoint.district}`
+      : "District: not available",
     "",
     "## Summary",
     "This report summarizes only computed structured indicators. Missing or approximate data are stated explicitly.",
@@ -139,13 +147,18 @@ export function analysisToMarkdown(analysis: AnalysisResult): string {
           ? "L Neighbourhood"
           : "M Streetscape";
     lines.push("", `## ${title}`);
-    for (const indicator of analysis.indicators.filter(
-      (item) => item.scale === scale,
-    )) {
+    const scaleIndicators = analysis.indicators.filter((item) => item.scale === scale);
+    if (!scaleIndicators.length) {
+      lines.push("- No computed indicators are available for this scale.");
+    }
+    for (const indicator of scaleIndicators) {
       lines.push(
         `- **${indicator.label}:** ${formatValue(indicator.value)}${indicator.unit ? ` ${indicator.unit}` : ""} (${indicator.confidence} confidence)`,
       );
       lines.push(`  Method: ${indicator.method}`);
+      if (indicator.sourceIds.length) {
+        lines.push(`  Sources: ${indicator.sourceIds.join(", ")}`);
+      }
       if (indicator.caveats.length) {
         lines.push(`  Caveats: ${indicator.caveats.join("; ")}`);
       }
@@ -171,7 +184,11 @@ export function analysisToMarkdown(analysis: AnalysisResult): string {
   }
 
   lines.push("", "## Data Sources");
-  for (const source of getSources(analysis.provenance.sourceIds)) {
+  const sources = getSources(analysis.provenance.sourceIds);
+  if (!sources.length) {
+    lines.push("- not available");
+  }
+  for (const source of sources) {
     lines.push(`- ${source.label}: ${source.attribution}`);
   }
 
@@ -207,7 +224,11 @@ export function analysisToMarkdown(analysis: AnalysisResult): string {
     ...analysis.provenance.caveats,
     ...analysis.indicators.flatMap((indicator) => indicator.caveats),
   ];
-  for (const caveat of [...new Set(caveats)]) {
+  const uniqueCaveats = [...new Set(caveats)];
+  if (!uniqueCaveats.length) {
+    lines.push("- No caveats recorded.");
+  }
+  for (const caveat of uniqueCaveats) {
     lines.push(`- ${caveat}`);
   }
 

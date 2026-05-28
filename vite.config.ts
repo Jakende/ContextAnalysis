@@ -89,6 +89,12 @@ function localApiPlugin(): Plugin {
       server.middlewares.use("/api/google-satellite", (req, res) => {
         void handleGoogleSatelliteTile(req as ProbeRequest, res as ProbeResponse);
       });
+      server.middlewares.use("/api/ollama/tags", (req, res) => {
+        void handleOllamaTags(req as ProbeRequest, res as ProbeResponse);
+      });
+      server.middlewares.use("/api/ollama/chat", (req, res) => {
+        void handleOllamaChat(req as ProbeRequest, res as ProbeResponse);
+      });
     },
     configurePreviewServer(server) {
       server.middlewares.use("/api/source-probe", (req, res) => {
@@ -105,6 +111,12 @@ function localApiPlugin(): Plugin {
       });
       server.middlewares.use("/api/google-satellite", (req, res) => {
         void handleGoogleSatelliteTile(req as ProbeRequest, res as ProbeResponse);
+      });
+      server.middlewares.use("/api/ollama/tags", (req, res) => {
+        void handleOllamaTags(req as ProbeRequest, res as ProbeResponse);
+      });
+      server.middlewares.use("/api/ollama/chat", (req, res) => {
+        void handleOllamaChat(req as ProbeRequest, res as ProbeResponse);
       });
     },
   };
@@ -505,6 +517,73 @@ async function handleGoogleSatelliteTile(
       error: error instanceof Error ? error.message : String(error),
     });
   }
+}
+
+async function handleOllamaTags(
+  req: ProbeRequest,
+  res: ProbeResponse,
+): Promise<void> {
+  try {
+    if (req.method && req.method !== "GET") {
+      writeJson(res, 405, { ok: false, error: "GET required" });
+      return;
+    }
+
+    const response = await fetch(`${ollamaBaseUrl()}/api/tags`, {
+      method: "GET",
+      headers: {
+        Accept: "application/json",
+      },
+    });
+    const payload = await response.json().catch(() => null);
+    writeJson(res, response.ok ? 200 : response.status, payload ?? {
+      models: [],
+      error: `Ollama tags endpoint returned HTTP ${response.status}`,
+    });
+  } catch (error) {
+    writeJson(res, 502, {
+      models: [],
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+}
+
+async function handleOllamaChat(
+  req: ProbeRequest,
+  res: ProbeResponse,
+): Promise<void> {
+  try {
+    if (req.method !== "POST") {
+      writeJson(res, 405, { error: "POST required" });
+      return;
+    }
+
+    const body = await readBody(req);
+    const response = await fetch(`${ollamaBaseUrl()}/api/chat`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body,
+    });
+    const text = await response.text();
+    res.statusCode = response.status;
+    res.setHeader("content-type", response.headers.get("content-type") ?? "application/json");
+    res.end(text);
+  } catch (error) {
+    writeJson(res, 502, {
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+}
+
+function ollamaBaseUrl(): string {
+  return (
+    process.env.VITE_OLLAMA_BASE_URL ??
+    process.env.OLLAMA_BASE_URL ??
+    "http://localhost:11434"
+  ).replace(/\/+$/, "");
 }
 
 async function getGoogleTileSession(key: string): Promise<string> {

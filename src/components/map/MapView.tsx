@@ -437,47 +437,47 @@ export function MapView({
           onToggle={onLayerToggle}
           onReset={onLayerReset}
         />
-      </div>
-      <div className="map-status panel">
-        <strong>{isAnalyzing ? "Analysis running" : analysis ? "Analysis loaded" : "Awaiting point"}</strong>
-        <span>
-          {analysis
-            ? "Point fixed. Switch scale, toggle layers, or export."
-            : "Search only zooms. Click the canvas pin target to run analysis."}
-        </span>
-        {analysis ? (
-          <button type="button" className="ghost-button" onClick={handleAnalysisClearClick}>
-            Close analysis / new point
-          </button>
-        ) : null}
-        {analysis && activeScale === "M" && layers.section ? (
-          <button
-            type="button"
-            className="ghost-button"
-            onClick={() => {
-              setSectionDrawMode((current) => {
-                const next = !current;
-                if (!next) {
-                  setSectionDraftStart(null);
-                  sectionDraftStartRef.current = null;
-                }
-                onStatus(
-                  next
-                    ? "Section draw mode active. Click start and end point on the map."
-                    : "Section draw mode cancelled.",
-                );
-                return next;
-              });
-            }}
-          >
-            {sectionDrawMode ? "Cancel section line" : "Set section line"}
-          </button>
-        ) : null}
-        {sectionDrawMode ? (
-          <span className="map-mode-note">
-            {sectionDraftStart ? "Click section end" : "Click section start"}
+        <div className="map-control-status panel">
+          <strong>{isAnalyzing ? "Analysis running" : analysis ? "Analysis loaded" : "Awaiting point"}</strong>
+          <span>
+            {analysis
+              ? "Point fixed. Switch scale, toggle layers, or export."
+              : "Search only zooms. Click the canvas pin target to run analysis."}
           </span>
-        ) : null}
+          {analysis ? (
+            <button type="button" className="ghost-button" onClick={handleAnalysisClearClick}>
+              Close analysis / new point
+            </button>
+          ) : null}
+          {analysis && activeScale === "M" && layers.section ? (
+            <button
+              type="button"
+              className="ghost-button"
+              onClick={() => {
+                setSectionDrawMode((current) => {
+                  const next = !current;
+                  if (!next) {
+                    setSectionDraftStart(null);
+                    sectionDraftStartRef.current = null;
+                  }
+                  onStatus(
+                    next
+                      ? "Section draw mode active. Click start and end point on the map."
+                      : "Section draw mode cancelled.",
+                  );
+                  return next;
+                });
+              }}
+            >
+              {sectionDrawMode ? "Cancel section line" : "Set section line"}
+            </button>
+          ) : null}
+          {sectionDrawMode ? (
+            <span className="map-mode-note">
+              {sectionDraftStart ? "Click section end" : "Click section start"}
+            </span>
+          ) : null}
+        </div>
       </div>
       {analysis ? (
         <MapLegend
