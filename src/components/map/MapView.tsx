@@ -5,7 +5,7 @@ import maplibregl, {
 import type { MutableRefObject } from "react";
 import { useEffect, useRef, useState } from "react";
 import { searchPlaces } from "../../lib/api/geocoding";
-import { googleSatelliteTileUrl, srtmWmsTileUrl } from "../../lib/data/publicGeoServices";
+import { googleSatelliteTileUrl } from "../../lib/data/publicGeoServices";
 import { openFreeMapStyle } from "../../lib/tiles/openFreeMapStyle";
 import {
   ZENSUS_WMS_DISPLAY_LAYER,
@@ -43,6 +43,7 @@ const MAP_LAYER_COLORS = {
   tree: "#16a34a",
   building: "#60a5fa",
   street: "#f8fafc",
+  contour: "#f3d35c",
   transport: "#facc15",
   transportBus: "#facc15",
   transportTram: "#ef4444",
@@ -724,6 +725,7 @@ function getLegendItems(
     if (layers.buildingFootprints) items.push({ label: "L OSM buildings", color: MAP_LAYER_COLORS.building });
     if (layers["3D"]) items.push({ label: "3D buildings", color: MAP_LAYER_COLORS.building });
     if (layers.trees) items.push({ label: "Trees", color: MAP_LAYER_COLORS.tree });
+    if (layers.contours) items.push({ label: "OpenTopography contours", color: MAP_LAYER_COLORS.contour });
     if (layers.sun) items.push({ label: "Sun hints", color: MAP_LAYER_COLORS.sun });
   }
   return items;
@@ -826,7 +828,6 @@ function addAnalysisSourcesAndLayers(map: MapLibreMap): void {
   ensureSatelliteRasterLayer(map);
   ensureGoogleSatelliteLayer(map);
   ensureZensusWmsLayer(map, ZENSUS_WMS_DISPLAY_LAYER);
-  ensureSrtmWmsLayer(map);
 
   for (const id of [
     "selected-point",
@@ -848,6 +849,7 @@ function addAnalysisSourcesAndLayers(map: MapLibreMap): void {
     "barrier-overlay",
     "development-overlay",
     "sun-overlay",
+    "contour-overlay",
     "section-line-overlay",
   ]) {
     if (!map.getSource(id)) {
@@ -1688,18 +1690,30 @@ function addAnalysisSourcesAndLayers(map: MapLibreMap): void {
         ["linear"],
         ["zoom"],
         14,
-        8,
+        [
+          "*",
+          0.65,
+          ["to-number", ["get", "diameter_crown"], ["get", "crown_diameter"], 8],
+        ],
         17,
-        18,
+        [
+          "*",
+          1.35,
+          ["to-number", ["get", "diameter_crown"], ["get", "crown_diameter"], 8],
+        ],
         19,
-        28,
+        [
+          "*",
+          2.1,
+          ["to-number", ["get", "diameter_crown"], ["get", "crown_diameter"], 8],
+        ],
       ],
       "circle-color": "#06140a",
-      "circle-opacity": 0.38,
-      "circle-blur": 0.45,
+      "circle-opacity": 0.24,
+      "circle-blur": 0.6,
       "circle-pitch-alignment": "map",
       "circle-pitch-scale": "map",
-      "circle-translate": [4, 7],
+      "circle-translate": [6, 9],
     },
   });
   addLayerIfMissing(map, {
@@ -1713,16 +1727,36 @@ function addAnalysisSourcesAndLayers(map: MapLibreMap): void {
         ["linear"],
         ["zoom"],
         14,
-        6,
+        [
+          "*",
+          0.55,
+          ["to-number", ["get", "diameter_crown"], ["get", "crown_diameter"], 7],
+        ],
         17,
-        14,
+        [
+          "*",
+          1.15,
+          ["to-number", ["get", "diameter_crown"], ["get", "crown_diameter"], 7],
+        ],
         19,
-        22,
+        [
+          "*",
+          1.85,
+          ["to-number", ["get", "diameter_crown"], ["get", "crown_diameter"], 7],
+        ],
       ],
-      "circle-color": "#21b85a",
-      "circle-opacity": 0.82,
+      "circle-color": [
+        "match",
+        ["get", "leaf_type"],
+        "needleleaved",
+        "#1f7a48",
+        "broadleaved",
+        "#31d158",
+        "#2fbf63",
+      ],
+      "circle-opacity": 0.7,
       "circle-stroke-color": "#062f17",
-      "circle-stroke-width": 1.2,
+      "circle-stroke-width": 1.1,
       "circle-pitch-alignment": "map",
       "circle-pitch-scale": "map",
     },
@@ -1738,11 +1772,11 @@ function addAnalysisSourcesAndLayers(map: MapLibreMap): void {
         ["linear"],
         ["zoom"],
         14,
-        2,
+        1.8,
         17,
-        4,
+        3.4,
         19,
-        7,
+        5.2,
       ],
       "circle-color": "#8b5a2b",
       "circle-opacity": 0.95,
@@ -1760,6 +1794,36 @@ function addAnalysisSourcesAndLayers(map: MapLibreMap): void {
       "line-color": MAP_LAYER_COLORS.sun,
       "line-width": 2,
       "line-dasharray": [4, 4],
+    },
+  });
+  addLayerIfMissing(map, {
+    id: "contour-lines",
+    type: "line",
+    source: "contour-overlay",
+    filter: ["==", ["geometry-type"], "LineString"],
+    paint: {
+      "line-color": MAP_LAYER_COLORS.contour,
+      "line-width": ["interpolate", ["linear"], ["zoom"], 13, 0.5, 16, 1.1, 18, 1.8],
+      "line-opacity": 0.72,
+      "line-dasharray": [3, 2],
+    },
+  });
+  addLayerIfMissing(map, {
+    id: "contour-labels",
+    type: "symbol",
+    source: "contour-overlay",
+    filter: ["==", ["geometry-type"], "LineString"],
+    minzoom: 15,
+    layout: {
+      "symbol-placement": "line",
+      "text-field": ["case", ["has", "elevation"], ["concat", ["to-string", ["get", "elevation"]], " m"], ""],
+      "text-size": 10,
+      "text-font": ["Noto Sans Regular"],
+    },
+    paint: {
+      "text-color": MAP_LAYER_COLORS.contour,
+      "text-halo-color": "#000000",
+      "text-halo-width": 1,
     },
   });
   addLayerIfMissing(map, {
@@ -1996,29 +2060,6 @@ function applyBackgroundMode(map: MapLibreMap, mode: BackgroundMode): void {
   setPaint(map, "place-labels", "text-halo-width", satellite ? 1.6 : 1);
 }
 
-function ensureSrtmWmsLayer(map: MapLibreMap): void {
-  if (!map.getSource("srtm-wms")) {
-    map.addSource("srtm-wms", {
-      type: "raster",
-      tiles: [srtmWmsTileUrl()],
-      tileSize: 256,
-      attribution: "SRTM terrain WMS via terrestris / mundialis",
-    });
-  }
-  addLayerIfMissing(map, {
-    id: "srtm-wms-raster",
-    type: "raster",
-    source: "srtm-wms",
-    paint: {
-      "raster-opacity": 0.42,
-      "raster-resampling": "linear",
-    },
-    layout: {
-      visibility: "none",
-    },
-  });
-}
-
 function addLayerIfMissing(
   map: MapLibreMap,
   layer: Parameters<MapLibreMap["addLayer"]>[0],
@@ -2094,6 +2135,7 @@ function syncScaleSources(
   setSourceData(map, "tree-overlay", isM ? analysis.overlays.trees : empty);
   setSourceData(map, "building-overlay", isL || isM ? analysis.overlays.buildings : empty);
   setSourceData(map, "sun-overlay", isM ? analysis.overlays.sun : empty);
+  setSourceData(map, "contour-overlay", isM ? analysis.overlays.contours : empty);
   setSourceData(map, "section-line-overlay", isM ? analysis.overlays.sectionLine : empty);
 }
 
@@ -2119,6 +2161,7 @@ function clearAnalysisSources(map: MapLibreMap): void {
     "barrier-overlay",
     "development-overlay",
     "sun-overlay",
+    "contour-overlay",
     "section-line-overlay",
   ]) {
     setSourceData(map, id, empty);
@@ -2170,7 +2213,8 @@ function applyLayerVisibility(
   setLayerVisibility(map, "tree-circles", isM && layers.trees);
   setLayerVisibility(map, "sun-lines", isM && layers.sun);
   setLayerVisibility(map, "section-user-line", isM && layers.section);
-  setLayerVisibility(map, "srtm-wms-raster", isM && layers.srtm);
+  setLayerVisibility(map, "contour-lines", isM && layers.contours);
+  setLayerVisibility(map, "contour-labels", isM && layers.contours);
   setLayerVisibility(map, "green-fill", showLContext && layers.green);
   setLayerVisibility(map, "green-outline", showLContext && layers.green);
   setLayerVisibility(map, "blue-fill", showLContext && layers.blue);
@@ -2235,7 +2279,8 @@ function hideAnalysisLayers(map: MapLibreMap): void {
     "tree-circles",
     "sun-lines",
     "section-user-line",
-    "srtm-wms-raster",
+    "contour-lines",
+    "contour-labels",
     "green-fill",
     "green-outline",
     "blue-fill",

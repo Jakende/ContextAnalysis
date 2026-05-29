@@ -103,7 +103,7 @@ export type LayerId =
   | "buildingFootprints"
   | "streets"
   | "barriers"
-  | "srtm";
+  | "contours";
 
 export type LayerState = Record<LayerId, boolean>;
 
@@ -230,7 +230,9 @@ export type MapOverlayCollection = {
   barriers: FeatureCollection;
   development: FeatureCollection;
   sun: FeatureCollection;
+  contours: FeatureCollection;
   sectionLine: FeatureCollection;
+  osmRaw: FeatureCollection;
 };
 
 export type AnalysisResult = {

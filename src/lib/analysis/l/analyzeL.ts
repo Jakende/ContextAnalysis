@@ -61,6 +61,10 @@ export function analyzeL(
   const landUseClasses = landUseRadius ? uniqueLandUseClasses(landUseRadius) : [];
   const landUseSummary = summarizeLandUse(landUseRadius, radiusMeters);
   const transitSummary = summarizeTransitStops(liveTransportStops, radiusMeters);
+  const transitLineSummary = summarizeTransitLines(liveTransportLines);
+  const poiSummary = summarizeFeatureCategories(livePois, "poiCategory");
+  const mobilitySummary = summarizeFeatureCategories(liveMobility, "mobilityMode");
+  const developmentSummary = summarizeFeatureCategories(liveDevelopment, "landuse", "amenity", "disused", "abandoned");
   const landUseMix =
     exactLandUseFeatures === undefined && urbanAtlasFeatures === 0
       ? null
@@ -258,6 +262,30 @@ export function analyzeL(
       computedAt,
     }),
     createIndicator({
+      id: "l.transit-line-details",
+      label: "Public transport line details",
+      scale: "L",
+      value: transitLineSummary?.lineLabels.length
+        ? transitLineSummary.lineLabels.slice(0, 24).join(" / ")
+        : null,
+      unit:
+        transitLineSummary && transitLineSummary.lineLabels.length > 24
+          ? `showing 24 of ${transitLineSummary.lineLabels.length} lines`
+          : undefined,
+      method:
+        transitLineSummary !== null
+          ? "Extracted route refs, names, networks, operators, relation IDs and transport modes from live Overpass relation/member tags and way tags."
+          : "No public-transport line collection was available for line-detail extraction.",
+      sourceIds: ["osm-core", "osm-overpass"],
+      confidence: transitLineSummary !== null ? "medium" : "low",
+      caveats: [
+        transitLineSummary !== null
+          ? "Line details are only as complete as OSM route relation and way tagging. Full raw tags are preserved in GeoJSON/GPKG properties."
+          : fallbackCaveat,
+      ],
+      computedAt,
+    }),
+    createIndicator({
       id: "l.mobility-infrastructure",
       label: "Mobility infrastructure hints",
       scale: "L",
@@ -265,7 +293,7 @@ export function analyzeL(
       unit: exactMobilityFeatures !== undefined ? "features" : undefined,
       method:
         exactMobilityFeatures !== undefined
-          ? "Counted live Overpass mobility infrastructure features for cycleways, parking, charging, sharing, and pedestrian/cycle classes."
+          ? `Counted live Overpass mobility infrastructure features for cycleways, parking, charging, sharing, and pedestrian/cycle classes.${mobilitySummary ? ` Main classes: ${mobilitySummary}.` : ""}`
           : "Live mobility infrastructure retrieval was unavailable; no fallback class count is emitted.",
       sourceIds: ["osm-core", "osm-overpass"],
       confidence: exactMobilityFeatures !== undefined ? "medium" : "low",
@@ -280,7 +308,7 @@ export function analyzeL(
       unit: "features",
       method:
         exactPois !== undefined
-          ? "Counted live Overpass amenity/shop POIs relevant to social and civic infrastructure inside the radius."
+          ? `Counted live Overpass amenity/shop POIs relevant to social and civic infrastructure inside the radius.${poiSummary ? ` Main categories: ${poiSummary}.` : ""}`
           : "Live POI retrieval was unavailable; no fallback POI count is emitted.",
       sourceIds: ["osm-core", "osm-overpass"],
       confidence: exactPois !== undefined ? "medium" : "low",
@@ -299,7 +327,7 @@ export function analyzeL(
             : null,
       method:
         liveDevelopment?.features.length
-          ? "Read live Overpass brownfield, construction, parking, disused, abandoned and related development-hint classes."
+          ? `Read live Overpass brownfield, construction, parking, disused, abandoned and related development-hint classes.${developmentSummary ? ` Main tags: ${developmentSummary}.` : ""}`
           : "Live development-hint source did not return a usable response and no local preprocessing is loaded.",
       sourceIds: ["osm-core", "osm-overpass", "copernicus-urban-atlas", "urban-atlas-2021-catalog"],
       confidence: liveDevelopment ? "medium" : "low",
@@ -327,7 +355,7 @@ export function analyzeL(
       id: "l.access-infrastructure",
       title: "Access and infrastructure",
       scale: "L",
-      indicators: indicators.slice(5, 11),
+      indicators: indicators.slice(5, 12),
       method: "Counts and class hints within the selected walkable radius.",
       sourceIds: ["osm-core", "osm-overpass", "mobilithek-gtfs", "gtfs-de-local-transit"],
       computedAt,
@@ -342,12 +370,12 @@ export function analyzeL(
       id: "l.potential",
       title: "Development hints",
       scale: "L",
-      indicators: [indicators[11]],
+      indicators: [indicators[12]],
       method: "Screening rules from open-data class hints.",
       sourceIds: ["osm-core", "copernicus-urban-atlas", "urban-atlas-2021-catalog"],
       computedAt,
       confidence: "low",
-      caveats: indicators[11].caveats,
+      caveats: indicators[12].caveats,
     },
   ];
 
@@ -443,6 +471,11 @@ type TransitSummary = {
   modeCounts: Array<{ mode: string; count: number }>;
 };
 
+type TransitLineSummary = {
+  lineLabels: string[];
+  modeCounts: Array<{ mode: string; count: number }>;
+};
+
 function summarizeLandUse(
   collection: FeatureCollection | undefined,
   radiusMeters: number,
@@ -510,6 +543,80 @@ function summarizeTransitStops(
       .map(([mode, count]) => ({ mode, count }))
       .sort((left, right) => right.count - left.count || left.mode.localeCompare(right.mode)),
   };
+}
+
+function summarizeTransitLines(
+  collection: FeatureCollection | undefined,
+): TransitLineSummary | null {
+  if (!collection?.features.length) return null;
+  const lineLabels = new Set<string>();
+  const modeCounts = new Map<string, number>();
+  for (const feature of collection.features) {
+    if (feature.geometry.type !== "LineString") continue;
+    const mode = normalizeTransitMode(feature);
+    modeCounts.set(mode, (modeCounts.get(mode) ?? 0) + 1);
+    const labels = readLineLabels(feature);
+    for (const label of labels) lineLabels.add(label);
+  }
+  return {
+    lineLabels: [...lineLabels].sort((left, right) => left.localeCompare(right, "de")),
+    modeCounts: [...modeCounts.entries()]
+      .map(([mode, count]) => ({ mode, count }))
+      .sort((left, right) => right.count - left.count || left.mode.localeCompare(right.mode)),
+  };
+}
+
+function readLineLabels(feature: Feature): string[] {
+  const properties = feature.properties ?? {};
+  const mode = normalizeTransitMode(feature);
+  const refs = splitProperty(properties.routeRefs ?? properties.ref);
+  const names = splitProperty(properties.routeNames ?? properties.name);
+  const networks = splitProperty(properties.routeNetworks ?? properties.network);
+  const operators = splitProperty(properties.routeOperators ?? properties.operator);
+  const relations = splitProperty(properties.routeRelations ?? properties.relationId);
+  const froms = splitProperty(properties.routeFroms);
+  const tos = splitProperty(properties.routeTos);
+  const explicitLabels = splitProperty(properties.lineLabel);
+  if (explicitLabels.length) return explicitLabels.map((label) => `${mode}: ${label}`);
+  const maxLength = Math.max(refs.length, names.length, networks.length, operators.length, relations.length, froms.length, tos.length, 1);
+  return Array.from({ length: maxLength }, (_, index) => {
+    const fromTo = froms[index] || tos[index] ? `${froms[index] ?? "?"}->${tos[index] ?? "?"}` : undefined;
+    const parts = [
+      refs[index] ? `ref ${refs[index]}` : undefined,
+      names[index],
+      fromTo,
+      networks[index] ? `network ${networks[index]}` : undefined,
+      operators[index] ? `operator ${operators[index]}` : undefined,
+      relations[index] ? `relation ${relations[index]}` : undefined,
+    ].filter(Boolean);
+    return `${mode}: ${parts.length ? parts.join(" / ") : String(properties.osmId ?? properties.id ?? "unnamed")}`;
+  });
+}
+
+function splitProperty(value: unknown): string[] {
+  if (value === undefined || value === null) return [];
+  return String(value)
+    .split(";")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function summarizeFeatureCategories(
+  collection: FeatureCollection | undefined,
+  ...keys: string[]
+): string | null {
+  if (!collection?.features.length) return null;
+  const counts = new Map<string, number>();
+  for (const feature of collection.features) {
+    const key = keys.find((candidate) => feature.properties?.[candidate] !== undefined);
+    const value = key ? String(feature.properties?.[key]) : "other";
+    counts.set(value, (counts.get(value) ?? 0) + 1);
+  }
+  const summary = [...counts.entries()]
+    .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))
+    .slice(0, 8)
+    .map(([label, count]) => `${label}: ${count}`);
+  return summary.length ? summary.join(" / ") : null;
 }
 
 function formatFamilyShares(

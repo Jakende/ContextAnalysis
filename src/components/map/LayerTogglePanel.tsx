@@ -48,7 +48,7 @@ const layerControls: LayerControl[] = [
   { id: "trees", label: "Trees", group: "M streetscape", source: "trees", scale: "M", geometry: "Point" },
   { id: "sun", label: "Sun", group: "M streetscape", source: "sun", scale: "M", geometry: "LineString" },
   { id: "section", label: "Section line", group: "M streetscape", source: "sectionLine", scale: "M", geometry: "LineString" },
-  { id: "srtm", label: "SRTM raster", group: "M streetscape", source: "wms", scale: "M" },
+  { id: "contours", label: "Contour lines", group: "M streetscape", source: "contours", scale: "M", geometry: "LineString" },
 ];
 
 export function LayerTogglePanel({

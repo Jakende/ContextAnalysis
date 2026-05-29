@@ -11,13 +11,16 @@ import {
   writeJson,
 } from "./shared.mjs";
 
-const DEFAULT_OUT = "public/data/processed/srtm-30m/samples.geojson";
+const DEFAULT_OUT = "public/data/processed/opentopography-dem/samples.geojson";
+const DEFAULT_CONTOURS_OUT = "public/data/processed/opentopography-contours/contours.geojson";
 const OPENTOPOGRAPHY_URL = "https://portal.opentopography.org/API/globaldem";
 
 const args = parseArgs();
 const out = args.out ?? DEFAULT_OUT;
+const contoursOut = args["contours-out"] ?? DEFAULT_CONTOURS_OUT;
 const sourceVersion = args["source-version"] ?? new Date().toISOString().slice(0, 10);
 const stride = Number(args.stride ?? "1");
+const contourInterval = Number(args["contour-interval"] ?? "5");
 const keepIntermediate = args["keep-intermediate"] === "true";
 const demPath = args.dem;
 const bbox = parseBbox(args.bbox ?? process.env.UCA_AOI_BBOX);
@@ -25,10 +28,14 @@ const bbox = parseBbox(args.bbox ?? process.env.UCA_AOI_BBOX);
 if (!Number.isInteger(stride) || stride < 1) {
   throw new Error("--stride must be a positive integer");
 }
+if (!Number.isFinite(contourInterval) || contourInterval <= 0) {
+  throw new Error("--contour-interval must be a positive number");
+}
 
-const workingDir = await mkdtemp(join(tmpdir(), "uca-srtm-"));
-const tifPath = demPath ?? join(workingDir, "srtm.tif");
-const xyzPath = join(workingDir, "srtm.xyz");
+const workingDir = await mkdtemp(join(tmpdir(), "uca-dem-"));
+const tifPath = demPath ?? join(workingDir, "opentopography-dem.tif");
+const xyzPath = join(workingDir, "dem.xyz");
+const contoursPath = join(workingDir, "contours.geojson");
 
 try {
   if (!demPath) {
@@ -37,7 +44,7 @@ try {
     }
     const apiKey = args["api-key"] ?? process.env.OPENTOPOGRAPHY_API_KEY;
     requireArg({ "api-key": apiKey }, "api-key", "OpenTopography download requires --api-key or OPENTOPOGRAPHY_API_KEY");
-    const demtype = args.demtype ?? "SRTMGL1";
+    const demtype = args.demtype ?? "COP30";
     const url = new URL(OPENTOPOGRAPHY_URL);
     url.searchParams.set("demtype", demtype);
     url.searchParams.set("south", String(bbox.south));
@@ -51,6 +58,7 @@ try {
   }
 
   ensureCommand("gdal_translate");
+  ensureCommand("gdal_contour");
   run("gdal_translate", [
     "-of",
     "XYZ",
@@ -59,6 +67,16 @@ try {
       : []),
     tifPath,
     xyzPath,
+  ]);
+  run("gdal_contour", [
+    "-a",
+    "elevation",
+    "-i",
+    String(contourInterval),
+    "-f",
+    "GeoJSON",
+    tifPath,
+    contoursPath,
   ]);
 
   const xyz = await readFile(xyzPath, "utf8");
@@ -79,7 +97,7 @@ try {
       geometry: { type: "Point", coordinates: [lon, lat] },
       properties: {
         elevation,
-        sourceId: "srtm-30m",
+        sourceId: "opentopography-dem",
         sourceVersion,
         processedAt: new Date().toISOString(),
       },
@@ -87,7 +105,20 @@ try {
   }
 
   await writeJson(out, { type: "FeatureCollection", features });
-  console.log(`Wrote ${features.length} SRTM sample points to ${out}`);
+  const contourJson = JSON.parse(await readFile(contoursPath, "utf8"));
+  const contourFeatures = (contourJson.features ?? []).map((feature) => ({
+    ...feature,
+    properties: {
+      ...(feature.properties ?? {}),
+      interval: contourInterval,
+      sourceId: "opentopography-contours",
+      sourceVersion,
+      generatedAt: new Date().toISOString(),
+    },
+  }));
+  await writeJson(contoursOut, { type: "FeatureCollection", features: contourFeatures });
+  console.log(`Wrote ${features.length} OpenTopography DEM sample points to ${out}`);
+  console.log(`Wrote ${contourFeatures.length} OpenTopography contour lines to ${contoursOut}`);
   if (keepIntermediate) {
     console.log(`Kept intermediate files in ${workingDir}`);
   }

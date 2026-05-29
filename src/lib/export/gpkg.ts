@@ -159,6 +159,30 @@ export async function analysisToGpkgBlob(
       collection: onlyGeometry(analysis.overlays.trees, "Point"),
       styleRole: "tree",
     },
+    {
+      name: "contour_lines",
+      geometryType: "LINESTRING",
+      collection: onlyGeometry(analysis.overlays.contours, "LineString"),
+      styleRole: "contour",
+    },
+    {
+      name: "osm_overpass_raw_points",
+      geometryType: "POINT",
+      collection: onlyGeometry(analysis.overlays.osmRaw, "Point"),
+      styleRole: "osm-raw",
+    },
+    {
+      name: "osm_overpass_raw_lines",
+      geometryType: "LINESTRING",
+      collection: onlyGeometry(analysis.overlays.osmRaw, "LineString"),
+      styleRole: "osm-raw",
+    },
+    {
+      name: "osm_overpass_raw_polygons",
+      geometryType: "POLYGON",
+      collection: onlyGeometry(analysis.overlays.osmRaw, "Polygon"),
+      styleRole: "osm-raw",
+    },
   ];
 
   for (const table of tables) {
@@ -435,6 +459,8 @@ function styleForFeature(table: GeometryTable, feature: Feature): {
     barrier: { color: "#ef4444", opacity: 0.9, width: 1.8, symbol: "barrier-red" },
     building: { color: "#60a5fa", opacity: 0.62, width: 0.7, symbol: "building-blue-extrusion-source" },
     tree: { color: "#16a34a", opacity: 0.95, width: 4.5, symbol: "tree-green-circle" },
+    contour: { color: "#f3d35c", opacity: 0.72, width: 0.9, symbol: "opentopography-contour-line" },
+    "osm-raw": { color: "#94a3b8", opacity: 0.45, width: 1, symbol: "raw-overpass-feature" },
   };
   return { role, ...(styles[role] ?? { color: "#ffffff", opacity: 0.8, width: 1, symbol: "default" }) };
 }

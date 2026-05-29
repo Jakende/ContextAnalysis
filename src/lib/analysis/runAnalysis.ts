@@ -2,6 +2,7 @@ import type { FeatureCollection } from "geojson";
 import { reverseGeocode } from "../api/geocoding";
 import {
   loadBkgBoundariesForPoint,
+  loadContourLinesForPoint,
   loadFuaGeometriesForPoint,
   loadGtfsStopsForPoint,
   loadLod2BuildingsForPoint,
@@ -75,7 +76,7 @@ const DEFAULT_LAYER_STATE: LayerState = {
   buildingFootprints: false,
   streets: true,
   barriers: false,
-  srtm: true,
+  contours: true,
 };
 
 export async function runLocationAnalysis(input: {
@@ -164,13 +165,14 @@ export async function runLocationAnalysis(input: {
   const fuaGeometries = await loadFuaGeometriesForPoint(selectedPoint);
   const gtfsStops = await loadGtfsStopsForPoint(selectedPoint);
   const urbanAtlas = await loadUrbanAtlasForPoint(selectedPoint);
+  const contourLines = await loadContourLinesForPoint(selectedPoint);
   const terrainSamples = input.sectionLine
     ? await loadTerrainSamplesForSection(input.sectionLine)
     : [];
   emitProgress(input.onProgress, {
     id: "local-data",
     label: "Local, WMS, and sharded datasets",
-    detail: `${bkgBoundaries.features.length} BKG / ${fuaGeometries.features.length} FUA / ${gtfsStops.features.length} GTFS stops / ${urbanAtlas.features.length} Urban Atlas / ${lod2Buildings.features.length} building feature(s).`,
+    detail: `${bkgBoundaries.features.length} BKG / ${fuaGeometries.features.length} FUA / ${gtfsStops.features.length} GTFS stops / ${urbanAtlas.features.length} Urban Atlas / ${lod2Buildings.features.length} building / ${contourLines.features.length} contour feature(s).`,
     status: "ok",
   });
 
@@ -230,6 +232,7 @@ export async function runLocationAnalysis(input: {
       "urban-atlas-2021-catalog": urbanAtlas,
       "gtfs-de-local-transit": gtfsStops,
       "mobilithek-gtfs": gtfsStops,
+      "opentopography-contours": contourLines,
     },
   });
   const xlSourceStatus = createXlSourceStatusModule(sourceFetches, computedAt);
@@ -274,6 +277,11 @@ export async function runLocationAnalysis(input: {
   const overpassCaveats = overpass.provenance.flatMap(
     (query) => query.caveats,
   );
+  const rawOverpassFeatures = mergeCollections(
+    ...Object.entries(overpass.collections).map(([moduleId, collection]) =>
+      tagFeatures(collection, { overpassModuleId: moduleId }),
+    ),
+  );
 
   const result: AnalysisResult = {
     app: "Urban Context Analysis",
@@ -314,7 +322,9 @@ export async function runLocationAnalysis(input: {
         overpass.collections.developmentHints ?? featureCollection(),
       ),
       sun: mergeCollections(m.overlays.sun),
+      contours: contourLines,
       sectionLine: mergeCollections(m.overlays.sectionLine),
+      osmRaw: rawOverpassFeatures,
     },
     mapState: {
       center: [input.lon, input.lat],
@@ -354,6 +364,21 @@ export async function runLocationAnalysis(input: {
 
 function mergeCollections(...collections: FeatureCollection[]): FeatureCollection {
   return featureCollection(collections.flatMap((collection) => collection.features));
+}
+
+function tagFeatures(
+  collection: FeatureCollection,
+  properties: Record<string, string>,
+): FeatureCollection {
+  return featureCollection(
+    collection.features.map((feature) => ({
+      ...feature,
+      properties: {
+        ...(feature.properties ?? {}),
+        ...properties,
+      },
+    })),
+  );
 }
 
 function emitProgress(

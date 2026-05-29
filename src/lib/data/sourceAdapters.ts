@@ -42,11 +42,14 @@ type SourceProbeResponse = {
 const PREPROCESSED_ASSET_CHECKS: Record<string, string> = {
   "zensus-grid-2022": "/data/processed/zensus-grid.geojson",
   "lod2-bayern": "/data/processed/lod2-buildings.geojson",
+  "lod2-deutschland-bkg": "/data/processed/lod2-deutschland/index.json",
+  "lod2-federal-states": "/data/processed/lod2-federal-states/index.json",
   "global-building-atlas": "/data/processed/global-building-atlas.geojson",
   "global-building-atlas-odbl-polygons": "/data/processed/global-building-atlas.geojson",
   "overture-buildings": "/data/processed/overture-buildings/index.json",
   "overture-building-parts": "/data/processed/overture-building-parts/index.json",
-  "srtm-30m": "/data/processed/srtm-30m/samples.geojson",
+  "opentopography-dem": "/data/processed/opentopography-dem/samples.geojson",
+  "opentopography-contours": "/data/processed/opentopography-contours/contours.geojson",
   "eurostat-gisco-fua": "/data/processed/eurostat-gisco-fua.geojson",
   "copernicus-urban-atlas": "/data/processed/copernicus-urban-atlas/index.json",
   "urban-atlas-2021-catalog": "/data/processed/copernicus-urban-atlas/index.json",
@@ -81,6 +84,8 @@ const PREPROCESSED_ONLY_SOURCE_IDS = new Set([
   "global-building-atlas-odbl-polygons",
   "ghsl-jrc",
   "ghsl-direct-download",
+  "lod2-deutschland-bkg",
+  "lod2-federal-states",
   "mobilithek-gtfs",
   "gtfs-de-local-transit",
   "gtfs-de-full",
@@ -88,6 +93,8 @@ const PREPROCESSED_ONLY_SOURCE_IDS = new Set([
   "gtfs-de-long-distance-rail",
   "overture-buildings",
   "overture-building-parts",
+  "opentopography-dem",
+  "opentopography-contours",
   "urban-atlas-2021-catalog",
 ]);
 

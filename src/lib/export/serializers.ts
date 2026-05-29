@@ -89,6 +89,8 @@ export function analysisToGeoJson(analysis: AnalysisResult): string {
     ...analysis.overlays.barriers.features,
     ...analysis.overlays.development.features,
     ...analysis.overlays.sun.features,
+    ...analysis.overlays.contours.features,
+    ...analysis.overlays.osmRaw.features,
   ].map((feature) => ({
     ...feature,
     properties: {
@@ -174,6 +176,7 @@ export function analysisToMarkdown(analysis: AnalysisResult): string {
     "l.transit-stop-density",
     "l.transit-mode-mix",
     "l.transit-lines",
+    "l.transit-line-details",
     "m.street-width",
     "m.building-height",
   ]) {
@@ -182,6 +185,8 @@ export function analysisToMarkdown(analysis: AnalysisResult): string {
       `- ${indicator?.label ?? id}: ${indicator ? formatValue(indicator.value) : "not available"}${indicator?.unit ? ` ${indicator.unit}` : ""}`,
     );
   }
+
+  appendFeatureInventory(lines, analysis);
 
   lines.push("", "## Data Sources");
   const sources = getSources(analysis.provenance.sourceIds);
@@ -233,6 +238,132 @@ export function analysisToMarkdown(analysis: AnalysisResult): string {
   }
 
   return lines.join("\n");
+}
+
+function appendFeatureInventory(lines: string[], analysis: AnalysisResult): void {
+  lines.push("", "## Downloaded Feature Attributes");
+  lines.push(
+    `GeoJSON and GeoPackage exports preserve raw OSM/OpenData attributes in feature properties and \`properties_json\`; selected attributes are also exposed as typed columns where the export format supports them. Raw Overpass export contains ${analysis.overlays.osmRaw.features.length} feature(s).`,
+  );
+  appendCategoryInventory(lines, "Raw Overpass modules", analysis.overlays.osmRaw, undefined, [
+    "overpassModuleId",
+  ]);
+  appendTransitLineInventory(lines, analysis.overlays.transport);
+  appendCategoryInventory(lines, "Public transport stops", analysis.overlays.transport, "Point", [
+    "transportMode",
+    "name",
+    "stop_name",
+    "ref",
+  ]);
+  appendCategoryInventory(lines, "Mobility infrastructure", analysis.overlays.mobility, undefined, [
+    "mobilityMode",
+    "highway",
+    "cycleway",
+    "amenity",
+  ]);
+  appendCategoryInventory(lines, "POIs", analysis.overlays.pois, undefined, [
+    "poiCategory",
+    "amenity",
+    "shop",
+    "tourism",
+    "leisure",
+  ]);
+  appendCategoryInventory(lines, "Gastronomy", analysis.overlays.gastronomy, undefined, [
+    "amenity",
+    "name",
+    "cuisine",
+  ]);
+  appendCategoryInventory(lines, "Parking areas", analysis.overlays.parkingAreas, undefined, [
+    "amenity",
+    "parking",
+    "access",
+    "capacity",
+  ]);
+}
+
+function appendTransitLineInventory(lines: string[], collection: FeatureCollection): void {
+  const labels = new Set<string>();
+  for (const feature of collection.features) {
+    if (feature.geometry.type !== "LineString") continue;
+    for (const label of readTransitLineLabels(feature)) labels.add(label);
+  }
+  lines.push("", "### Public Transport Lines");
+  if (!labels.size) {
+    lines.push("- not available");
+    return;
+  }
+  for (const label of [...labels].sort((left, right) => left.localeCompare(right, "de")).slice(0, 40)) {
+    lines.push(`- ${label}`);
+  }
+  if (labels.size > 40) lines.push(`- plus ${labels.size - 40} additional line labels in the geodata export`);
+}
+
+function readTransitLineLabels(feature: Feature): string[] {
+  const properties = feature.properties ?? {};
+  const mode = String(properties.transportMode ?? properties.route ?? "transit");
+  const explicit = splitProperty(properties.lineLabel);
+  if (explicit.length) return explicit.map((label) => `${mode}: ${label}`);
+  const refs = splitProperty(properties.routeRefs ?? properties.ref);
+  const names = splitProperty(properties.routeNames ?? properties.name);
+  const networks = splitProperty(properties.routeNetworks ?? properties.network);
+  const operators = splitProperty(properties.routeOperators ?? properties.operator);
+  const relations = splitProperty(properties.routeRelations ?? properties.relationId);
+  const froms = splitProperty(properties.routeFroms);
+  const tos = splitProperty(properties.routeTos);
+  const maxLength = Math.max(refs.length, names.length, networks.length, operators.length, relations.length, froms.length, tos.length, 1);
+  return Array.from({ length: maxLength }, (_, index) => {
+    const fromTo = froms[index] || tos[index] ? `${froms[index] ?? "?"}->${tos[index] ?? "?"}` : undefined;
+    const parts = [
+      refs[index] ? `ref ${refs[index]}` : undefined,
+      names[index],
+      fromTo,
+      networks[index] ? `network ${networks[index]}` : undefined,
+      operators[index] ? `operator ${operators[index]}` : undefined,
+      relations[index] ? `relation ${relations[index]}` : undefined,
+    ].filter(Boolean);
+    return `${mode}: ${parts.length ? parts.join(" / ") : String(properties.osmId ?? properties.id ?? "unnamed")}`;
+  });
+}
+
+function appendCategoryInventory(
+  lines: string[],
+  title: string,
+  collection: FeatureCollection,
+  geometryType: Feature["geometry"]["type"] | undefined,
+  keys: string[],
+): void {
+  const counts = new Map<string, number>();
+  for (const feature of collection.features) {
+    if (geometryType && feature.geometry.type !== geometryType) continue;
+    const label = readFirstProperty(feature, keys) ?? "other";
+    counts.set(label, (counts.get(label) ?? 0) + 1);
+  }
+  lines.push("", `### ${title}`);
+  if (!counts.size) {
+    lines.push("- not available");
+    return;
+  }
+  for (const [label, count] of [...counts.entries()].sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0])).slice(0, 20)) {
+    lines.push(`- ${label}: ${count}`);
+  }
+}
+
+function readFirstProperty(feature: Feature, keys: string[]): string | null {
+  for (const key of keys) {
+    const value = feature.properties?.[key];
+    if (value !== undefined && value !== null && String(value).trim()) {
+      return String(value).trim();
+    }
+  }
+  return null;
+}
+
+function splitProperty(value: unknown): string[] {
+  if (value === undefined || value === null) return [];
+  return String(value)
+    .split(";")
+    .map((item) => item.trim())
+    .filter(Boolean);
 }
 
 export function analysisToHtml(analysis: AnalysisResult): string {

@@ -1,5 +1,5 @@
-export const SRTM_WMS_BASE_URL = "https://ows.mundialis.de/osm/service";
-export const SRTM_WMS_LAYER = "SRTM30-Colored-Hillshade";
+export const OPENTOPOGRAPHY_GLOBAL_DEM_API_URL =
+  "https://portal.opentopography.org/API/globaldem";
 
 export const BKG_VG250_WMS_CAPABILITIES_URL =
   "https://sgx.geodatenzentrum.de/wms_vg250?REQUEST=GetCapabilities&SERVICE=WMS";
@@ -14,22 +14,6 @@ export const ESPON_FUA_WMS_CAPABILITIES_URL =
 
 export const GLOBAL_BUILDING_ATLAS_WFS_CAPABILITIES_URL =
   "https://tubvsig-so2sat-vm1.srv.mwn.de/geoserver/ows?service=WFS&request=GetCapabilities";
-
-export function srtmWmsTileUrl(layer = SRTM_WMS_LAYER): string {
-  const params = new URLSearchParams({
-    service: "WMS",
-    version: "1.3.0",
-    request: "GetMap",
-    layers: layer,
-    styles: "",
-    format: "image/png",
-    transparent: "true",
-    crs: "EPSG:3857",
-    width: "256",
-    height: "256",
-  });
-  return `${SRTM_WMS_BASE_URL}?${params.toString()}&bbox={bbox-epsg-3857}`;
-}
 
 export function googleSatelliteTileUrl(): string | null {
   return "/api/google-satellite/{z}/{x}/{y}";

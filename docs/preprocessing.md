@@ -10,8 +10,11 @@ map-click analysis.
 | --- | --- | --- |
 | `public/data/processed/bkg-boundaries.geojson` | `npm run preprocess:bkg` | BKG VG250 WFS, normalized to `Polygon` features. |
 | `public/data/processed/eurostat-gisco-fua.geojson` | `npm run preprocess:fua` | Eurostat GISCO Urban Audit FUA, default Germany filter. |
-| `public/data/processed/srtm-30m/samples.geojson` | `npm run preprocess:srtm` | Numeric DEM samples for M-section terrain. Requires GDAL. |
+| `public/data/processed/opentopography-dem/samples.geojson` | `npm run preprocess:dem` | Numeric DEM samples for M-section terrain from OpenTopography or local GeoTIFF. Requires GDAL. |
+| `public/data/processed/opentopography-contours/contours.geojson` | `npm run preprocess:dem` | Local contour-line layer generated with `gdal_contour`; replaces SRTM WMS display. |
 | `public/data/processed/overture-buildings/index.json` | `npm run preprocess:buildings -- --provider overture --bbox ...` | Local Overture extract normalized and sharded for runtime loading. |
+| `public/data/processed/lod2-deutschland/index.json` | planned `preprocess:lod2-state` resolver | Germany-wide LoD2-DE / BKG / AdV CityGML-derived shards when access and license metadata are confirmed. |
+| `public/data/processed/lod2-federal-states/index.json` | planned `preprocess:lod2-state` resolver | Federal-state LoD2 CityGML-derived shards, selected by clicked point before Overture fallback. |
 | `public/data/processed/overture-building-parts/index.json` | `npm run preprocess:buildings -- --provider overture-building-parts --bbox ...` | Optional Overture building parts, kept separate from footprints. |
 | `public/data/processed/global-building-atlas.geojson` | `npm run preprocess:buildings -- --provider global-building-atlas --input ... --license-mode reviewed` | Optional, license-reviewed fallback only. |
 | `public/data/processed/gtfs-stops/index.json` | `npm run preprocess:gtfs -- --feed gtfs-de-local-transit` | Default GTFS.DE Nahverkehr stop layer, sharded for per-click browser loading. Local GTFS zip/folder/`stops.txt` also supported. |
@@ -57,29 +60,51 @@ Default source:
 Use `--country all` for all FUA geometries or `--url` / `--fua-url` to pin a
 different GISCO release.
 
-## SRTM 30m Samples
+## OpenTopography DEM Samples and Contours
 
 From a local GeoTIFF:
 
 ```bash
-npm run preprocess:srtm -- \
-  --dem data/raw/srtm/srtm_30m.tif \
+npm run preprocess:dem -- \
+  --dem data/raw/dem/local-dem.tif \
   --bbox 11.2,48.0,11.9,48.4 \
-  --out public/data/processed/srtm-30m/samples.geojson
+  --out public/data/processed/opentopography-dem/samples.geojson \
+  --contours-out public/data/processed/opentopography-contours/contours.geojson \
+  --contour-interval 5
 ```
 
 From OpenTopography:
 
 ```bash
-OPENTOPOGRAPHY_API_KEY=your-key npm run preprocess:srtm -- \
+OPENTOPOGRAPHY_API_KEY=your-key npm run preprocess:dem -- \
   --bbox 11.2,48.0,11.9,48.4 \
-  --demtype SRTMGL1
+  --demtype COP30 \
+  --contour-interval 5
 ```
 
-The script requires `gdal_translate`. It emits point features with `elevation`,
-`sourceId: "srtm-30m"`, `sourceVersion`, and `processedAt`.
+The script requires `gdal_translate` and `gdal_contour`. It emits point features
+with `elevation`, `sourceId: "opentopography-dem"`, `sourceVersion`, and
+`processedAt`, plus contour `LineString` features with `elevation`, `interval`,
+`sourceId: "opentopography-contours"`, `sourceVersion`, and `generatedAt`.
+
+Do not use the public SRTM WMS as a viewer terrain layer. It is intentionally
+replaced by locally generated contour lines because the raster service contains
+visual watermarking and is not an analysis source.
 
 ## Building Fallback
+
+Preferred runtime order:
+
+1. `lod2-deutschland-bkg` or state-specific LoD2 shards.
+2. `lod2-bayern` where already available.
+3. `overture-buildings`.
+4. Live OSM building footprints and height tags.
+5. GlobalBuildingAtlas only after explicit license review.
+
+The next preprocessing implementation should normalize CityGML LoD2 into the
+same sharded `FeatureShardIndex` shape used by Overture. Preserve original
+height, roof, federal-state, source URL/version, conversion timestamp and
+license fields.
 
 Overture from an already downloaded GeoJSON:
 

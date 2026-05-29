@@ -55,7 +55,7 @@ const DEFAULT_LAYERS: LayerState = {
   buildingFootprints: false,
   streets: true,
   barriers: false,
-  srtm: true,
+  contours: true,
 };
 
 export function App() {

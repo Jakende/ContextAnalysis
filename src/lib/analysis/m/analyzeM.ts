@@ -177,7 +177,7 @@ export function analyzeM(
         hasLiveBuildings
           ? "Read live OSM building footprints and direct height tags where present; LOD2 remains the preferred local source when preprocessed."
           : "No live OSM building footprint/height data and no local LOD2 tiles are loaded for this point.",
-      sourceIds: ["lod2-bayern", "overture-buildings", "overture-building-parts", "osm-core"],
+      sourceIds: ["lod2-deutschland-bkg", "lod2-federal-states", "lod2-bayern", "overture-buildings", "overture-building-parts", "osm-core"],
       confidence: hasLiveBuildings ? "medium" : "low",
       caveats: [caveat, "building:levels is not converted into height in real-data-only mode."],
       computedAt,
@@ -190,7 +190,7 @@ export function analyzeM(
       geometry: overlays.sun.features[0]?.geometry,
       method:
         "No sun/shadow value is emitted until a validated solar model is connected to real building and date/time inputs.",
-      sourceIds: ["lod2-bayern", "overture-buildings", "dwd-cdc", "dwd-cdc-grids-germany"],
+      sourceIds: ["lod2-deutschland-bkg", "lod2-federal-states", "lod2-bayern", "overture-buildings", "dwd-cdc", "dwd-cdc-grids-germany"],
       confidence: "low",
       caveats: [
         caveat,
@@ -224,15 +224,15 @@ export function analyzeM(
       geometry: sectionLineToGeometry(sectionLine),
       method:
         sectionLine
-          ? "Section is calculated from the user-defined line. Loaded buildings, tree locations, and available SRTM/DEM samples are orthogonally projected onto the section."
+          ? "Section is calculated from the user-defined line. Loaded buildings, tree locations, and available OpenTopography DEM samples are orthogonally projected onto the section."
           : "No user-defined section line is set. The section SVG stays in setup mode instead of rendering a generic street section.",
-      sourceIds: ["srtm-30m", "lod2-bayern", "overture-buildings", "osm-core", "osm-overpass"],
+      sourceIds: ["opentopography-dem", "lod2-deutschland-bkg", "lod2-federal-states", "lod2-bayern", "overture-buildings", "osm-core", "osm-overpass"],
       confidence: sectionLine ? "medium" : "low",
       caveats: [
         sectionLine
           ? terrainSamples.length > 0
-            ? "Terrain samples come from the configured local SRTM/DEM GeoJSON; no synthetic terrain is emitted."
-            : "No local SRTM/DEM samples were found for the drawn line; no synthetic terrain profile is emitted."
+            ? "Terrain samples come from the configured local OpenTopography DEM GeoJSON; no synthetic terrain is emitted."
+            : "No local OpenTopography DEM samples were found for the drawn line; no synthetic terrain profile is emitted."
           : "Set a section line in M scale to calculate a meaningful cross-section.",
       ],
       computedAt,
@@ -257,7 +257,7 @@ export function analyzeM(
       scale: "M",
       indicators: indicators.slice(3, 5),
       method: "LOD2-ready massing and approximate sun/shadow module.",
-      sourceIds: ["lod2-bayern", "overture-buildings", "dwd-cdc", "dwd-cdc-grids-germany", "osm-core"],
+      sourceIds: ["lod2-deutschland-bkg", "lod2-federal-states", "lod2-bayern", "overture-buildings", "dwd-cdc", "dwd-cdc-grids-germany", "osm-core"],
       computedAt,
       confidence: "low",
       caveats: [caveat],
@@ -268,8 +268,8 @@ export function analyzeM(
       scale: "M",
       indicators: [indicators[1], indicators[5], indicators[6]],
       method:
-        "User-defined section line with projected real building/tree evidence and configured local SRTM/DEM samples where available.",
-      sourceIds: ["osm-core", "osm-overpass", "lod2-bayern", "overture-buildings", "srtm-30m"],
+        "User-defined section line with projected real building/tree evidence and configured local OpenTopography DEM samples where available.",
+      sourceIds: ["osm-core", "osm-overpass", "lod2-deutschland-bkg", "lod2-federal-states", "lod2-bayern", "overture-buildings", "opentopography-dem"],
       computedAt,
       confidence: sectionLine ? "medium" : "low",
       caveats: [
@@ -326,13 +326,13 @@ export function recomputeMSectionFromAnalysis(
     unit: "section length",
     geometry: sectionLineToGeometry(sectionLine),
     method:
-      "Section is calculated immediately from the user-defined line and the already loaded M-scale building/tree overlays plus configured local SRTM/DEM samples where available.",
-    sourceIds: ["srtm-30m", "lod2-bayern", "overture-buildings", "osm-core", "osm-overpass"],
+      "Section is calculated immediately from the user-defined line and the already loaded M-scale building/tree overlays plus configured local OpenTopography DEM samples where available.",
+    sourceIds: ["opentopography-dem", "lod2-deutschland-bkg", "lod2-federal-states", "lod2-bayern", "overture-buildings", "osm-core", "osm-overpass"],
     confidence: "medium",
     caveats: [
       terrainSamples.length > 0
-        ? "Terrain samples come from the configured local SRTM/DEM GeoJSON; no synthetic terrain is emitted."
-        : "Section dimensions are driven by the drawn line; no local SRTM/DEM samples were found and no synthetic terrain is emitted.",
+        ? "Terrain samples come from the configured local OpenTopography DEM GeoJSON; no synthetic terrain is emitted."
+        : "Section dimensions are driven by the drawn line; no local OpenTopography DEM samples were found and no synthetic terrain is emitted.",
     ],
     computedAt,
   });
@@ -343,10 +343,12 @@ export function recomputeMSectionFromAnalysis(
           ...module,
           indicators: replaceIndicator(module.indicators, sectionIndicator),
           method:
-            "User-defined section line with projected real building/tree evidence and configured local SRTM/DEM samples where available.",
+            "User-defined section line with projected real building/tree evidence and configured local OpenTopography DEM samples where available.",
           sourceIds: uniqueSourceIds([
             ...module.sourceIds,
-            "srtm-30m",
+            "opentopography-dem",
+            "lod2-deutschland-bkg",
+            "lod2-federal-states",
             "lod2-bayern",
             "overture-buildings",
             "osm-core",
@@ -375,7 +377,9 @@ export function recomputeMSectionFromAnalysis(
         ...analysis.provenance,
         sourceIds: uniqueSourceIds([
           ...analysis.provenance.sourceIds,
-          "srtm-30m",
+          "opentopography-dem",
+          "lod2-deutschland-bkg",
+          "lod2-federal-states",
           "lod2-bayern",
           "overture-buildings",
           "osm-core",
@@ -628,7 +632,7 @@ function sectionLineToGeometry(sectionLine?: SectionLine | null): LineString | u
 function createSectionLineFeature(sectionLine: SectionLine): Feature<LineString> {
   return geometryToFeature(sectionLineToGeometry(sectionLine)!, {
     id: "m-user-section-line",
-    sourceId: "srtm-30m",
+    sourceId: "opentopography-dem",
   }) as Feature<LineString>;
 }
 
@@ -854,8 +858,9 @@ function createSectionSvg(input: {
   const widthLabel = input.width === null ? "NA" : `${input.width}M`;
   const lengthLabel = `${Math.round(model.lengthMeters)}M`;
   const treeLabel = model.trees.length ? String(model.trees.length) : "0";
+  const terrainLabel = hasTerrain ? "OPENTOPOGRAPHY DEM PROFILE" : "OPENTOPOGRAPHY DEM NOT LOADED";
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 360" role="img" aria-label="User-defined terrain and building cross-section">
-  <metadata>{"source":"Urban Context Analysis structured M-scale section","terrain":"not loaded","street":"${escapeXml(input.streetName)}"}</metadata>
+  <metadata>{"source":"Urban Context Analysis structured M-scale section","terrain":"${hasTerrain ? "opentopography-dem" : "not loaded"}","street":"${escapeXml(input.streetName)}"}</metadata>
   <style>
     svg{--section-surface:var(--surface,#000);--section-surface-2:var(--surface-2,#111);--section-ink:var(--ink,#fff);--section-muted:var(--muted,#b3b3b3);--section-border:var(--border,#3a3a3a);--section-terrain:#f3d35c;--section-building:#60a5fa;--section-tree:#31d158}
     text{font-family:JetBrains Mono,SFMono-Regular,Menlo,Consolas,monospace;fill:var(--section-ink);font-size:12px}
@@ -871,7 +876,7 @@ function createSectionSvg(input: {
   <rect width="720" height="360" fill="var(--section-surface)"/>
   <g id="metadata-labels">
     <text x="24" y="30">${escapeXml(input.streetName)}</text>
-    <text x="24" y="52" class="muted">SECTION ${lengthLabel} / SRTM TERRAIN NOT LOADED / STREET WIDTH ${widthLabel} / TREES ${treeLabel}</text>
+    <text x="24" y="52" class="muted">SECTION ${lengthLabel} / ${terrainLabel} / STREET WIDTH ${widthLabel} / TREES ${treeLabel}</text>
   </g>
   <g id="profile">
     ${buildingSvg || `<text x="44" y="94" class="muted">NO BUILDING INTERSECTION WITH SECTION LINE</text>`}
@@ -880,7 +885,7 @@ function createSectionSvg(input: {
       hasTerrain
         ? `<path d="${terrainPath}" class="terrain"/>`
         : `<line x1="42" y1="${profileBaseY}" x2="678" y2="${profileBaseY}" class="terrain-missing"/>
-    <text x="44" y="${profileBaseY - 10}" class="muted">SRTM TERRAIN NOT LOADED</text>`
+    <text x="44" y="${profileBaseY - 10}" class="muted">OpenTopography DEM NOT LOADED</text>`
     }
     <line x1="42" y1="${profileBaseY}" x2="678" y2="${profileBaseY}" class="axis"/>
   </g>

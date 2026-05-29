@@ -103,14 +103,59 @@ function buildRelationWayHints(
     for (const member of element.members) {
       if (member.type !== "way") continue;
       const existing = hints.get(member.ref) ?? {};
-      hints.set(member.ref, {
-        ...existing,
-        ...relationTags,
-        memberRole: member.role ?? existing.memberRole ?? "",
-      });
+      hints.set(member.ref, mergeRelationHint(existing, relationTags, member.role));
     }
   }
   return hints;
+}
+
+function mergeRelationHint(
+  existing: Record<string, string>,
+  relationTags: Record<string, string>,
+  memberRole?: string,
+): Record<string, string> {
+  return compactStringRecord({
+    ...relationTags,
+    ...existing,
+    route: existing.route ?? relationTags.route,
+    route_master: existing.route_master ?? relationTags.route_master,
+    ref: existing.ref ?? relationTags.ref,
+    name: existing.name ?? relationTags.name,
+    network: existing.network ?? relationTags.network,
+    operator: existing.operator ?? relationTags.operator,
+    routeRefs: joinUnique(existing.routeRefs, relationTags.ref),
+    routeNames: joinUnique(existing.routeNames, relationTags.name),
+    routeRelations: joinUnique(existing.routeRelations, relationTags.relationId),
+    routeModes: joinUnique(existing.routeModes, relationTags.route ?? relationTags.route_master),
+    routeNetworks: joinUnique(existing.routeNetworks, relationTags.network),
+    routeOperators: joinUnique(existing.routeOperators, relationTags.operator),
+    routeFroms: joinUnique(existing.routeFroms, relationTags.from),
+    routeTos: joinUnique(existing.routeTos, relationTags.to),
+    routeVias: joinUnique(existing.routeVias, relationTags.via),
+    routeColours: joinUnique(existing.routeColours, relationTags.colour),
+    memberRoles: joinUnique(existing.memberRoles, memberRole),
+    relationId: existing.relationId ?? relationTags.relationId,
+    memberRole: existing.memberRole ?? memberRole ?? "",
+  });
+}
+
+function joinUnique(existing: string | undefined, value: string | undefined): string | undefined {
+  const values = [
+    ...(existing ? existing.split(";").map((item) => item.trim()) : []),
+    ...(value ? value.split(";").map((item) => item.trim()) : []),
+  ].filter(Boolean);
+  const uniqueValues = [...new Set(values)];
+  return uniqueValues.length ? uniqueValues.join(";") : undefined;
+}
+
+function compactStringRecord(
+  input: Record<string, string | undefined>,
+): Record<string, string> {
+  const output: Record<string, string> = {};
+  for (const [key, value] of Object.entries(input)) {
+    if (value !== undefined && value !== "") output[key] = value;
+  }
+  return output;
 }
 
 function pickRelationTransportTags(
@@ -120,7 +165,20 @@ function pickRelationTransportTags(
   const picked: Record<string, string> = {
     relationId: String(relationId),
   };
-  for (const key of ["route", "route_master", "ref", "name", "network", "operator"]) {
+  for (const key of [
+    "route",
+    "route_master",
+    "ref",
+    "name",
+    "network",
+    "operator",
+    "from",
+    "to",
+    "via",
+    "colour",
+    "colour:text",
+    "public_transport:version",
+  ]) {
     const value = tags[key];
     if (value) picked[key] = value;
   }
@@ -136,16 +194,47 @@ function normalizedProperties(
   const poiCategory = classifyPoiCategory(tags);
   const heightMeters = readHeightMeters(tags);
   const buildingLevels = readNumber(tags?.["building:levels"] ?? tags?.levels);
+  const osmTags = tags ?? {};
+  const lineLabel = readTransportLineLabel(osmTags, transportMode);
   return {
     id: element.id,
     osmType: element.type,
-    ...(tags ?? {}),
+    osmId: element.id,
+    osmElementType: element.type,
+    ...osmTags,
+    osmTagsJson: JSON.stringify(osmTags),
     ...(transportMode ? { transportMode } : {}),
+    ...(lineLabel ? { lineLabel } : {}),
     ...(mobilityMode ? { mobilityMode } : {}),
     ...(poiCategory ? { poiCategory } : {}),
     ...(heightMeters !== undefined ? { heightMeters } : {}),
     ...(buildingLevels !== undefined ? { buildingLevels } : {}),
   };
+}
+
+function readTransportLineLabel(
+  tags: Record<string, string>,
+  transportMode?: string,
+): string | undefined {
+  if (!transportMode) return undefined;
+  const refs = tags.routeRefs ?? tags.ref;
+  const names = tags.routeNames ?? tags.name;
+  const networks = tags.routeNetworks ?? tags.network;
+  const operators = tags.routeOperators ?? tags.operator;
+  const relationIds = tags.routeRelations ?? tags.relationId;
+  const fromTo =
+    tags.routeFroms || tags.routeTos
+      ? `${tags.routeFroms ?? "?"}->${tags.routeTos ?? "?"}`
+      : undefined;
+  const parts = [
+    refs ? `ref ${refs}` : undefined,
+    names,
+    fromTo,
+    networks ? `network ${networks}` : undefined,
+    operators ? `operator ${operators}` : undefined,
+    relationIds ? `relation ${relationIds}` : undefined,
+  ].filter(Boolean);
+  return parts.length ? parts.join(" / ") : transportMode;
 }
 
 function readHeightMeters(tags?: Record<string, string>): number | undefined {

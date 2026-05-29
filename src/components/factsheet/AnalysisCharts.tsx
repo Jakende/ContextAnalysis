@@ -38,19 +38,19 @@ export function AnalysisCharts({
   return (
     <section className="analysis-charts" aria-label="Compact visual evidence">
       <div className="module-title">
-        <h3>Grafische Auswertung</h3>
+        <h3>Evidence overview</h3>
         <span className="confidence">{activeScale}</span>
       </div>
-      <div className="compact-chart-stack">
+      <div className="evidence-overview-grid">
         {evidence.length ? (
-          <CompactEvidenceChart
+          <MetricEvidenceCards
             title={chartTitleForScale(activeScale)}
             description={chartDescriptionForScale(activeScale)}
             data={evidence}
           />
         ) : null}
         {sources.length ? (
-          <CompactSourceChart
+          <SourceEvidenceList
             title="Datenbezug"
             description="Nur Quellen mit geladenen Features oder direktem Bezug zu den dargestellten Kennwerten."
             data={sources}
@@ -61,7 +61,7 @@ export function AnalysisCharts({
   );
 }
 
-function CompactEvidenceChart({
+function MetricEvidenceCards({
   title,
   description,
   data,
@@ -70,38 +70,26 @@ function CompactEvidenceChart({
   description: string;
   data: EvidenceDatum[];
 }) {
-  const rowHeight = 30;
-  const height = 58 + data.length * rowHeight;
   return (
-    <figure className="compact-chart-frame">
+    <figure className="evidence-card-frame">
       <figcaption>
         <strong>{title}</strong>
         <span>{description}</span>
       </figcaption>
-      <svg viewBox={`0 0 420 ${height}`} role="img" aria-label={title}>
-        <line className="compact-axis" x1="156" y1="42" x2="396" y2="42" />
-        {data.map((item, index) => {
-          const y = 58 + index * rowHeight;
-          const width = Math.max(3, Math.min(220, (item.value / item.max) * 220));
-          return (
-            <g key={item.id}>
-              <text className="compact-chart-label" x="12" y={y + 5}>
-                {item.label}
-              </text>
-              <rect className="compact-chart-track" x="156" y={y - 8} width="220" height="14" />
-              <rect x="156" y={y - 8} width={width} height="14" fill={item.color} />
-              <text className="compact-chart-value" x="386" y={y + 5}>
-                {item.displayValue}
-              </text>
-            </g>
-          );
-        })}
-      </svg>
+      <div className="metric-card-grid">
+        {data.map((item) => (
+          <article className="metric-card" key={item.id}>
+            <span>{item.label}</span>
+            <strong>{item.displayValue}</strong>
+            <i style={{ backgroundColor: item.color, width: `${Math.max(6, Math.min(100, (item.value / item.max) * 100))}%` }} />
+          </article>
+        ))}
+      </div>
     </figure>
   );
 }
 
-function CompactSourceChart({
+function SourceEvidenceList({
   title,
   description,
   data,
@@ -110,34 +98,23 @@ function CompactSourceChart({
   description: string;
   data: SourceDatum[];
 }) {
-  const rowHeight = 26;
-  const height = 58 + data.length * rowHeight;
   const maxValue = Math.max(1, ...data.map((item) => item.value));
   return (
-    <figure className="compact-chart-frame compact-source-chart">
+    <figure className="evidence-card-frame">
       <figcaption>
         <strong>{title}</strong>
         <span>{description}</span>
       </figcaption>
-      <svg viewBox={`0 0 420 ${height}`} role="img" aria-label={title}>
-        {data.map((item, index) => {
-          const y = 54 + index * rowHeight;
-          const width = Math.max(3, Math.min(180, (item.value / maxValue) * 180));
-          return (
-            <g key={item.id}>
-              <rect x="12" y={y - 9} width="10" height="10" fill={item.color} />
-              <text className="compact-chart-label" x="30" y={y}>
-                {item.label}
-              </text>
-              <rect className="compact-chart-track" x="238" y={y - 10} width="142" height="12" />
-              <rect x="238" y={y - 10} width={width * (142 / 180)} height="12" fill={item.color} />
-              <text className="compact-chart-value" x="388" y={y}>
-                {item.displayValue}
-              </text>
-            </g>
-          );
-        })}
-      </svg>
+      <div className="source-evidence-list">
+        {data.map((item) => (
+          <article className="source-evidence-row" key={item.id}>
+            <i style={{ backgroundColor: item.color }} />
+            <span>{item.label}</span>
+            <b>{item.displayValue}</b>
+            <em style={{ width: `${Math.max(4, Math.min(100, (item.value / maxValue) * 100))}%`, backgroundColor: item.color }} />
+          </article>
+        ))}
+      </div>
     </figure>
   );
 }

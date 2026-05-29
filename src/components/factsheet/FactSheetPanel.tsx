@@ -4,6 +4,7 @@ import type {
   FactSheetModule,
   Scale,
 } from "../../lib/types";
+import type { Feature, FeatureCollection } from "geojson";
 import { AnalysisCharts } from "./AnalysisCharts";
 
 export function FactSheetPanel({
@@ -49,6 +50,7 @@ export function FactSheetPanel({
               <FactModule key={module.id} module={module} />
             ))}
           </div>
+          <FeatureEvidencePanel analysis={analysis} activeScale={activeScale} />
           <AnalysisCharts analysis={analysis} activeScale={activeScale} />
           <details className="source-run-list">
             <summary>
@@ -78,6 +80,359 @@ export function FactSheetPanel({
       )}
     </aside>
   );
+}
+
+type FeatureGroup = {
+  id: string;
+  title: string;
+  description: string;
+  collection: FeatureCollection;
+  geometry?: Feature["geometry"]["type"];
+  filter?: (feature: Feature) => boolean;
+  labelKeys: string[];
+  summaryKeys: string[];
+};
+
+function FeatureEvidencePanel({
+  analysis,
+  activeScale,
+}: {
+  analysis: AnalysisResult;
+  activeScale: Scale;
+}) {
+  const groups = featureGroupsForScale(analysis, activeScale)
+    .map((group) => ({
+      ...group,
+      features: filteredFeatures(group),
+    }))
+    .filter((group) => group.features.length > 0);
+
+  if (!groups.length) return null;
+
+  return (
+    <section className="feature-evidence">
+      <div className="module-title">
+        <div>
+          <h3>Feature evidence</h3>
+          <span className="label">Inspect loaded attributes</span>
+        </div>
+        <span className="confidence">{groups.length}</span>
+      </div>
+      <div className="feature-evidence-grid">
+        {groups.map((group) => (
+          <FeatureGroupCard key={group.id} group={group} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function featureGroupsForScale(
+  analysis: AnalysisResult,
+  activeScale: Scale,
+): FeatureGroup[] {
+  if (activeScale === "XL") {
+    return [
+      {
+        id: "xl-grid",
+        title: "Zensus grid",
+        description: "Grid cells and measured WMS/MBTiles properties.",
+        collection: analysis.overlays.xlGrid,
+        labelKeys: ["label", "name", "cellId", "id"],
+        summaryKeys: ["populationIndex", "valueStatus", "sourceId", "layer"],
+      },
+      {
+        id: "xl-context",
+        title: "Boundaries",
+        description: "Administrative and regional context geometries.",
+        collection: analysis.overlays.xlContext,
+        labelKeys: ["name", "GEN", "fua_name", "id"],
+        summaryKeys: ["AGS", "ARS", "NUTS", "sourceId", "fua_id"],
+      },
+      {
+        id: "urban-atlas",
+        title: "Urban Atlas",
+        description: "Loaded Copernicus land-use polygons.",
+        collection: analysis.overlays.urbanAtlas,
+        labelKeys: ["label", "urbanAtlasClass", "code_2021", "code"],
+        summaryKeys: ["code_2021", "code", "urbanAtlasClass", "sourceId"],
+      },
+    ];
+  }
+  if (activeScale === "L") {
+    return [
+      {
+        id: "osm-transport-lines",
+        title: "OSM public transport lines",
+        description: "Live Overpass route/way line features with OSM refs, names, operators, relation IDs and raw tags.",
+        collection: analysis.overlays.osmRaw,
+        geometry: "LineString",
+        filter: (feature) => feature.properties?.overpassModuleId === "transportLines",
+        labelKeys: ["lineLabel", "routeRefs", "ref", "routeNames", "name", "routeRelations", "osmId"],
+        summaryKeys: [
+          "transportMode",
+          "routeRefs",
+          "routeNames",
+          "routeFroms",
+          "routeTos",
+          "routeNetworks",
+          "routeOperators",
+          "routeRelations",
+          "railway",
+          "highway",
+        ],
+      },
+      {
+        id: "transport-overlay-lines",
+        title: "Rendered transport lines",
+        description: "Line geometries currently passed to the map overlay; kept separate from raw OSM evidence for debugging.",
+        collection: analysis.overlays.transport,
+        geometry: "LineString",
+        labelKeys: ["lineLabel", "routeRefs", "ref", "routeNames", "name", "routeRelations", "osmId"],
+        summaryKeys: ["transportMode", "routeRefs", "routeNames", "routeNetworks", "routeOperators", "routeRelations"],
+      },
+      {
+        id: "transport-stops",
+        title: "Public transport stops",
+        description: "GTFS and OSM stop/platform/station attributes.",
+        collection: analysis.overlays.transport,
+        geometry: "Point",
+        labelKeys: ["stop_name", "name", "ref", "id"],
+        summaryKeys: ["transportMode", "sourceId", "operator", "network"],
+      },
+      {
+        id: "mobility",
+        title: "Mobility infrastructure",
+        description: "Cycle, pedestrian, parking, charging and support features.",
+        collection: analysis.overlays.mobility,
+        labelKeys: ["name", "highway", "amenity", "mobilityMode", "id"],
+        summaryKeys: ["mobilityMode", "highway", "cycleway", "amenity", "parking"],
+      },
+      {
+        id: "pois",
+        title: "POIs",
+        description: "Social, civic, commercial, leisure and service POIs.",
+        collection: analysis.overlays.pois,
+        labelKeys: ["name", "amenity", "shop", "tourism", "leisure", "id"],
+        summaryKeys: ["poiCategory", "amenity", "shop", "tourism", "leisure"],
+      },
+      {
+        id: "gastronomy",
+        title: "Gastronomy",
+        description: "Food and beverage POIs with cuisine/name tags where available.",
+        collection: analysis.overlays.gastronomy,
+        labelKeys: ["name", "amenity", "cuisine", "id"],
+        summaryKeys: ["amenity", "cuisine", "opening_hours", "operator"],
+      },
+      {
+        id: "parking",
+        title: "Parking areas",
+        description: "Parking polygons and related access/capacity tags.",
+        collection: analysis.overlays.parkingAreas,
+        labelKeys: ["name", "parking", "amenity", "id"],
+        summaryKeys: ["parking", "access", "capacity", "surface", "fee"],
+      },
+      {
+        id: "green-blue",
+        title: "Green / blue",
+        description: "Open-space and water features used for L-scale indicators.",
+        collection: mergeFeatureCollections(analysis.overlays.green, analysis.overlays.blue),
+        labelKeys: ["name", "leisure", "landuse", "natural", "water", "id"],
+        summaryKeys: ["leisure", "landuse", "natural", "water", "waterway", "sourceId"],
+      },
+      {
+        id: "raw-overpass",
+        title: "Raw Overpass",
+        description: "All normalized live OSM features, grouped by query module.",
+        collection: analysis.overlays.osmRaw,
+        labelKeys: ["name", "lineLabel", "overpassModuleId", "id"],
+        summaryKeys: ["overpassModuleId", "osmElementType", "sourceId", "transportMode", "poiCategory"],
+      },
+    ];
+  }
+  return [
+    {
+      id: "buildings",
+      title: "Buildings",
+      description: "LOD2 / Overture / OSM building attributes and height fields.",
+      collection: analysis.overlays.buildings,
+      labelKeys: ["name", "id", "building", "building:part"],
+      summaryKeys: ["sourceId", "height", "building:height", "heightMeters", "building:levels", "roof:shape"],
+    },
+    {
+      id: "trees",
+      title: "Trees",
+      description: "Tree points, crown/height/species tags and source metadata.",
+      collection: analysis.overlays.trees,
+      labelKeys: ["species", "genus", "name", "id"],
+      summaryKeys: ["natural", "species", "leaf_type", "diameter_crown", "height", "sourceId"],
+    },
+    {
+      id: "streets-section",
+      title: "Street / section",
+      description: "Street segment, section line, terrain and contour evidence.",
+      collection: mergeFeatureCollections(
+        analysis.overlays.mStreetSegment,
+        analysis.overlays.sectionLine,
+        analysis.overlays.contours,
+      ),
+      labelKeys: ["name", "highway", "id", "elevation"],
+      summaryKeys: ["highway", "width", "lanes", "surface", "elevation", "sourceId"],
+    },
+    {
+      id: "m-raw-overpass",
+      title: "Raw M Overpass",
+      description: "Street, tree, building and edge features fetched live from OSM.",
+      collection: analysis.overlays.osmRaw,
+      labelKeys: ["name", "overpassModuleId", "id"],
+      summaryKeys: ["overpassModuleId", "osmElementType", "highway", "building", "natural", "barrier"],
+    },
+  ];
+}
+
+function FeatureGroupCard({
+  group,
+}: {
+  group: FeatureGroup & { features: Feature[] };
+}) {
+  const topAttributes = summarizeTopAttributes(group.features, group.summaryKeys);
+  return (
+    <details className="feature-group-card">
+      <summary>
+        <span>
+          <strong>{group.title}</strong>
+          <small>{group.description}</small>
+        </span>
+        <b>{group.features.length}</b>
+      </summary>
+      {topAttributes.length ? (
+        <div className="feature-attribute-strip">
+          {topAttributes.map((item) => (
+            <span key={`${item.key}:${item.value}`}>
+              <i>{item.key}</i>
+              {item.value} <small>{item.count}</small>
+            </span>
+          ))}
+        </div>
+      ) : null}
+      <div className="feature-record-list">
+        {group.features.slice(0, 50).map((feature, index) => (
+          <FeatureRecord
+            feature={feature}
+            labelKeys={group.labelKeys}
+            summaryKeys={group.summaryKeys}
+            index={index}
+            key={`${String(feature.properties?.osmElementType ?? feature.geometry.type)}:${String(feature.properties?.id ?? feature.properties?.osmId ?? index)}`}
+          />
+        ))}
+      </div>
+      {group.features.length > 50 ? (
+        <p className="feature-overflow-note">
+          Showing 50 of {group.features.length} records. Full attribute table is available in GeoJSON/GPKG exports.
+        </p>
+      ) : null}
+    </details>
+  );
+}
+
+function FeatureRecord({
+  feature,
+  labelKeys,
+  summaryKeys,
+  index,
+}: {
+  feature: Feature;
+  labelKeys: string[];
+  summaryKeys: string[];
+  index: number;
+}) {
+  const label = readFirstProperty(feature, labelKeys) ?? `${feature.geometry.type} ${index + 1}`;
+  const summary = summaryKeys
+    .map((key) => [key, feature.properties?.[key]] as const)
+    .filter(([, value]) => value !== undefined && value !== null && String(value).trim())
+    .slice(0, 5);
+  const properties = Object.entries(feature.properties ?? {}).sort(([left], [right]) =>
+    left.localeCompare(right),
+  );
+  return (
+    <details className="feature-record">
+      <summary>
+        <span>{label}</span>
+        <small>{feature.geometry.type}</small>
+      </summary>
+      {summary.length ? (
+        <div className="feature-record-summary">
+          {summary.map(([key, value]) => (
+            <span key={key}>
+              <i>{key}</i>
+              {formatPropertyValue(value)}
+            </span>
+          ))}
+        </div>
+      ) : null}
+      <dl className="feature-property-grid">
+        {properties.map(([key, value]) => (
+          <div key={key}>
+            <dt>{key}</dt>
+            <dd>{formatPropertyValue(value)}</dd>
+          </div>
+        ))}
+      </dl>
+    </details>
+  );
+}
+
+function filteredFeatures(group: FeatureGroup): Feature[] {
+  return group.collection.features.filter((feature) =>
+    (group.geometry ? feature.geometry.type === group.geometry : true) &&
+    (group.filter ? group.filter(feature) : true),
+  );
+}
+
+function summarizeTopAttributes(
+  features: Feature[],
+  keys: string[],
+): Array<{ key: string; value: string; count: number }> {
+  const counts = new Map<string, { key: string; value: string; count: number }>();
+  for (const feature of features) {
+    for (const key of keys) {
+      const value = feature.properties?.[key];
+      if (value === undefined || value === null || !String(value).trim()) continue;
+      for (const part of String(value).split(";").map((item) => item.trim()).filter(Boolean)) {
+        const mapKey = `${key}:${part}`;
+        const current = counts.get(mapKey) ?? { key, value: part, count: 0 };
+        current.count += 1;
+        counts.set(mapKey, current);
+      }
+    }
+  }
+  return [...counts.values()]
+    .sort((left, right) => right.count - left.count || left.key.localeCompare(right.key))
+    .slice(0, 10);
+}
+
+function readFirstProperty(feature: Feature, keys: string[]): string | null {
+  for (const key of keys) {
+    const value = feature.properties?.[key];
+    if (value !== undefined && value !== null && String(value).trim()) {
+      return String(value).trim();
+    }
+  }
+  return null;
+}
+
+function formatPropertyValue(value: unknown): string {
+  if (value === undefined || value === null) return "not available";
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  return JSON.stringify(value);
+}
+
+function mergeFeatureCollections(...collections: FeatureCollection[]): FeatureCollection {
+  return {
+    type: "FeatureCollection",
+    features: collections.flatMap((collection) => collection.features),
+  };
 }
 
 function formatRunCount(event: DataSourceRunEvent): string {

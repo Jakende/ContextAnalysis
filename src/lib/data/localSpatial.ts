@@ -1,10 +1,13 @@
-import type { Feature, FeatureCollection, Geometry, Point } from "geojson";
+import type { Feature, FeatureCollection, Geometry, LineString, Point } from "geojson";
 import type { SectionLine, SelectedPoint } from "../types";
 import { bboxAroundPoint, featureCollection } from "../analysis/geometry";
 
 const ZENSUS_GRID_URL = "/data/processed/zensus-grid.geojson";
-const SRTM_SAMPLES_URL = "/data/processed/srtm-30m/samples.geojson";
+const DEM_SAMPLES_URL = "/data/processed/opentopography-dem/samples.geojson";
+const CONTOUR_LINES_URL = "/data/processed/opentopography-contours/contours.geojson";
 const LOD2_BUILDINGS_URL = "/data/processed/lod2-buildings.geojson";
+const LOD2_DEUTSCHLAND_INDEX_URL = "/data/processed/lod2-deutschland/index.json";
+const LOD2_FEDERAL_STATES_INDEX_URL = "/data/processed/lod2-federal-states/index.json";
 const OVERTURE_BUILDINGS_URL = "/data/processed/overture-buildings.geojson";
 const OVERTURE_BUILDINGS_INDEX_URL = "/data/processed/overture-buildings/index.json";
 const GLOBAL_BUILDING_ATLAS_URL = "/data/processed/global-building-atlas.geojson";
@@ -114,7 +117,7 @@ export async function loadZensusGridForPoint(
 export async function loadTerrainSamplesForSection(
   sectionLine: SectionLine,
 ): Promise<TerrainSample[]> {
-  const collection = await fetchFeatureCollection(SRTM_SAMPLES_URL);
+  const collection = await fetchFeatureCollection(DEM_SAMPLES_URL);
   if (!collection) return [];
 
   const terrainPoints = collection.features
@@ -147,12 +150,52 @@ export async function loadTerrainSamplesForSection(
   }).filter((sample): sample is TerrainSample => sample !== null);
 }
 
+export async function loadContourLinesForPoint(
+  selectedPoint: SelectedPoint,
+  radiusMeters = 1_200,
+): Promise<FeatureCollection> {
+  const collection = await fetchFeatureCollection(CONTOUR_LINES_URL);
+  if (!collection) return featureCollection();
+  const bbox = bboxAroundPoint(selectedPoint.lat, selectedPoint.lon, radiusMeters);
+  const features = collection.features
+    .filter((feature): feature is Feature<LineString> => feature.geometry.type === "LineString")
+    .filter((feature) => geometryIntersectsBbox(feature.geometry, bbox))
+    .map((feature) => ({
+      ...feature,
+      properties: {
+        ...(feature.properties ?? {}),
+        sourceId: feature.properties?.sourceId ?? "opentopography-contours",
+      },
+    }));
+  return featureCollection(features);
+}
+
 export async function loadLod2BuildingsForPoint(
   selectedPoint: SelectedPoint,
   radiusMeters = 900,
 ): Promise<FeatureCollection> {
   const bbox = bboxAroundPoint(selectedPoint.lat, selectedPoint.lon, radiusMeters);
   const sources = [
+    {
+      sourceId: "lod2-deutschland-bkg",
+      load: async () =>
+        (await loadManifestBackedShardedSourceForPoint({
+          sourceId: "lod2-deutschland-bkg",
+          indexUrl: LOD2_DEUTSCHLAND_INDEX_URL,
+          selectedPoint,
+          radiusMeters,
+        })).collection,
+    },
+    {
+      sourceId: "lod2-federal-states",
+      load: async () =>
+        (await loadManifestBackedShardedSourceForPoint({
+          sourceId: "lod2-federal-states",
+          indexUrl: LOD2_FEDERAL_STATES_INDEX_URL,
+          selectedPoint,
+          radiusMeters,
+        })).collection,
+    },
     {
       sourceId: "lod2-bayern",
       load: () => fetchFeatureCollection(LOD2_BUILDINGS_URL),

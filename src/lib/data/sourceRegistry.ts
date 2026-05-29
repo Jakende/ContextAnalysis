@@ -135,6 +135,32 @@ export const sourceRegistry = {
     notes:
       "Runtime loads local preprocessed LOD2 GeoJSON for M-scale massing where available in Bavaria. This is not a Germany-wide building source; outside coverage, Overture or OSM-derived buildings remain lower-confidence fallbacks.",
   },
+  "lod2-deutschland-bkg": {
+    id: "lod2-deutschland-bkg",
+    label: "LoD2-DE Germany 3D building models",
+    type: "external-download",
+    url: "https://gdz.bkg.bund.de/index.php/default/3d-gebaudemodelle-lod2-deutschland-lod2-de.html",
+    localPath: "public/data/processed/lod2-deutschland/index.json",
+    license: "Data licence Germany attribution 2.0 / GeoBasis-DE terms; verify product metadata",
+    attribution: "GeoBasis-DE / BKG / AdV",
+    scale: ["M"],
+    updateMode: "preprocessed",
+    notes:
+      "Preferred Germany-wide LOD2 strategy when accessible as local/preprocessed CityGML-derived shards. Use before Overture/OSM fallbacks. Preserve federal-state source metadata and height attributes.",
+  },
+  "lod2-federal-states": {
+    id: "lod2-federal-states",
+    label: "Federal-state LoD2 open-data building models",
+    type: "external-download",
+    url: "https://www.adv-online.de/Products/3D-Building-Models/",
+    localPath: "public/data/processed/lod2-federal-states/index.json",
+    license: "Varies by federal state; verify state product metadata before redistribution",
+    attribution: "AdV / German federal-state survey administrations",
+    scale: ["M"],
+    updateMode: "preprocessed",
+    notes:
+      "Resolver bucket for state-specific LOD2/CityGML sources such as Berlin, Hessen, Baden-Wuerttemberg, Niedersachsen, Nordrhein-Westfalen and others. Runtime should choose the state shard for the clicked point, then fall back to Overture and OSM.",
+  },
   "global-building-atlas": {
     id: "global-building-atlas",
     label: "GlobalBuildingAtlas WFS / LoD1 buildings",
@@ -190,18 +216,31 @@ export const sourceRegistry = {
     notes:
       "Optional richer massing source. Keep separate from building footprints until the runtime explicitly handles part hierarchies and duplicate geometry.",
   },
-  "srtm-30m": {
-    id: "srtm-30m",
-    label: "SRTM 30m terrain raster",
-    type: "tile-service",
-    url: "https://ows.mundialis.de/osm/service?service=WMS&request=GetCapabilities",
-    localPath: "public/data/processed/srtm-30m/samples.geojson",
-    license: "NASA / USGS public domain where applicable; verify derived dataset terms",
-    attribution: "NASA Shuttle Radar Topography Mission / USGS",
+  "opentopography-dem": {
+    id: "opentopography-dem",
+    label: "OpenTopography global DEM API",
+    type: "live-api",
+    url: "https://portal.opentopography.org/API/globaldem",
+    localPath: "public/data/processed/opentopography-dem/samples.geojson",
+    license: "Depends on selected DEM product; preserve OpenTopography/product metadata",
+    attribution: "OpenTopography / source DEM providers",
     scale: ["M"],
     updateMode: "preprocessed",
     notes:
-      "Runtime can render the public mundialis/terrestris SRTM WMS for visual terrain context. Section sampling uses local preprocessed elevation points when available.",
+      "DEM input for M-scale section sampling and local contour generation. Do not use the SRTM WMS raster in the viewer because it contains provider watermarking; generate local contours from DEM downloads instead.",
+  },
+  "opentopography-contours": {
+    id: "opentopography-contours",
+    label: "OpenTopography-derived contour lines",
+    type: "local-file",
+    url: "https://portal.opentopography.org/API/globaldem",
+    localPath: "public/data/processed/opentopography-contours/contours.geojson",
+    license: "Derived from selected OpenTopography DEM product; preserve product metadata",
+    attribution: "OpenTopography / source DEM providers",
+    scale: ["M"],
+    updateMode: "preprocessed",
+    notes:
+      "Preferred visual terrain layer. Generate with GDAL gdal_contour from local DEM clips and export LineString features with elevation, interval, sourceId and generatedAt attributes.",
   },
   "eurostat-gisco-fua": {
     id: "eurostat-gisco-fua",
