@@ -78,13 +78,17 @@ function parseOverpassElements(response: unknown): FeatureCollection {
     const coordinates = sanitizeCoordinates(element.geometry);
     if (coordinates.length > 1) {
       const closed = isClosedRing(coordinates);
-      if (closed && !isUsablePolygonRing(coordinates)) continue;
+      const polygonal = closed && shouldRenderAsPolygon(effectiveTags);
+      if (polygonal && !isUsablePolygonRing(coordinates)) continue;
       features.push({
         type: "Feature" as const,
-        geometry: closed
+        geometry: polygonal
           ? { type: "Polygon" as const, coordinates: [coordinates] }
           : { type: "LineString" as const, coordinates },
-        properties: normalizedProperties(element, effectiveTags),
+        properties: {
+          ...normalizedProperties(element, effectiveTags),
+          ...(closed && !polygonal ? { geometryRole: "closed-line" } : {}),
+        },
       });
     }
   }
@@ -404,10 +408,36 @@ function isClosedRing(coordinates: number[][]): boolean {
 
 function isUsablePolygonRing(coordinates: number[][]): boolean {
   if (coordinates.length < 4) return false;
-  if (hasLongJump(coordinates, 2_500)) return false;
+  if (hasLongJump(coordinates, 1_200)) return false;
+  if (ringBboxDiagonalMeters(coordinates) > 4_000) return false;
+  if (maxSegmentToBboxRatio(coordinates) > 0.85) return false;
   if (ringAreaSquareMeters(coordinates) < 20) return false;
   if (ringSelfIntersects(coordinates)) return false;
   return true;
+}
+
+function shouldRenderAsPolygon(tags?: Record<string, string>): boolean {
+  if (!tags) return false;
+  if (tags.area === "no") return false;
+  if (tags.type === "route" || tags.route || tags.route_master) return false;
+  if (tags.railway && !["station", "platform"].includes(tags.railway)) return false;
+  if (tags.highway && tags.area !== "yes") return false;
+  if (tags.waterway && !tags.water) return false;
+  if (tags.area === "yes") return true;
+  return Boolean(
+    tags.building ||
+      tags["building:part"] ||
+      tags.landuse ||
+      tags.leisure ||
+      tags.natural ||
+      tags.amenity ||
+      tags.tourism ||
+      tags.shop ||
+      tags.parking ||
+      tags.water ||
+      tags.man_made ||
+      tags["addr:housenumber"],
+  );
 }
 
 function hasLongJump(coordinates: number[][], maxMeters: number): boolean {
@@ -426,6 +456,34 @@ function distanceMeters(a: number[], b: number[]): number {
   const dx = (b[0] - a[0]) * metersPerDegreeLon;
   const dy = (b[1] - a[1]) * metersPerDegreeLat;
   return Math.hypot(dx, dy);
+}
+
+function ringBboxDiagonalMeters(coordinates: number[][]): number {
+  const bbox = ringBbox(coordinates);
+  return distanceMeters([bbox[0], bbox[1]], [bbox[2], bbox[3]]);
+}
+
+function maxSegmentToBboxRatio(coordinates: number[][]): number {
+  const diagonal = Math.max(1, ringBboxDiagonalMeters(coordinates));
+  let maxSegment = 0;
+  for (let index = 1; index < coordinates.length; index += 1) {
+    maxSegment = Math.max(maxSegment, distanceMeters(coordinates[index - 1], coordinates[index]));
+  }
+  return maxSegment / diagonal;
+}
+
+function ringBbox(coordinates: number[][]): [number, number, number, number] {
+  let west = Infinity;
+  let south = Infinity;
+  let east = -Infinity;
+  let north = -Infinity;
+  for (const [lon, lat] of coordinates) {
+    west = Math.min(west, lon);
+    south = Math.min(south, lat);
+    east = Math.max(east, lon);
+    north = Math.max(north, lat);
+  }
+  return [west, south, east, north];
 }
 
 function ringAreaSquareMeters(coordinates: number[][]): number {

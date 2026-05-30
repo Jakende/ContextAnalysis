@@ -12,7 +12,7 @@ const OVERPASS_ENDPOINTS = [
 ];
 const OVERPASS_CONCURRENCY = 2;
 const OVERPASS_PROXY_TIMEOUT_MS = 45_000;
-const OVERPASS_CACHE_VERSION = "v10-osm-layer-inventory";
+const OVERPASS_CACHE_VERSION = "v11-polygon-role-validation";
 
 type OverpassProxyResponse = {
   ok: boolean;
