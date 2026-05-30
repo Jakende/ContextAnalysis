@@ -9,6 +9,7 @@ import {
   analysisToProvenanceJson,
 } from "../../lib/export/serializers";
 import { analysisToSvg, svgToPngBlob } from "../../lib/export/svg";
+import { createZipBlob } from "../../lib/export/zip";
 import { generateOllamaReport } from "../../lib/ollama/client";
 import type { AnalysisResult } from "../../lib/types";
 
@@ -69,6 +70,20 @@ export function ExportPanel({
       if (kind === "html") {
         downloadText(analysisToHtml(analysis), `${baseName}.html`, "text/html");
       }
+      if (kind === "zip") {
+        const svg = analysisToSvg(analysis, sectionSvg);
+        downloadBlob(
+          await createZipBlob([
+            { name: "analysis.json", content: analysisToJson(analysis), mediaType: "application/json" },
+            { name: "analysis.geojson", content: analysisToGeoJson(analysis), mediaType: "application/geo+json" },
+            { name: "analysis.svg", content: svg, mediaType: "image/svg+xml" },
+            { name: "analysis.png", content: await svgToPngBlob(svg), mediaType: "image/png" },
+            { name: "report.md", content: analysisToMarkdown(analysis), mediaType: "text/markdown" },
+            { name: "provenance.json", content: analysisToProvenanceJson(analysis), mediaType: "application/json" },
+          ]),
+          `${baseName}-package.zip`,
+        );
+      }
       if (kind === "ollama") {
         const report = await generateOllamaReport(analysis);
         downloadText(report.markdown, `${baseName}-ollama-report.md`, "text/markdown");
@@ -98,6 +113,7 @@ export function ExportPanel({
     ["csv", "CSV"],
     ["provenance", "Provenance JSON"],
     ["geojson", "GeoJSON"],
+    ["zip", "ZIP package"],
     ["gpkg", "GPKG"],
     ["markdown", "Markdown"],
     ["html", "HTML"],

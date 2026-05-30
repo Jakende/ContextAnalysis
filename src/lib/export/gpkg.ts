@@ -112,6 +112,12 @@ export async function analysisToGpkgBlob(
       styleRole: "mobility",
     },
     {
+      name: "mobility_isochrones",
+      geometryType: "POLYGON",
+      collection: onlyGeometry(analysis.overlays.isochrones, "Polygon"),
+      styleRole: "isochrone",
+    },
+    {
       name: "development_hints",
       geometryType: "POLYGON",
       collection: onlyGeometry(analysis.overlays.development, "Polygon"),
@@ -452,6 +458,7 @@ function styleForFeature(table: GeometryTable, feature: Feature): {
     transport: { color: "#facc15", opacity: 0.95, width: 5, symbol: "transit-stop-circle" },
     "transport-line": { color: "#facc15", opacity: 0.92, width: 2.8, symbol: "transit-line-by-mode" },
     mobility: { color: "#22d3ee", opacity: 0.9, width: table.geometryType === "LINESTRING" ? 2.2 : 4, symbol: "mobility-cyan" },
+    isochrone: { color: "#eab308", opacity: 0.18, width: 1.2, symbol: "ors-isochrone-fill" },
     poi: { color: "#fb7185", opacity: 0.9, width: 3, symbol: "poi-pink-circle" },
     gastronomy: { color: "#d946ef", opacity: 0.92, width: 3.2, symbol: "gastronomy-magenta-circle" },
     parking: { color: "#64748b", opacity: 0.34, width: 0.9, symbol: "parking-gray-fill" },

@@ -6,6 +6,13 @@ import type {
 } from "../../lib/types";
 import type { Feature, FeatureCollection } from "geojson";
 import { AnalysisCharts } from "./AnalysisCharts";
+import { useMemo, useState } from "react";
+import {
+  kpiDefinitions,
+  kpiStrategies,
+  scoreKpis,
+  formatClassification,
+} from "../../lib/analysis/kpi/kpiMatrix";
 
 export function FactSheetPanel({
   analysis,
@@ -50,6 +57,7 @@ export function FactSheetPanel({
               <FactModule key={module.id} module={module} />
             ))}
           </div>
+          {activeScale === "L" ? <KpiWeightMatrix analysis={analysis} /> : null}
           <FeatureEvidencePanel analysis={analysis} activeScale={activeScale} />
           <AnalysisCharts analysis={analysis} activeScale={activeScale} />
           <details className="source-run-list">
@@ -79,6 +87,89 @@ export function FactSheetPanel({
         </>
       )}
     </aside>
+  );
+}
+
+function KpiWeightMatrix({ analysis }: { analysis: AnalysisResult }) {
+  const [strategyId, setStrategyId] = useState("balanced");
+  const strategy =
+    kpiStrategies.find((item) => item.id === strategyId) ?? kpiStrategies[0];
+  const [weights, setWeights] = useState(() =>
+    Object.fromEntries(kpiDefinitions.map((definition) => [definition.id, definition.defaultWeight])),
+  );
+  const scored = useMemo(
+    () => scoreKpis(analysis.indicators, strategy, weights),
+    [analysis, strategy, weights],
+  );
+
+  return (
+    <section className="kpi-matrix">
+      <div className="module-title">
+        <div>
+          <h3>Local quality score</h3>
+          <span className="label">
+            {formatClassification(scored.classification, scored.confidence)}
+          </span>
+        </div>
+        <span className="confidence">{scored.composite ?? "n/a"}</span>
+      </div>
+      <div className="kpi-strategy-tabs" aria-label="KPI strategy presets">
+        {kpiStrategies.map((item) => (
+          <button
+            type="button"
+            key={item.id}
+            aria-pressed={item.id === strategy.id}
+            onClick={() => {
+              setStrategyId(item.id);
+              setWeights(item.weights);
+            }}
+            title={item.description}
+          >
+            {item.name}
+          </button>
+        ))}
+      </div>
+      <div className="kpi-row-list">
+        {scored.rows.map((row) => (
+          <div className="kpi-row" key={row.definition.id}>
+            <span>
+              <strong>{row.definition.name}</strong>
+              <small>{row.definition.category}</small>
+            </span>
+            <b>{row.score ?? "n/a"}</b>
+            <small>{Math.round(row.weight * 100)}%</small>
+          </div>
+        ))}
+      </div>
+      <details className="kpi-advanced">
+        <summary>Advanced weights</summary>
+        <div className="kpi-row-list">
+          {scored.rows.map((row) => (
+            <label className="kpi-row kpi-row-editable" key={row.definition.id}>
+              <span>
+                <strong>{row.definition.name}</strong>
+                <small>{row.definition.category}</small>
+              </span>
+              <b>{Math.round(row.weight * 100)}%</b>
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.05"
+              value={row.weight}
+              onChange={(event) =>
+                setWeights((current) => ({
+                  ...current,
+                  [row.definition.id]: Number(event.target.value),
+                }))
+              }
+              aria-label={`${row.definition.name} weight`}
+            />
+            </label>
+          ))}
+        </div>
+      </details>
+    </section>
   );
 }
 

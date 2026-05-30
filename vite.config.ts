@@ -32,13 +32,13 @@ type FuaFeature = {
 };
 
 const SERVER_OVERPASS_ENDPOINTS = [
-  "https://overpass-api.de/api/interpreter",
   "https://overpass.private.coffee/api/interpreter",
   "https://overpass.kumi.systems/api/interpreter",
+  "https://overpass-api.de/api/interpreter",
   "https://overpass.openstreetmap.jp/api/interpreter",
 ] as const;
 
-const SERVER_OVERPASS_TIMEOUT_MS = 15_000;
+const SERVER_OVERPASS_TIMEOUT_MS = 25_000;
 const SERVER_NOMINATIM_TIMEOUT_MS = 5_000;
 const SERVER_NOMINATIM_USER_AGENT =
   "SD-Stadtdaten-ContextAnalysis/0.1 local-nominatim-proxy";

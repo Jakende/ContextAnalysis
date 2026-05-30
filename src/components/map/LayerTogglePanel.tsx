@@ -35,6 +35,7 @@ const layerControls: LayerControl[] = [
   { id: "mobilityBike", label: "Bike routes", group: "Mobility", source: "mobility", scale: "L", geometry: "LineString", property: "mobilityMode", value: "bike" },
   { id: "mobilityPedestrian", label: "Pedestrian", group: "Mobility", source: "mobility", scale: "L", geometry: "LineString", property: "mobilityMode", value: "pedestrian" },
   { id: "mobilitySupport", label: "Support points", group: "Mobility", source: "mobility", scale: "L", property: "mobilityMode", value: "support" },
+  { id: "isochrones", label: "Isochrones", group: "Mobility", source: "isochrones", scale: "L", geometry: "Polygon" },
   { id: "poiEducation", label: "Education", group: "POI", source: "pois", scale: "L", geometry: "Point", property: "poiCategory", value: "education" },
   { id: "poiHealth", label: "Health", group: "POI", source: "pois", scale: "L", geometry: "Point", property: "poiCategory", value: "health" },
   { id: "poiCivic", label: "Civic", group: "POI", source: "pois", scale: "L", geometry: "Point", property: "poiCategory", value: "civic" },

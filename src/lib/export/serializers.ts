@@ -1,4 +1,5 @@
 import type { Feature, FeatureCollection } from "geojson";
+import { kpiFormulaLines } from "../analysis/kpi/kpiMatrix";
 import { getSources } from "../data/sourceRegistry";
 import type { AnalysisResult } from "../types";
 import { createExportManifest } from "./manifest";
@@ -86,6 +87,7 @@ export function analysisToGeoJson(analysis: AnalysisResult): string {
     ...analysis.overlays.parkingAreas.features,
     ...analysis.overlays.transport.features,
     ...analysis.overlays.mobility.features,
+    ...analysis.overlays.isochrones.features,
     ...analysis.overlays.barriers.features,
     ...analysis.overlays.development.features,
     ...analysis.overlays.sun.features,
@@ -177,6 +179,12 @@ export function analysisToMarkdown(analysis: AnalysisResult): string {
     "l.transit-mode-mix",
     "l.transit-lines",
     "l.transit-line-details",
+    "l.mobility-score",
+    "l.social-infrastructure-score",
+    "xl.context-score",
+    "xl.context-class",
+    "kpi.local-quality-score",
+    "kpi.local-quality-class",
     "m.street-width",
     "m.building-height",
   ]) {
@@ -186,6 +194,7 @@ export function analysisToMarkdown(analysis: AnalysisResult): string {
     );
   }
 
+  appendKpiFormulaSection(lines);
   appendFeatureInventory(lines, analysis);
 
   lines.push("", "## Data Sources");
@@ -240,6 +249,13 @@ export function analysisToMarkdown(analysis: AnalysisResult): string {
   return lines.join("\n");
 }
 
+function appendKpiFormulaSection(lines: string[]): void {
+  lines.push("", "## KPI Definitions And Formulas");
+  for (const line of kpiFormulaLines()) {
+    lines.push(`- ${line}`);
+  }
+}
+
 function appendFeatureInventory(lines: string[], analysis: AnalysisResult): void {
   lines.push("", "## Downloaded Feature Attributes");
   lines.push(
@@ -260,6 +276,11 @@ function appendFeatureInventory(lines: string[], analysis: AnalysisResult): void
     "highway",
     "cycleway",
     "amenity",
+  ]);
+  appendCategoryInventory(lines, "Isochrones", analysis.overlays.isochrones, undefined, [
+    "isochroneMode",
+    "retrievalStatus",
+    "rangeSeconds",
   ]);
   appendCategoryInventory(lines, "POIs", analysis.overlays.pois, undefined, [
     "poiCategory",

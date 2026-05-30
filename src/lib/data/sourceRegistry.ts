@@ -402,6 +402,17 @@ export const sourceRegistry = {
     notes:
       "Optional long-distance service context. Keep separate from neighbourhood stop accessibility to avoid inflated L-scale results.",
   },
+  "openrouteservice-isochrones": {
+    id: "openrouteservice-isochrones",
+    label: "OpenRouteService isochrones",
+    type: "live-api",
+    url: "https://api.openrouteservice.org/v2/isochrones",
+    attribution: "OpenRouteService / HeiGIT; underlying network data from OpenStreetMap contributors",
+    scale: ["L"],
+    updateMode: "live",
+    notes:
+      "Optional routed walking, cycling, and driving isochrones. Requires VITE_OPENROUTESERVICE_API_KEY; runtime falls back to clearly labelled geometric buffers when unavailable.",
+  },
   "natural-earth-openfreemap": {
     id: "natural-earth-openfreemap",
     label: "Natural Earth raster via OpenFreeMap",
