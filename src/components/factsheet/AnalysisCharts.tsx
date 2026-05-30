@@ -138,6 +138,8 @@ function createEvidenceData(analysis: AnalysisResult, activeScale: Scale): Evide
       evidenceFromIndicator(indicators, "l.transit-stops", 30),
       evidenceFromIndicator(indicators, "l.transit-stop-density", 80),
       evidenceFromIndicator(indicators, "l.transit-lines", 20),
+      evidenceFromIndicator(indicators, "l.active-poi-reachability-score", 100),
+      evidenceFromIndicator(indicators, "l.mobility-score", 100),
       evidenceFromIndicator(indicators, "l.social-civic-pois", 80),
       evidenceFromIndicator(indicators, "l.mobility-infrastructure", 80),
     ].filter((item): item is EvidenceDatum => item !== null);

@@ -1,4 +1,11 @@
-import type { AnalysisResult, LayerId, LayerState, Scale } from "../../lib/types";
+import type {
+  AnalysisResult,
+  LayerId,
+  LayerStyleState,
+  LayerState,
+  LayerVisualStyle,
+  Scale,
+} from "../../lib/types";
 
 type LayerControl = {
   id: LayerId;
@@ -9,6 +16,7 @@ type LayerControl = {
   geometry?: "Point" | "LineString" | "Polygon";
   property?: string;
   value?: string;
+  includeValues?: string[];
   excludeValues?: string[];
 };
 
@@ -25,17 +33,25 @@ const layerControls: LayerControl[] = [
   { id: "blue", label: "Blue / water", group: "Land", source: "blue", scale: "L", geometry: "Polygon" },
   { id: "parkingAreas", label: "Parking areas", group: "Land", source: "parkingAreas", scale: "L", geometry: "Polygon" },
   { id: "buildingFootprints", label: "OSM buildings", group: "Land", source: "buildings", scale: "L", geometry: "Polygon" },
+  { id: "barriers", label: "Barriers / edges", group: "Land", source: "barriers", scale: "L" },
   { id: "transportAll", label: "All transport lines", group: "Transit", source: "transport", scale: "L", geometry: "LineString" },
+  { id: "transitLocal", label: "Local transit bundle", group: "Transit", source: "transport", scale: "L", geometry: "LineString", property: "transportMode", includeValues: ["bus", "tram", "subway", "transit"] },
+  { id: "transitRegional", label: "Regional rail bundle", group: "Transit", source: "transport", scale: "L", geometry: "LineString", property: "transportMode", includeValues: ["light_rail", "rail"] },
   { id: "transitBus", label: "Bus", group: "Transit", source: "transport", scale: "L", geometry: "LineString", property: "transportMode", value: "bus" },
   { id: "transitTram", label: "Tram", group: "Transit", source: "transport", scale: "L", geometry: "LineString", property: "transportMode", value: "tram" },
   { id: "transitSubway", label: "Subway", group: "Transit", source: "transport", scale: "L", geometry: "LineString", property: "transportMode", value: "subway" },
   { id: "transitLightRail", label: "Light rail", group: "Transit", source: "transport", scale: "L", geometry: "LineString", property: "transportMode", value: "light_rail" },
   { id: "transitRail", label: "Rail", group: "Transit", source: "transport", scale: "L", geometry: "LineString", property: "transportMode", value: "rail" },
   { id: "transitOther", label: "Other transit", group: "Transit", source: "transport", scale: "L", geometry: "LineString", property: "transportMode", excludeValues: ["bus", "tram", "subway", "light_rail", "rail"] },
+  { id: "mobility", label: "Mobility bundle", group: "Mobility", source: "mobility", scale: "L" },
   { id: "mobilityBike", label: "Bike routes", group: "Mobility", source: "mobility", scale: "L", geometry: "LineString", property: "mobilityMode", value: "bike" },
   { id: "mobilityPedestrian", label: "Pedestrian", group: "Mobility", source: "mobility", scale: "L", geometry: "LineString", property: "mobilityMode", value: "pedestrian" },
   { id: "mobilitySupport", label: "Support points", group: "Mobility", source: "mobility", scale: "L", property: "mobilityMode", value: "support" },
-  { id: "isochrones", label: "Isochrones", group: "Mobility", source: "isochrones", scale: "L", geometry: "Polygon" },
+  { id: "isochrones", label: "All isochrones", group: "Isochrones", source: "isochrones", scale: "L" },
+  { id: "isochroneWalking", label: "Walking", group: "Isochrones", source: "isochrones", scale: "L", property: "isochroneMode", value: "walking" },
+  { id: "isochroneCycling", label: "Cycling", group: "Isochrones", source: "isochrones", scale: "L", property: "isochroneMode", value: "cycling" },
+  { id: "isochroneDriving", label: "Driving", group: "Isochrones", source: "isochrones", scale: "L", property: "isochroneMode", value: "driving" },
+  { id: "pois", label: "All POIs", group: "POI", source: "pois", scale: "L", geometry: "Point" },
   { id: "poiEducation", label: "Education", group: "POI", source: "pois", scale: "L", geometry: "Point", property: "poiCategory", value: "education" },
   { id: "poiHealth", label: "Health", group: "POI", source: "pois", scale: "L", geometry: "Point", property: "poiCategory", value: "health" },
   { id: "poiCivic", label: "Civic", group: "POI", source: "pois", scale: "L", geometry: "Point", property: "poiCategory", value: "civic" },
@@ -54,15 +70,19 @@ const layerControls: LayerControl[] = [
 
 export function LayerTogglePanel({
   layers: state,
+  layerStyles,
   analysis,
   activeScale,
   onToggle,
+  onStyleChange,
   onReset,
 }: {
   layers: LayerState;
+  layerStyles: LayerStyleState;
   analysis: AnalysisResult | null;
   activeScale: Scale;
   onToggle: (id: LayerId) => void;
+  onStyleChange: (id: LayerId, patch: Partial<LayerVisualStyle>) => void;
   onReset: () => void;
 }) {
   if (!analysis) return null;
@@ -91,19 +111,71 @@ export function LayerTogglePanel({
             <span className="layer-picker-group-title">{group}</span>
             {controls.map((layer) => {
               const count = getLayerCount(analysis, layer);
+              const style = layerStyles[layer.id];
+              const styleLocked = layer.source === "wms" || layer.id === "isochrones";
+              const lockedReason =
+                layer.source === "wms"
+                  ? "defined by the WMS service"
+                  : "defined by its child mode layers";
               return (
-                <button
-                  key={layer.id}
-                  type="button"
-                  aria-pressed={state[layer.id]}
-                  data-empty={count === "0"}
-                  onClick={() => onToggle(layer.id)}
-                >
-                  <span className="layer-switch-indicator" aria-hidden="true" />
-                  <span className="layer-name">{layer.label}</span>
-                  <small>{layer.scale === activeScale ? layer.scale : `${layer.scale} context`}</small>
-                  <strong>{count}</strong>
-                </button>
+                <div className="layer-picker-row" key={layer.id}>
+                  <button
+                    type="button"
+                    aria-pressed={state[layer.id]}
+                    data-empty={count === "0"}
+                    onClick={() => onToggle(layer.id)}
+                  >
+                    <span
+                      className="layer-switch-indicator"
+                      style={{ backgroundColor: state[layer.id] ? style.color : "transparent" }}
+                      aria-hidden="true"
+                    />
+                    <span className="layer-name">{layer.label}</span>
+                    <small>{layer.scale === activeScale ? layer.scale : `${layer.scale} context`}</small>
+                    <strong>{count}</strong>
+                  </button>
+                  <label
+                    className="layer-color-control"
+                    title={
+                      styleLocked
+                        ? `${layer.label} color is ${lockedReason}`
+                        : `${layer.label} color`
+                    }
+                    data-disabled={styleLocked}
+                  >
+                    <span className="sr-only">{layer.label} color</span>
+                    <input
+                      type="color"
+                      value={style.color}
+                      disabled={styleLocked}
+                      onChange={(event) =>
+                        onStyleChange(layer.id, { color: event.target.value })
+                      }
+                    />
+                  </label>
+                  <label
+                    className="layer-width-control"
+                    title={
+                      styleLocked
+                        ? `${layer.label} size is ${lockedReason}`
+                        : `${layer.label} symbol size`
+                    }
+                    data-disabled={styleLocked}
+                  >
+                    <span className="sr-only">{layer.label} size</span>
+                    <input
+                      type="range"
+                      min="0.8"
+                      max="9"
+                      step="0.2"
+                      value={style.width}
+                      disabled={styleLocked}
+                      onChange={(event) =>
+                        onStyleChange(layer.id, { width: Number(event.target.value) })
+                      }
+                    />
+                  </label>
+                </div>
               );
             })}
           </div>
@@ -133,6 +205,13 @@ function getLayerCount(analysis: AnalysisResult, layer: LayerControl): string {
         layer.property &&
         layer.value !== undefined &&
         feature.properties?.[layer.property] !== layer.value
+      ) {
+        return false;
+      }
+      if (
+        layer.property &&
+        layer.includeValues &&
+        !layer.includeValues.includes(String(feature.properties?.[layer.property] ?? ""))
       ) {
         return false;
       }

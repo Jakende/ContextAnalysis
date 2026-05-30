@@ -16,7 +16,9 @@ import type {
   AnalysisLoadStep,
   AnalysisResult,
   LayerId,
+  LayerStyleState,
   LayerState,
+  LayerVisualStyle,
   SectionLine,
 } from "../../lib/types";
 import { LayerTogglePanel } from "./LayerTogglePanel";
@@ -28,54 +30,158 @@ const DEFAULT_ZOOM = 12;
 type BackgroundMode = "osmRaster" | "vector" | "googleSatellite";
 
 const MAP_LAYER_COLORS = {
-  xl: "#93c5fd",
-  zensus: "#f3d35c",
-  zensusLow: "#15321d",
-  zensusMedium: "#f3d35c",
-  zensusHigh: "#d45a33",
+  xl: "#7aa0c4",
+  zensus: "#d8bc52",
+  zensusLow: "#233b2a",
+  zensusMedium: "#d8bc52",
+  zensusHigh: "#b9654b",
   zensusMissing: "#8a8f8a",
-  xlSource: "#f97316",
-  urbanAtlas: "#8b5cf6",
+  xlSource: "#c8855b",
+  urbanAtlas: "#9b8cc8",
   buffer: "#e5e7eb",
   selected: "#ffffff",
-  green: "#31d158",
-  blue: "#0ea5e9",
-  tree: "#16a34a",
-  building: "#60a5fa",
+  green: "#5fa86b",
+  blue: "#5d9fc3",
+  tree: "#5fa86b",
+  building: "#6da9c8",
   street: "#f8fafc",
-  contour: "#f3d35c",
-  transport: "#facc15",
-  transportBus: "#facc15",
-  transportTram: "#ef4444",
-  transportSubway: "#22d3ee",
-  transportRail: "#a78bfa",
-  transportLightRail: "#31d158",
-  mobility: "#22d3ee",
-  mobilityBike: "#06b6d4",
-  mobilityPedestrian: "#14b8a6",
-  mobilitySupport: "#f59e0b",
-  isochrones: "#eab308",
-  poi: "#fb7185",
-  poiEducation: "#2563eb",
-  poiHealth: "#dc2626",
-  poiCivic: "#7c3aed",
-  poiCommerce: "#f97316",
-  poiFoodCulture: "#e11d48",
-  poiLeisureTourism: "#16a34a",
-  gastronomy: "#d946ef",
-  parking: "#64748b",
-  barrier: "#ef4444",
-  development: "#f97316",
-  sun: "#fde047",
+  contour: "#d8bc52",
+  transport: "#d3b54d",
+  transportBus: "#d3b54d",
+  transportTram: "#c76b62",
+  transportSubway: "#5db8c2",
+  transportRail: "#9b8cc8",
+  transportLightRail: "#6ea877",
+  mobility: "#5db8c2",
+  mobilityBike: "#54a9ba",
+  mobilityPedestrian: "#66a796",
+  mobilitySupport: "#d09a51",
+  isochrones: "#d3b54d",
+  poi: "#c97886",
+  poiEducation: "#668fc7",
+  poiHealth: "#c76b62",
+  poiCivic: "#9b8cc8",
+  poiCommerce: "#c8855b",
+  poiFoodCulture: "#c97886",
+  poiLeisureTourism: "#6ea877",
+  gastronomy: "#b875b8",
+  parking: "#88929a",
+  barrier: "#c76b62",
+  development: "#c8855b",
+  sun: "#d8bc52",
 } as const;
 
 const LOCAL_TRANSIT_MODES = ["bus", "tram", "subway", "transit"];
 const RAIL_TRANSIT_MODES = ["light_rail", "rail"];
+const FEATURE_QUERY_RADIUS_PX = 6;
+const INTERACTIVE_ANALYSIS_LAYER_IDS = [
+  "selected-point-circle",
+  "poi-education-points",
+  "poi-health-points",
+  "poi-civic-points",
+  "poi-commerce-points",
+  "poi-food-culture-points",
+  "poi-leisure-tourism-points",
+  "gastronomy-points",
+  "transport-points",
+  "transport-points-rail",
+  "mobility-support-points",
+  "mobility-points",
+  "barrier-points",
+  "development-points",
+  "tree-circles",
+  "tree-canopy-circles",
+  "transport-lines-bus",
+  "transport-lines-tram",
+  "transport-lines-subway",
+  "transport-lines-light-rail",
+  "transport-lines-rail-only",
+  "transport-lines-other",
+  "transport-lines-debug",
+  "transport-lines",
+  "transport-lines-rail",
+  "mobility-lines-bike",
+  "mobility-lines-pedestrian",
+  "mobility-lines-support",
+  "mobility-lines",
+  "barrier-lines",
+  "isochrone-outline-walking",
+  "isochrone-outline-cycling",
+  "isochrone-outline-driving",
+  "m-street-line",
+  "sun-lines",
+  "section-user-line",
+  "contour-lines",
+  "green-outline",
+  "blue-outline",
+  "parking-area-outline",
+  "building-footprints-outline",
+  "xl-context-line",
+  "xl-source-line",
+  "xl-grid-line",
+  "development-fill",
+  "isochrone-fill-walking",
+  "isochrone-fill-cycling",
+  "isochrone-fill-driving",
+  "transport-areas",
+  "transport-areas-rail",
+  "mobility-areas",
+  "parking-area-fill",
+  "building-footprints-fill",
+  "urban-atlas-line",
+  "urban-atlas-fill",
+  "green-fill",
+  "blue-fill",
+  "m-corridor-fill",
+  "building-extrusion",
+  "tree-canopy-extrusion",
+  "xl-context-fill",
+  "xl-source-fill",
+] as const;
+const POPUP_ATTRIBUTE_KEYS = [
+  "name",
+  "label",
+  "lineLabel",
+  "poiCategory",
+  "transportMode",
+  "mobilityMode",
+  "isochroneMode",
+  "rangeMinutes",
+  "rangeSeconds",
+  "overpassModuleId",
+  "osmElementType",
+  "sourceId",
+  "osmId",
+  "id",
+  "ref",
+  "operator",
+  "network",
+  "route",
+  "amenity",
+  "shop",
+  "tourism",
+  "leisure",
+  "landuse",
+  "natural",
+  "water",
+  "waterway",
+  "highway",
+  "railway",
+  "building",
+  "height",
+  "building:height",
+  "building:levels",
+  "valueStatus",
+  "populationIndex",
+  "radiusMeters",
+  "caveat",
+] as const;
 
 export function MapView({
   analysis,
   activeScale,
   layers,
+  layerStyles,
   isAnalyzing,
   analysisLoadSteps,
   analysisLocked,
@@ -84,13 +190,17 @@ export function MapView({
   onSectionLineSelected,
   onScaleChange,
   onLayerToggle,
+  onLayerStyleChange,
   onLayerReset,
   onStatus,
   themeInvert,
+  workspaceExpanded,
+  onWorkspaceExpandedToggle,
 }: {
   analysis: AnalysisResult | null;
   activeScale: Scale;
   layers: LayerState;
+  layerStyles: LayerStyleState;
   isAnalyzing: boolean;
   analysisLoadSteps: AnalysisLoadStep[];
   analysisLocked: boolean;
@@ -99,9 +209,12 @@ export function MapView({
   onSectionLineSelected: (sectionLine: SectionLine) => void;
   onScaleChange: (scale: Scale) => void;
   onLayerToggle: (id: LayerId) => void;
+  onLayerStyleChange: (id: LayerId, patch: Partial<LayerVisualStyle>) => void;
   onLayerReset: () => void;
   onStatus: (status: string) => void;
   themeInvert: boolean;
+  workspaceExpanded: boolean;
+  onWorkspaceExpandedToggle: () => void;
 }) {
   const shellRef = useRef<HTMLElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -185,7 +298,6 @@ export function MapView({
     });
 
     map.on("click", (event) => {
-      if (showXlFeatureInfo(map, event)) return;
       if (sectionDrawModeRef.current) {
         const point = { lat: event.lngLat.lat, lon: event.lngLat.lng };
         if (!sectionDraftStartRef.current) {
@@ -204,6 +316,7 @@ export function MapView({
         onSectionLineSelectedRef.current(nextSectionLine);
         return;
       }
+      if (analysisRef.current && showAnalysisFeatureInfo(map, event)) return;
       if (analysisRef.current || isAnalyzingRef.current) {
         onStatusRef.current(
           "Analysis is locked. Close the current analysis before selecting a new point.",
@@ -219,6 +332,7 @@ export function MapView({
       map.resize();
       addAnalysisSourcesAndLayers(map);
       updateZensusWmsLayer(map, zensusLayerRef.current);
+      applyLayerStyles(map, layerStyles);
       applyBaseMapTheme(map, themeInvertRef.current);
       applyBackgroundMode(map, "osmRaster");
       syncAnalysisToMap(
@@ -250,6 +364,12 @@ export function MapView({
       mapRef.current = null;
     };
   }, []);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !map.isStyleLoaded()) return;
+    applyLayerStyles(map, layerStyles);
+  }, [layerStyles]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -332,14 +452,8 @@ export function MapView({
   }, [analysis, zensusLayer, layers, activeScale]);
 
   useEffect(() => {
-    const handleFullscreenChange = () => {
-      window.setTimeout(() => mapRef.current?.resize(), 0);
-    };
-    document.addEventListener("fullscreenchange", handleFullscreenChange);
-    return () => {
-      document.removeEventListener("fullscreenchange", handleFullscreenChange);
-    };
-  }, []);
+    window.setTimeout(() => mapRef.current?.resize(), 0);
+  }, [workspaceExpanded]);
 
   async function handleSearch(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -423,9 +537,9 @@ export function MapView({
           <button
             type="button"
             className="icon-button"
-            aria-label="Fullscreen map"
-            title="Fullscreen map"
-            onClick={() => requestElementFullscreen(shellRef.current)}
+            aria-label={workspaceExpanded ? "Collapse workspace" : "Expand workspace"}
+            title={workspaceExpanded ? "Collapse workspace" : "Expand workspace"}
+            onClick={onWorkspaceExpandedToggle}
           >
             <FullscreenIcon />
           </button>
@@ -434,9 +548,11 @@ export function MapView({
       <div className="map-left">
         <LayerTogglePanel
           layers={layers}
+          layerStyles={layerStyles}
           analysis={analysis}
           activeScale={activeScale}
           onToggle={onLayerToggle}
+          onStyleChange={onLayerStyleChange}
           onReset={onLayerReset}
         />
         <div className="map-control-status panel">
@@ -486,6 +602,7 @@ export function MapView({
           activeScale={activeScale}
           layers={layers}
           analysis={analysis}
+          layerStyles={layerStyles}
           zensusLayer={zensusLayer}
           onZensusLayerChange={setZensusLayer}
         />
@@ -546,9 +663,11 @@ function BackgroundSwitcher({
 
 function AnalysisLoadingOverlay({ steps }: { steps: AnalysisLoadStep[] }) {
   const activeStep = steps.find((step) => step.status === "running") ?? steps[0];
-  const visibleSteps = steps.filter((step) => step.status !== "queued");
   const completed = steps.filter((step) => step.status === "ok" || step.status === "skipped").length;
   const failed = steps.filter((step) => step.status === "failed").length;
+  const progress = steps.length
+    ? Math.round(((completed + failed) / steps.length) * 100)
+    : 0;
   return (
     <div className="analysis-loading-overlay" aria-live="polite" aria-label="Analysis loading progress">
       <div className="analysis-loader-vector" aria-hidden="true">
@@ -572,9 +691,12 @@ function AnalysisLoadingOverlay({ steps }: { steps: AnalysisLoadStep[] }) {
           {completed}/{steps.length} ready{failed ? ` / ${failed} warning` : ""}
         </small>
       </div>
-      {visibleSteps.length ? (
+      <div className="analysis-progress-track" aria-hidden="true">
+        <i style={{ width: `${progress}%` }} />
+      </div>
+      {steps.length ? (
         <ol className="analysis-loading-steps">
-          {visibleSteps.slice(-3).map((step) => (
+          {steps.map((step) => (
             <li className={`analysis-step analysis-step-${step.status}`} key={step.id}>
               <span>{step.status}</span>
               <strong>{step.label}</strong>
@@ -604,32 +726,25 @@ function FullscreenIcon() {
   );
 }
 
-function requestElementFullscreen(element: HTMLElement | null): void {
-  if (!element) return;
-  if (document.fullscreenElement === element) {
-    void document.exitFullscreen();
-    return;
-  }
-  void element.requestFullscreen();
-}
-
 function MapLegend({
   activeScale,
   layers,
   analysis,
+  layerStyles,
   zensusLayer,
   onZensusLayerChange,
 }: {
   activeScale: Scale;
   layers: LayerState;
   analysis: AnalysisResult;
+  layerStyles: LayerStyleState;
   zensusLayer: string;
   onZensusLayerChange: (layer: string) => void;
 }) {
   const activeZensusMetric =
     ZENSUS_WMS_METRICS.find((metric) => metric.layer === zensusLayer) ??
     ZENSUS_WMS_METRICS[0];
-  const items = getLegendItems(activeScale, layers, analysis);
+  const items = getLegendItems(activeScale, layers, analysis, layerStyles);
   return (
     <div className="map-legend panel" aria-label="Map layer colors">
       <span className="label">Map layers</span>
@@ -672,109 +787,197 @@ function getLegendItems(
   activeScale: Scale,
   layers: LayerState,
   analysis: AnalysisResult,
+  layerStyles: LayerStyleState,
 ) {
   const items: Array<{ label: string; color: string; count?: number }> = [
     { label: "Selected point", color: MAP_LAYER_COLORS.selected },
   ];
   if (activeScale === "XL") {
     if (analysis.overlays.xlContext.features.length) {
-      items.push({ label: "Official XL context geometry", color: MAP_LAYER_COLORS.xl });
-    }
-    if (analysis.overlays.xlGrid.features.length) {
-      if (hasMeasuredZensusGrid(analysis)) {
-        items.push({ label: "Zensus low", color: MAP_LAYER_COLORS.zensusLow });
-        items.push({ label: "Zensus medium", color: MAP_LAYER_COLORS.zensusMedium });
-        items.push({ label: "Zensus high", color: MAP_LAYER_COLORS.zensusHigh });
-      } else {
-        items.push({ label: "Zensus grid values missing", color: MAP_LAYER_COLORS.zensusMissing });
-      }
+      items.push({ label: "Official XL context geometry", color: layerStyles.xlContext.color });
     }
     if (analysis.overlays.xlSources.features.length) {
-      items.push({ label: "Official XL source geometry", color: MAP_LAYER_COLORS.xlSource });
+      items.push({ label: "Official XL source geometry", color: layerStyles.xlSources.color });
     }
   }
   if (activeScale === "L") {
-    if (layers.urbanAtlas) items.push({ label: "Urban Atlas", color: MAP_LAYER_COLORS.urbanAtlas });
-    if (layers.green) items.push({ label: "Green", color: MAP_LAYER_COLORS.green });
-    if (layers.blue) items.push({ label: "Blue / water", color: MAP_LAYER_COLORS.blue });
-    if (layers.buildingFootprints) items.push({ label: "OSM buildings", color: MAP_LAYER_COLORS.building });
-    if (layers.transportAll) items.push({ label: "All transport lines", color: "#ff7a00" });
-    if (layers.transitBus) items.push({ label: "Bus lines", color: MAP_LAYER_COLORS.transportBus });
-    if (layers.transitTram) items.push({ label: "Tram lines", color: MAP_LAYER_COLORS.transportTram });
-    if (layers.transitSubway) items.push({ label: "Subway lines", color: MAP_LAYER_COLORS.transportSubway });
-    if (layers.transitLightRail) items.push({ label: "Light rail", color: MAP_LAYER_COLORS.transportLightRail });
-    if (layers.transitRail) items.push({ label: "Rail lines", color: MAP_LAYER_COLORS.transportRail });
-    if (layers.mobilityBike) items.push({ label: "Bike routes", color: MAP_LAYER_COLORS.mobilityBike });
-    if (layers.mobilityPedestrian) items.push({ label: "Pedestrian routes", color: MAP_LAYER_COLORS.mobilityPedestrian });
-    if (layers.mobilitySupport) items.push({ label: "Mobility support", color: MAP_LAYER_COLORS.mobilitySupport });
-    if (layers.poiEducation) items.push({ label: "POI education", color: MAP_LAYER_COLORS.poiEducation });
-    if (layers.poiHealth) items.push({ label: "POI health", color: MAP_LAYER_COLORS.poiHealth });
-    if (layers.poiCivic) items.push({ label: "POI civic", color: MAP_LAYER_COLORS.poiCivic });
-    if (layers.poiCommerce) items.push({ label: "POI commerce", color: MAP_LAYER_COLORS.poiCommerce });
-    if (layers.poiFoodCulture) items.push({ label: "POI food/culture", color: MAP_LAYER_COLORS.poiFoodCulture });
-    if (layers.poiLeisureTourism) items.push({ label: "POI leisure/tourism", color: MAP_LAYER_COLORS.poiLeisureTourism });
-    if (layers.gastronomy) items.push({ label: "Gastronomy", color: MAP_LAYER_COLORS.gastronomy });
-    if (layers.parkingAreas) items.push({ label: "Parking areas", color: MAP_LAYER_COLORS.parking });
-    if (layers.development) items.push({ label: "Development hints", color: MAP_LAYER_COLORS.development });
+    if (layers.urbanAtlas) items.push({ label: "Urban Atlas", color: layerStyles.urbanAtlas.color });
+    if (layers.green) items.push({ label: "Green", color: layerStyles.green.color });
+    if (layers.blue) items.push({ label: "Blue / water", color: layerStyles.blue.color });
+    if (layers.buildingFootprints) items.push({ label: "OSM buildings", color: layerStyles.buildingFootprints.color });
+    if (layers.transportAll) items.push({ label: "All transport lines", color: layerStyles.transportAll.color });
+    if (layers.transitLocal) items.push({ label: "Local transit bundle", color: layerStyles.transitLocal.color });
+    if (layers.transitRegional) items.push({ label: "Regional transit bundle", color: layerStyles.transitRegional.color });
+    if (layers.transitBus) items.push({ label: "Bus lines", color: layerStyles.transitBus.color });
+    if (layers.transitTram) items.push({ label: "Tram lines", color: layerStyles.transitTram.color });
+    if (layers.transitSubway) items.push({ label: "Subway lines", color: layerStyles.transitSubway.color });
+    if (layers.transitLightRail) items.push({ label: "Light rail", color: layerStyles.transitLightRail.color });
+    if (layers.transitRail) items.push({ label: "Rail lines", color: layerStyles.transitRail.color });
+    if (layers.transitOther) items.push({ label: "Other transit", color: layerStyles.transitOther.color });
+    if (layers.mobility) items.push({ label: "Mobility bundle", color: layerStyles.mobility.color });
+    if (layers.mobilityBike) items.push({ label: "Bike routes", color: layerStyles.mobilityBike.color });
+    if (layers.mobilityPedestrian) items.push({ label: "Pedestrian routes", color: layerStyles.mobilityPedestrian.color });
+    if (layers.mobilitySupport) items.push({ label: "Mobility support", color: layerStyles.mobilitySupport.color });
+    if (layers.isochrones || layers.isochroneWalking) items.push({ label: "Walking isochrones", color: layerStyles.isochroneWalking.color });
+    if (layers.isochrones || layers.isochroneCycling) items.push({ label: "Cycling isochrones", color: layerStyles.isochroneCycling.color });
+    if (layers.isochrones || layers.isochroneDriving) items.push({ label: "Driving isochrones", color: layerStyles.isochroneDriving.color });
+    if (layers.pois) items.push({ label: "All POIs", color: layerStyles.pois.color });
+    if (layers.poiEducation) items.push({ label: "POI education", color: layerStyles.poiEducation.color });
+    if (layers.poiHealth) items.push({ label: "POI health", color: layerStyles.poiHealth.color });
+    if (layers.poiCivic) items.push({ label: "POI civic", color: layerStyles.poiCivic.color });
+    if (layers.poiCommerce) items.push({ label: "POI commerce", color: layerStyles.poiCommerce.color });
+    if (layers.poiFoodCulture) items.push({ label: "POI food/culture", color: layerStyles.poiFoodCulture.color });
+    if (layers.poiLeisureTourism) items.push({ label: "POI leisure/tourism", color: layerStyles.poiLeisureTourism.color });
+    if (layers.gastronomy) items.push({ label: "Gastronomy", color: layerStyles.gastronomy.color });
+    if (layers.parkingAreas) items.push({ label: "Parking areas", color: layerStyles.parkingAreas.color });
+    if (layers.development) items.push({ label: "Development hints", color: layerStyles.development.color });
+    if (layers.barriers) items.push({ label: "Barriers", color: layerStyles.barriers.color });
   }
   if (activeScale === "M") {
-    items.push({ label: "Street segment", color: MAP_LAYER_COLORS.street });
-    if (layers.green) items.push({ label: "L green", color: MAP_LAYER_COLORS.green });
-    if (layers.blue) items.push({ label: "L blue / water", color: MAP_LAYER_COLORS.blue });
-    if (layers.gastronomy) items.push({ label: "L gastronomy", color: MAP_LAYER_COLORS.gastronomy });
-    if (layers.parkingAreas) items.push({ label: "L parking areas", color: MAP_LAYER_COLORS.parking });
-    if (layers.buildingFootprints) items.push({ label: "L OSM buildings", color: MAP_LAYER_COLORS.building });
-    if (layers["3D"]) items.push({ label: "3D buildings", color: MAP_LAYER_COLORS.building });
-    if (layers.trees) items.push({ label: "Trees", color: MAP_LAYER_COLORS.tree });
-    if (layers.contours) items.push({ label: "OpenTopography contours", color: MAP_LAYER_COLORS.contour });
-    if (layers.sun) items.push({ label: "Sun hints", color: MAP_LAYER_COLORS.sun });
+    items.push({ label: "Street segment", color: layerStyles.streets.color });
+    if (layers.green) items.push({ label: "L green", color: layerStyles.green.color });
+    if (layers.blue) items.push({ label: "L blue / water", color: layerStyles.blue.color });
+    if (layers.gastronomy) items.push({ label: "L gastronomy", color: layerStyles.gastronomy.color });
+    if (layers.parkingAreas) items.push({ label: "L parking areas", color: layerStyles.parkingAreas.color });
+    if (layers.buildingFootprints) items.push({ label: "L OSM buildings", color: layerStyles.buildingFootprints.color });
+    if (layers["3D"]) items.push({ label: "3D buildings", color: layerStyles["3D"].color });
+    if (layers.trees) items.push({ label: "Trees", color: layerStyles.trees.color });
+    if (layers.contours) items.push({ label: "OpenTopography contours", color: layerStyles.contours.color });
+    if (layers.sun) items.push({ label: "Sun hints", color: layerStyles.sun.color });
+    if (layers.section) items.push({ label: "Section line", color: layerStyles.section.color });
   }
   return items;
 }
 
-function hasMeasuredZensusGrid(analysis: AnalysisResult): boolean {
-  return analysis.overlays.xlGrid.features.some(
-    (feature) =>
-      feature.properties?.valueStatus === "measured" &&
-      typeof feature.properties?.populationIndex === "number",
-  );
-}
-
-function showXlFeatureInfo(
+function showAnalysisFeatureInfo(
   map: MapLibreMap,
   event: maplibregl.MapMouseEvent,
 ): boolean {
-  const features = map.queryRenderedFeatures(event.point, {
-    layers: ["xl-grid-fill", "xl-context-line", "xl-source-line"],
+  const layers = visibleInteractiveLayers(map);
+  if (!layers.length) return false;
+  const { x, y } = event.point;
+  const features = map.queryRenderedFeatures([
+    [x - FEATURE_QUERY_RADIUS_PX, y - FEATURE_QUERY_RADIUS_PX],
+    [x + FEATURE_QUERY_RADIUS_PX, y + FEATURE_QUERY_RADIUS_PX],
+  ], {
+    layers,
   });
-  const feature = features[0];
+  const feature = pickInspectableFeature(features);
   if (!feature?.properties) return false;
 
   const props = feature.properties as Record<string, unknown>;
-  const sourceId = String(props.sourceId ?? "");
-  const label = String(props.label ?? "XL layer");
-  const valueStatus = String(props.valueStatus ?? "");
-  const populationIndex = props.populationIndex;
-  const radiusMeters = props.radiusMeters;
-  const caveat = String(props.caveat ?? "");
-  const valueLine =
-    sourceId === "zensus-grid-2022"
-      ? valueStatus === "measured" && typeof populationIndex === "number"
-        ? `Zensus value index: ${populationIndex}`
-        : "Zensus value: not loaded for this cell"
-      : typeof radiusMeters === "number"
-        ? `Radius: ${(radiusMeters / 1000).toFixed(1)} km`
-        : "";
-
-  new maplibregl.Popup({ closeButton: true, closeOnClick: true })
+  new maplibregl.Popup({
+    closeButton: true,
+    closeOnClick: true,
+    className: "feature-popup",
+  })
     .setLngLat(event.lngLat)
-    .setHTML(
-      `<strong>${escapeHtml(label)}</strong><br/>${escapeHtml(valueLine)}${
-        caveat ? `<br/><small>${escapeHtml(caveat)}</small>` : ""
-      }`,
-    )
+    .setHTML(renderFeaturePopupHtml(feature.layer.id, feature.geometry.type, props))
     .addTo(map);
   return true;
+}
+
+function visibleInteractiveLayers(map: MapLibreMap): string[] {
+  return INTERACTIVE_ANALYSIS_LAYER_IDS.filter((id) => {
+    if (!map.getLayer(id)) return false;
+    return map.getLayoutProperty(id, "visibility") !== "none";
+  });
+}
+
+function pickInspectableFeature(features: maplibregl.MapGeoJSONFeature[]) {
+  return [...features].sort((a, b) => featurePriority(b) - featurePriority(a))[0];
+}
+
+function featurePriority(feature: maplibregl.MapGeoJSONFeature): number {
+  const props = feature.properties as Record<string, unknown> | undefined;
+  const isochroneMode = String(props?.isochroneMode ?? "");
+  const rangeSeconds = Number(props?.rangeSeconds ?? 900);
+  if (isochroneMode) {
+    const modePriority = isochroneMode === "walking" ? 8 : isochroneMode === "cycling" ? 5 : 2;
+    const timePriority = Math.max(0, 10 - Math.round(rangeSeconds / 100));
+    return 10 + modePriority + timePriority;
+  }
+  if (feature.geometry.type === "Point" || feature.geometry.type === "MultiPoint") return 30;
+  if (feature.geometry.type === "LineString" || feature.geometry.type === "MultiLineString") return 20;
+  return 10;
+}
+
+function renderFeaturePopupHtml(
+  layerId: string,
+  geometryType: string,
+  props: Record<string, unknown>,
+): string {
+  const title = firstPresentValue(props, ["name", "label", "lineLabel", "ref", "id"]) ?? layerLabel(layerId);
+  const subtitle = [
+    firstPresentValue(props, ["poiCategory", "transportMode", "mobilityMode", "overpassModuleId", "sourceId"]),
+    geometryType,
+  ].filter(Boolean).join(" / ");
+  const rows = popupRows(props, geometryType);
+  return [
+    `<div class="feature-popup-inner">`,
+    `<strong>${escapeHtml(title)}</strong>`,
+    subtitle ? `<span>${escapeHtml(subtitle)}</span>` : "",
+    rows.length
+      ? `<dl>${rows
+          .map(([key, value]) => `<div><dt>${escapeHtml(formatAttributeKey(key))}</dt><dd>${escapeHtml(value)}</dd></div>`)
+          .join("")}</dl>`
+      : `<small>No inspectable attributes on this rendered feature.</small>`,
+    `</div>`,
+  ].join("");
+}
+
+function popupRows(
+  props: Record<string, unknown>,
+  geometryType: string,
+): Array<[string, string]> {
+  const rows: Array<[string, string]> = [["geometry", geometryType]];
+  const seen = new Set(["geometry"]);
+  for (const key of POPUP_ATTRIBUTE_KEYS) {
+    const value = formatAttributeValue(props[key]);
+    if (!value || seen.has(key)) continue;
+    rows.push([key, value]);
+    seen.add(key);
+    if (rows.length >= 10) return rows;
+  }
+  for (const [key, rawValue] of Object.entries(props)) {
+    const value = formatAttributeValue(rawValue);
+    if (!value || seen.has(key) || key.startsWith("_")) continue;
+    rows.push([key, value]);
+    seen.add(key);
+    if (rows.length >= 10) return rows;
+  }
+  return rows;
+}
+
+function firstPresentValue(
+  props: Record<string, unknown>,
+  keys: string[],
+): string | null {
+  for (const key of keys) {
+    const value = formatAttributeValue(props[key]);
+    if (value) return value;
+  }
+  return null;
+}
+
+function formatAttributeValue(value: unknown): string | null {
+  if (value === null || value === undefined || value === "") return null;
+  if (Array.isArray(value)) return value.map((item) => String(item)).join(", ").slice(0, 180);
+  if (typeof value === "object") return JSON.stringify(value).slice(0, 180);
+  return String(value).slice(0, 180);
+}
+
+function formatAttributeKey(key: string): string {
+  return key
+    .replace(/[_:]/g, " ")
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .toLowerCase();
+}
+
+function layerLabel(layerId: string): string {
+  return layerId
+    .replace(/-/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
 function escapeHtml(value: string): string {
@@ -821,6 +1024,61 @@ function getTransportBreakdown(
 
 function transportModeFilter(modes: string[]) {
   return ["match", ["get", "transportMode"], modes, true, false] as any;
+}
+
+function addIsochroneLayers(
+  map: MapLibreMap,
+  mode: "walking" | "cycling" | "driving",
+  color: string,
+  beforeId?: string,
+): void {
+  addLayerIfMissing(map, {
+    id: `isochrone-fill-${mode}`,
+    type: "fill",
+    source: "isochrone-overlay",
+    filter: ["==", ["get", "isochroneMode"], mode],
+    paint: {
+      "fill-color": color,
+      "fill-opacity": [
+        "interpolate",
+        ["linear"],
+        ["to-number", ["get", "rangeSeconds"], 900],
+        300,
+        0.22,
+        600,
+        0.15,
+        900,
+        0.09,
+      ],
+    },
+  }, beforeId);
+  addLayerIfMissing(map, {
+    id: `isochrone-outline-${mode}`,
+    type: "line",
+    source: "isochrone-overlay",
+    filter: ["==", ["get", "isochroneMode"], mode],
+    paint: {
+      "line-color": color,
+      "line-width": [
+        "interpolate",
+        ["linear"],
+        ["to-number", ["get", "rangeSeconds"], 900],
+        300,
+        2.4,
+        600,
+        1.9,
+        900,
+        1.3,
+      ],
+      "line-dasharray": [
+        "case",
+        ["==", ["get", "retrievalStatus"], "fallback"],
+        ["literal", [2, 2]],
+        ["literal", [1, 0]],
+      ],
+      "line-opacity": 0.92,
+    },
+  }, beforeId);
 }
 
 function addAnalysisSourcesAndLayers(map: MapLibreMap): void {
@@ -1104,58 +1362,9 @@ function addAnalysisSourcesAndLayers(map: MapLibreMap): void {
       "fill-opacity": 0.14,
     },
   }, "mobility-lines");
-  addLayerIfMissing(map, {
-    id: "isochrone-fill",
-    type: "fill",
-    source: "isochrone-overlay",
-    filter: ["==", ["geometry-type"], "Polygon"],
-    paint: {
-      "fill-color": [
-        "match",
-        ["get", "isochroneMode"],
-        "walking",
-        "#22c55e",
-        "cycling",
-        "#06b6d4",
-        "driving",
-        "#eab308",
-        MAP_LAYER_COLORS.isochrones,
-      ],
-      "fill-opacity": [
-        "case",
-        ["==", ["get", "retrievalStatus"], "fallback"],
-        0.08,
-        0.16,
-      ],
-    },
-  }, "mobility-lines");
-  addLayerIfMissing(map, {
-    id: "isochrone-outline",
-    type: "line",
-    source: "isochrone-overlay",
-    filter: ["==", ["geometry-type"], "Polygon"],
-    paint: {
-      "line-color": [
-        "match",
-        ["get", "isochroneMode"],
-        "walking",
-        "#22c55e",
-        "cycling",
-        "#06b6d4",
-        "driving",
-        "#eab308",
-        MAP_LAYER_COLORS.isochrones,
-      ],
-      "line-width": 1.4,
-      "line-dasharray": [
-        "case",
-        ["==", ["get", "retrievalStatus"], "fallback"],
-        ["literal", [2, 2]],
-        ["literal", [1, 0]],
-      ],
-      "line-opacity": 0.9,
-    },
-  }, "mobility-lines");
+  addIsochroneLayers(map, "walking", MAP_LAYER_COLORS.green, "mobility-lines");
+  addIsochroneLayers(map, "cycling", MAP_LAYER_COLORS.mobilityBike, "isochrone-outline-walking");
+  addIsochroneLayers(map, "driving", MAP_LAYER_COLORS.mobilitySupport, "isochrone-outline-cycling");
   addLayerIfMissing(map, {
     id: "barrier-lines",
     type: "line",
@@ -2183,7 +2392,7 @@ function syncScaleSources(
   setSourceData(map, "transport-overlay", showLContext ? analysis.overlays.transport : empty);
   setSourceData(map, "mobility-overlay", showLContext ? analysis.overlays.mobility : empty);
   setSourceData(map, "isochrone-overlay", showLContext ? analysis.overlays.isochrones : empty);
-  setSourceData(map, "barrier-overlay", empty);
+  setSourceData(map, "barrier-overlay", showLContext ? analysis.overlays.barriers : empty);
   setSourceData(map, "development-overlay", showLContext ? analysis.overlays.development : empty);
 
   setSourceData(map, "m-street-segment", isM ? analysis.overlays.mStreetSegment : empty);
@@ -2315,14 +2524,18 @@ function applyLayerVisibility(
   setLayerVisibility(map, "mobility-areas", showLContext && layers.mobility);
   setLayerVisibility(map, "mobility-points", showLContext && layers.mobility);
   setLayerVisibility(map, "mobility-support-points", showLContext && layers.mobilitySupport);
-  setLayerVisibility(map, "isochrone-fill", showLContext && layers.isochrones);
-  setLayerVisibility(map, "isochrone-outline", showLContext && layers.isochrones);
+  setLayerVisibility(map, "isochrone-fill-walking", showLContext && (layers.isochrones || layers.isochroneWalking));
+  setLayerVisibility(map, "isochrone-outline-walking", showLContext && (layers.isochrones || layers.isochroneWalking));
+  setLayerVisibility(map, "isochrone-fill-cycling", showLContext && (layers.isochrones || layers.isochroneCycling));
+  setLayerVisibility(map, "isochrone-outline-cycling", showLContext && (layers.isochrones || layers.isochroneCycling));
+  setLayerVisibility(map, "isochrone-fill-driving", showLContext && (layers.isochrones || layers.isochroneDriving));
+  setLayerVisibility(map, "isochrone-outline-driving", showLContext && (layers.isochrones || layers.isochroneDriving));
   setLayerVisibility(map, "development-fill", showLContext && layers.development);
   setLayerVisibility(map, "development-points", showLContext && layers.development);
   setLayerVisibility(map, "building-footprints-fill", showLContext && layers.buildingFootprints);
   setLayerVisibility(map, "building-footprints-outline", showLContext && layers.buildingFootprints);
-  setLayerVisibility(map, "barrier-lines", false);
-  setLayerVisibility(map, "barrier-points", false);
+  setLayerVisibility(map, "barrier-lines", showLContext && layers.barriers);
+  setLayerVisibility(map, "barrier-points", showLContext && layers.barriers);
   setLayerVisibility(map, "m-street-line", isM && layers.streets);
   setLayerVisibility(map, "m-corridor-fill", isM && layers.streets);
 }
@@ -2383,8 +2596,12 @@ function hideAnalysisLayers(map: MapLibreMap): void {
     "mobility-areas",
     "mobility-points",
     "mobility-support-points",
-    "isochrone-fill",
-    "isochrone-outline",
+    "isochrone-fill-walking",
+    "isochrone-outline-walking",
+    "isochrone-fill-cycling",
+    "isochrone-outline-cycling",
+    "isochrone-fill-driving",
+    "isochrone-outline-driving",
     "development-fill",
     "development-points",
     "building-footprints-fill",
@@ -2440,6 +2657,123 @@ function applyBaseMapTheme(map: MapLibreMap, invert: boolean): void {
   setPaint(map, "place-labels", "text-color", theme.text);
   setPaint(map, "place-labels", "text-halo-color", theme.halo);
   applyVectorFallbackTheme(map, invert);
+}
+
+function applyLayerStyles(map: MapLibreMap, styles: LayerStyleState): void {
+  setFillStyle(map, "xl-context-fill", styles.xlContext, 0.1);
+  setLineStyle(map, "xl-context-line", styles.xlContext);
+  setLineStyle(map, "xl-grid-line", styles.xlGrid);
+  setFillStyle(map, "xl-source-fill", styles.xlSources, 0.055);
+  setLineStyle(map, "xl-source-line", styles.xlSources);
+  setFillStyle(map, "urban-atlas-fill", styles.urbanAtlas, 0.18);
+  setLineStyle(map, "urban-atlas-line", styles.urbanAtlas);
+  setLineStyle(map, "l-buffer-line", styles.lBuffer);
+  setFillStyle(map, "green-fill", styles.green, 0.25);
+  setLineStyle(map, "green-outline", styles.green);
+  setFillStyle(map, "blue-fill", styles.blue, 0.3);
+  setLineStyle(map, "blue-outline", styles.blue);
+  setFillStyle(map, "parking-area-fill", styles.parkingAreas, 0.26);
+  setLineStyle(map, "parking-area-outline", styles.parkingAreas);
+  setFillStyle(map, "building-footprints-fill", styles.buildingFootprints, 0.24);
+  setLineStyle(map, "building-footprints-outline", styles.buildingFootprints);
+  setFillStyle(map, "development-fill", styles.development, 0.2);
+  setCircleStyle(map, "development-points", styles.development);
+  setLineStyle(map, "barrier-lines", styles.barriers);
+  setCircleStyle(map, "barrier-points", styles.barriers);
+  setFillStyle(map, "m-corridor-fill", styles.streets, 0.12);
+  setLineStyle(map, "m-street-line", styles.streets);
+  setLineStyle(map, "sun-lines", styles.sun);
+  setLineStyle(map, "section-user-line", styles.section);
+  setLineStyle(map, "contour-lines", styles.contours);
+  setPaint(map, "contour-labels", "text-color", styles.contours.color);
+
+  setLineStyle(map, "transport-lines-debug", styles.transportAll);
+  setLineStyle(map, "transport-lines-bus", styles.transitBus);
+  setLineStyle(map, "transport-lines-tram", styles.transitTram);
+  setLineStyle(map, "transport-lines-subway", styles.transitSubway);
+  setLineStyle(map, "transport-lines-light-rail", styles.transitLightRail);
+  setLineStyle(map, "transport-lines-rail-only", styles.transitRail);
+  setLineStyle(map, "transport-lines-other", styles.transitOther);
+  setLineStyle(map, "transport-lines", styles.transitLocal);
+  setLineStyle(map, "transport-lines-rail", styles.transitRegional);
+  setCircleStyle(map, "transport-points", styles.transitLocal);
+  setCircleStyle(map, "transport-points-rail", styles.transitRegional);
+  setFillStyle(map, "transport-areas", styles.transitLocal, 0.16);
+  setFillStyle(map, "transport-areas-rail", styles.transitRegional, 0.11);
+
+  setLineStyle(map, "mobility-lines", styles.mobility);
+  setLineStyle(map, "mobility-lines-bike", styles.mobilityBike);
+  setLineStyle(map, "mobility-lines-pedestrian", styles.mobilityPedestrian);
+  setLineStyle(map, "mobility-lines-support", styles.mobilitySupport);
+  setFillStyle(map, "mobility-areas", styles.mobility, 0.14);
+  setCircleStyle(map, "mobility-points", styles.mobility);
+  setCircleStyle(map, "mobility-support-points", styles.mobilitySupport);
+  setIsochroneStyle(map, "walking", styles.isochroneWalking);
+  setIsochroneStyle(map, "cycling", styles.isochroneCycling);
+  setIsochroneStyle(map, "driving", styles.isochroneDriving);
+
+  setCircleStyle(map, "poi-points", styles.pois);
+  setCircleStyle(map, "poi-education-points", styles.poiEducation);
+  setCircleStyle(map, "poi-health-points", styles.poiHealth);
+  setCircleStyle(map, "poi-civic-points", styles.poiCivic);
+  setCircleStyle(map, "poi-commerce-points", styles.poiCommerce);
+  setCircleStyle(map, "poi-food-culture-points", styles.poiFoodCulture);
+  setCircleStyle(map, "poi-leisure-tourism-points", styles.poiLeisureTourism);
+  setCircleStyle(map, "gastronomy-points", styles.gastronomy);
+
+  setPaint(map, "building-extrusion", "fill-extrusion-color", styles["3D"].color);
+  setPaint(map, "ofm-building-extrusion", "fill-extrusion-color", styles["3D"].color);
+  setPaint(map, "tree-canopy-extrusion", "fill-extrusion-color", styles.trees.color);
+  setPaint(map, "tree-canopy-circles", "circle-color", styles.trees.color);
+  setCircleStyle(map, "tree-circles", styles.trees);
+}
+
+function setFillStyle(
+  map: MapLibreMap,
+  layerId: string,
+  style: LayerVisualStyle,
+  opacity?: number,
+): void {
+  setPaint(map, layerId, "fill-color", style.color);
+  if (opacity !== undefined) setPaint(map, layerId, "fill-opacity", opacity);
+}
+
+function setLineStyle(
+  map: MapLibreMap,
+  layerId: string,
+  style: LayerVisualStyle,
+): void {
+  setPaint(map, layerId, "line-color", style.color);
+  setPaint(map, layerId, "line-width", style.width);
+}
+
+function setCircleStyle(
+  map: MapLibreMap,
+  layerId: string,
+  style: LayerVisualStyle,
+): void {
+  setPaint(map, layerId, "circle-color", style.color);
+  setPaint(map, layerId, "circle-radius", style.width);
+}
+
+function setIsochroneStyle(
+  map: MapLibreMap,
+  mode: "walking" | "cycling" | "driving",
+  style: LayerVisualStyle,
+): void {
+  setPaint(map, `isochrone-fill-${mode}`, "fill-color", style.color);
+  setPaint(map, `isochrone-outline-${mode}`, "line-color", style.color);
+  setPaint(map, `isochrone-outline-${mode}`, "line-width", [
+    "interpolate",
+    ["linear"],
+    ["to-number", ["get", "rangeSeconds"], 900],
+    300,
+    style.width + 0.8,
+    600,
+    style.width + 0.3,
+    900,
+    Math.max(0.8, style.width - 0.3),
+  ]);
 }
 
 function applyVectorFallbackTheme(map: MapLibreMap, invert: boolean): void {

@@ -6,7 +6,7 @@ import { bufferPolygon, featureCollection, geometryToFeature } from "../analysis
 const ORS_URL = "https://api.openrouteservice.org/v2/isochrones";
 const CACHE_VERSION = "v1";
 const CACHE_MAX_AGE_MS = 1000 * 60 * 60 * 24 * 14;
-const DEFAULT_RANGES_SECONDS = [900];
+const DEFAULT_RANGES_SECONDS = [300, 600, 900];
 
 export type IsochroneResult = {
   collection: FeatureCollection;
@@ -57,7 +57,7 @@ export async function fetchOpenRouteServiceIsochrones(
         status: "ok",
         featureCount: collection.features.length,
         method:
-          "Requested walking, cycling, and driving isochrone polygons from OpenRouteService with 15-minute default ranges and cached responses by coordinate/profile/range.",
+          "Requested walking, cycling, and driving isochrone polygons from OpenRouteService with 5-, 10-, and 15-minute ranges and cached responses by coordinate/profile/range.",
         caveats: [
           "OpenRouteService isochrones depend on external API availability, quota, and network model coverage.",
         ],
@@ -141,6 +141,7 @@ function tagIsochroneFeatures(
           sourceId: "openrouteservice-isochrones",
           isochroneMode: mode,
           rangeSeconds: Number(feature.properties?.value ?? DEFAULT_RANGES_SECONDS[0]),
+          rangeMinutes: Math.round(Number(feature.properties?.value ?? DEFAULT_RANGES_SECONDS[0]) / 60),
           retrievalStatus: status,
         },
       })),
@@ -152,17 +153,24 @@ function createFallbackIsochrones(
   computedAt: string,
 ): FeatureCollection {
   const radii = [
-    { mode: "walking", radiusMeters: 800 },
-    { mode: "cycling", radiusMeters: 3_000 },
-    { mode: "driving", radiusMeters: 6_000 },
+    { mode: "walking", rangeSeconds: 300, radiusMeters: 350 },
+    { mode: "walking", rangeSeconds: 600, radiusMeters: 700 },
+    { mode: "walking", rangeSeconds: 900, radiusMeters: 1_050 },
+    { mode: "cycling", rangeSeconds: 300, radiusMeters: 1_250 },
+    { mode: "cycling", rangeSeconds: 600, radiusMeters: 2_500 },
+    { mode: "cycling", rangeSeconds: 900, radiusMeters: 3_750 },
+    { mode: "driving", rangeSeconds: 300, radiusMeters: 2_000 },
+    { mode: "driving", rangeSeconds: 600, radiusMeters: 4_000 },
+    { mode: "driving", rangeSeconds: 900, radiusMeters: 6_000 },
   ];
   return featureCollection(
-    radii.map(({ mode, radiusMeters }) =>
+    radii.map(({ mode, radiusMeters, rangeSeconds }) =>
       geometryToFeature(bufferPolygon(selectedPoint.lat, selectedPoint.lon, radiusMeters, 96) as Polygon, {
         sourceId: "openrouteservice-isochrones",
         isochroneMode: mode,
         radiusMeters,
-        rangeSeconds: DEFAULT_RANGES_SECONDS[0],
+        rangeSeconds,
+        rangeMinutes: rangeSeconds / 60,
         computedAt,
         retrievalStatus: "fallback",
       }),

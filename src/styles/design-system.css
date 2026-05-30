@@ -55,6 +55,11 @@
   --viz-node-fill: #000000;
   --viz-node-stroke: var(--viz-stroke);
   --viz-highlight: var(--seq-5);
+  --kpi-accent: #77b3c6;
+  --kpi-accent-bg: rgba(119, 179, 198, 0.12);
+  --confidence-high: #78b88a;
+  --confidence-medium: #d8bc52;
+  --confidence-low: #c76b62;
 }
 
 body.theme-invert {
@@ -73,6 +78,11 @@ body.theme-invert {
   --viz-link-strong: rgba(17, 17, 17, 0.16);
   --viz-stroke: rgba(17, 17, 17, 0.22);
   --viz-highlight: var(--seq-4);
+  --kpi-accent: #377f95;
+  --kpi-accent-bg: rgba(55, 127, 149, 0.1);
+  --confidence-high: #3e8a52;
+  --confidence-medium: #8a6f17;
+  --confidence-low: #a64c45;
 }
 
 html,
@@ -234,6 +244,18 @@ input[type="checkbox"]:checked::before {
   border: var(--border-width) solid var(--border);
   border-radius: var(--radius);
   background: var(--surface-2);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .surface-1 {

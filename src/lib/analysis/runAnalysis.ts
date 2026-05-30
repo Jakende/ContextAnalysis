@@ -66,6 +66,9 @@ const DEFAULT_LAYER_STATE: LayerState = {
   mobilityPedestrian: false,
   mobilitySupport: false,
   isochrones: false,
+  isochroneWalking: false,
+  isochroneCycling: false,
+  isochroneDriving: false,
   pois: false,
   poiEducation: false,
   poiHealth: false,
@@ -138,12 +141,51 @@ export async function runLocationAnalysis(input: {
     detail: "Fetching OSM features through deterministic Overpass modules.",
     status: input.enableOverpass === false ? "skipped" : "running",
   });
-  const overpass = await runOverpassModules({
+  const overpassPromise = runOverpassModules({
     lat: input.lat,
     lon: input.lon,
     enabled: input.enableOverpass ?? true,
     allowCache: true,
   });
+
+  emitProgress(input.onProgress, {
+    id: "local-data",
+    label: "Local, WMS, and sharded datasets",
+    detail: "Loading independent local, WMS, GTFS, Urban Atlas, building, contour, and isochrone sources in parallel.",
+    status: "running",
+  });
+  const [
+    zensusGrid,
+    zensusWmsIndicators,
+    lod2Buildings,
+    bkgBoundaries,
+    fuaGeometries,
+    gtfsStops,
+    urbanAtlas,
+    contourLines,
+    isochrones,
+    terrainSamples,
+  ] = await Promise.all([
+    loadZensusGridForPoint(selectedPoint),
+    fetchZensusWmsIndicators(selectedPoint, computedAt),
+    loadLod2BuildingsForPoint(selectedPoint),
+    loadBkgBoundariesForPoint(selectedPoint),
+    loadFuaGeometriesForPoint(selectedPoint),
+    loadGtfsStopsForPoint(selectedPoint),
+    loadUrbanAtlasForPoint(selectedPoint),
+    loadContourLinesForPoint(selectedPoint),
+    fetchOpenRouteServiceIsochrones(selectedPoint, computedAt),
+    input.sectionLine
+      ? loadTerrainSamplesForSection(input.sectionLine)
+      : Promise.resolve([]),
+  ]);
+  emitProgress(input.onProgress, {
+    id: "local-data",
+    label: "Local, WMS, and sharded datasets",
+    detail: `${bkgBoundaries.features.length} BKG / ${fuaGeometries.features.length} FUA / ${gtfsStops.features.length} GTFS stops / ${urbanAtlas.features.length} Urban Atlas / ${lod2Buildings.features.length} building / ${contourLines.features.length} contour / ${isochrones.collection.features.length} isochrone feature(s).`,
+    status: "ok",
+  });
+  const overpass = await overpassPromise;
   emitProgress(input.onProgress, {
     id: "overpass",
     label: "Overpass OSM modules",
@@ -153,31 +195,6 @@ export async function runLocationAnalysis(input: {
       : overpass.provenance.some((query) => query.status === "failed")
         ? "failed"
         : "skipped",
-  });
-
-  emitProgress(input.onProgress, {
-    id: "local-data",
-    label: "Local, WMS, and sharded datasets",
-    detail: "Loading Zensus WMS/grid, BKG, FUA, GTFS, Urban Atlas, and building sources.",
-    status: "running",
-  });
-  const zensusGrid = await loadZensusGridForPoint(selectedPoint);
-  const zensusWmsIndicators = await fetchZensusWmsIndicators(selectedPoint, computedAt);
-  const lod2Buildings = await loadLod2BuildingsForPoint(selectedPoint);
-  const bkgBoundaries = await loadBkgBoundariesForPoint(selectedPoint);
-  const fuaGeometries = await loadFuaGeometriesForPoint(selectedPoint);
-  const gtfsStops = await loadGtfsStopsForPoint(selectedPoint);
-  const urbanAtlas = await loadUrbanAtlasForPoint(selectedPoint);
-  const contourLines = await loadContourLinesForPoint(selectedPoint);
-  const isochrones = await fetchOpenRouteServiceIsochrones(selectedPoint, computedAt);
-  const terrainSamples = input.sectionLine
-    ? await loadTerrainSamplesForSection(input.sectionLine)
-    : [];
-  emitProgress(input.onProgress, {
-    id: "local-data",
-    label: "Local, WMS, and sharded datasets",
-    detail: `${bkgBoundaries.features.length} BKG / ${fuaGeometries.features.length} FUA / ${gtfsStops.features.length} GTFS stops / ${urbanAtlas.features.length} Urban Atlas / ${lod2Buildings.features.length} building / ${contourLines.features.length} contour / ${isochrones.collection.features.length} isochrone feature(s).`,
-    status: "ok",
   });
 
   emitProgress(input.onProgress, {

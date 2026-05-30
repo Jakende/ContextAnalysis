@@ -65,6 +65,7 @@ export function analyzeL(
   const poiSummary = summarizeFeatureCategories(livePois, "poiCategory");
   const mobilitySummary = summarizeFeatureCategories(liveMobility, "mobilityMode");
   const isochroneSummary = summarizeFeatureCategories(liveIsochrones, "isochroneMode");
+  const isochroneReachability = summarizeIsochroneReachability(livePois, liveIsochrones);
   const developmentSummary = summarizeFeatureCategories(liveDevelopment, "landuse", "amenity", "disused", "abandoned");
   const landUseEntropyScore = calculateLandUseEntropyScore(landUseSummary);
   const poiDiversityScore = calculatePoiDiversityScore(livePois);
@@ -77,6 +78,7 @@ export function analyzeL(
     transitModeCounts: transitSummary?.modeCounts ?? [],
     mobilityCollection: liveMobility,
     isochroneCollection: liveIsochrones,
+    activeReachabilityScore: isochroneReachability?.activeScore ?? null,
   });
   const infrastructurePois = exactPois ?? null;
   const socialInfrastructureScore = calculateSocialInfrastructureScore(
@@ -319,13 +321,46 @@ export function analyzeL(
       computedAt,
     }),
     createIndicator({
+      id: "l.isochrone-mode-time-comparison",
+      label: "Isochrone mode/time comparison",
+      scale: "L",
+      value: isochroneReachability?.comparison ?? null,
+      method:
+        "Compared OpenRouteService walking, cycling, and driving isochrone polygons by configured travel-time ranges and counted reachable POIs for each mode/time where POI points are available.",
+      sourceIds: ["openrouteservice-isochrones", "osm-core", "osm-overpass"],
+      confidence: isochroneReachability?.confidence ?? "low",
+      caveats: [
+        isochroneSummary
+          ? `Isochrone modes present: ${isochroneSummary}.`
+          : "No isochrone polygons were available for mode/time comparison.",
+        ...(isochroneReachability?.caveats ?? ["POI reachability requires both POI points and isochrone polygons."]),
+      ],
+      computedAt,
+    }),
+    createIndicator({
+      id: "l.active-poi-reachability-score",
+      label: "Walk/cycle POI reachability",
+      scale: "L",
+      value: isochroneReachability?.activeScore ?? null,
+      unit: "0-100",
+      method:
+        "Scored how many loaded POIs and POI categories are reachable inside walking and cycling isochrones, with walking weighted more strongly than cycling. Driving is reported as comparison context only.",
+      sourceIds: ["openrouteservice-isochrones", "osm-core", "osm-overpass"],
+      confidence: isochroneReachability?.confidence ?? "low",
+      caveats: [
+        ...(isochroneReachability?.caveats ?? ["POI reachability requires both POI points and isochrone polygons."]),
+        "Driving reachability is shown for comparison but does not increase this active mobility score.",
+      ],
+      computedAt,
+    }),
+    createIndicator({
       id: "l.mobility-score",
       label: "Mobility score",
       scale: "L",
       value: mobilityScore.value,
       unit: "0-100",
       method:
-        "Composite KPI from public-transport stop availability and density, transit mode hierarchy, OSM walking/cycling infrastructure hints, and configured OpenRouteService walking/cycling isochrone context. Driving isochrones are shown only as context.",
+        "Composite KPI from public-transport stop availability and density, transit mode hierarchy, OSM walking/cycling infrastructure hints, OpenRouteService walking/cycling isochrone context, and POI reachability by active modes. Driving isochrones are comparison context only.",
       sourceIds: ["osm-core", "osm-overpass", "mobilithek-gtfs", "gtfs-de-local-transit", "openrouteservice-isochrones"],
       confidence: mobilityScore.confidence,
       caveats: [
@@ -407,9 +442,9 @@ export function analyzeL(
       id: "l.access-infrastructure",
       title: "Access and infrastructure",
       scale: "L",
-      indicators: indicators.slice(5, 14),
-      method: "Counts and class hints within the selected walkable radius.",
-      sourceIds: ["osm-core", "osm-overpass", "mobilithek-gtfs", "gtfs-de-local-transit"],
+      indicators: indicators.slice(5, 16),
+      method: "Counts, class hints, mode/time isochrone comparison, and POI reachability within the selected context.",
+      sourceIds: ["osm-core", "osm-overpass", "mobilithek-gtfs", "gtfs-de-local-transit", "openrouteservice-isochrones"],
       computedAt,
       confidence: liveTransportStops ? "medium" : "low",
       caveats: [
@@ -422,12 +457,12 @@ export function analyzeL(
       id: "l.potential",
       title: "Development hints",
       scale: "L",
-      indicators: [indicators[14]],
+      indicators: [indicators[16]],
       method: "Screening rules from open-data class hints.",
       sourceIds: ["osm-core", "copernicus-urban-atlas", "urban-atlas-2021-catalog"],
       computedAt,
       confidence: "low",
-      caveats: indicators[14].caveats,
+      caveats: indicators[16].caveats,
     },
   ];
 
@@ -511,15 +546,132 @@ function combineUrbanMixIndex(
   return Math.round(score) / 100;
 }
 
+type IsochroneReachabilitySummary = {
+  comparison: string;
+  activeScore: number;
+  confidence: "high" | "medium" | "low";
+  caveats: string[];
+};
+
+function summarizeIsochroneReachability(
+  pois: FeatureCollection | undefined,
+  isochrones: FeatureCollection | undefined,
+): IsochroneReachabilitySummary | null {
+  const poiPoints = (pois?.features ?? []).filter(
+    (feature) => feature.geometry.type === "Point",
+  );
+  const polygons = (isochrones?.features ?? []).filter(
+    (feature) => feature.geometry.type === "Polygon" || feature.geometry.type === "MultiPolygon",
+  );
+  if (!poiPoints.length || !polygons.length) return null;
+
+  const modes = ["walking", "cycling", "driving"] as const;
+  const ranges = uniqueIsochroneRanges(polygons);
+  const rows = modes.flatMap((mode) =>
+    ranges.map((rangeSeconds) => {
+      const modePolygons = polygons.filter(
+        (feature) =>
+          feature.properties?.isochroneMode === mode &&
+          Number(feature.properties?.rangeSeconds ?? 0) === rangeSeconds,
+      );
+      const reachable = reachablePoiFeatures(poiPoints, modePolygons);
+      const categories = new Set(
+        reachable
+          .map((feature) => String(feature.properties?.poiCategory ?? "other"))
+          .filter(Boolean),
+      );
+      return {
+        mode,
+        rangeSeconds,
+        count: reachable.length,
+        categoryCount: categories.size,
+      };
+    }),
+  );
+  const totalPois = Math.max(1, poiPoints.length);
+  const walkingScore = scoreReachabilityMode(rows, "walking", totalPois);
+  const cyclingScore = scoreReachabilityMode(rows, "cycling", totalPois);
+  const activeScore = Math.round(walkingScore * 0.7 + cyclingScore * 0.3);
+  const hasFallback = polygons.some((feature) => feature.properties?.retrievalStatus === "fallback");
+  const comparison = modes
+    .map((mode) => {
+      const modeRows = rows.filter((row) => row.mode === mode);
+      return `${mode}: ${modeRows
+        .map((row) => `${Math.round(row.rangeSeconds / 60)}min ${row.count} POIs`)
+        .join(", ")}`;
+    })
+    .join(" / ");
+
+  return {
+    comparison,
+    activeScore,
+    confidence: hasFallback ? "low" : "medium",
+    caveats: [
+      `${poiPoints.length} loaded POI point(s) were tested against ${polygons.length} isochrone polygon(s).`,
+      "Reachability counts reflect loaded POIs only; unmapped or uncategorized facilities are not inferred.",
+      hasFallback
+        ? "Some or all isochrones are geometric fallback buffers, not routed network catchments."
+        : "Routed OpenRouteService isochrones were used where API/cache data were available.",
+    ],
+  };
+}
+
+function uniqueIsochroneRanges(features: Feature[]): number[] {
+  const ranges = [
+    ...new Set(
+      features
+        .map((feature) => Number(feature.properties?.rangeSeconds ?? 0))
+        .filter((value) => Number.isFinite(value) && value > 0),
+    ),
+  ].sort((left, right) => left - right);
+  return ranges.length ? ranges : [300, 600, 900];
+}
+
+function reachablePoiFeatures(pois: Feature[], polygons: Feature[]): Feature[] {
+  if (!polygons.length) return [];
+  const reachable = new Map<string, Feature>();
+  for (const poi of pois) {
+    if (poi.geometry.type !== "Point") continue;
+    const coordinates = poi.geometry.coordinates;
+    if (!polygons.some((polygon) => containsCoordinate(polygon, coordinates))) continue;
+    const key = [
+      coordinates[0].toFixed(6),
+      coordinates[1].toFixed(6),
+      String(poi.properties?.name ?? poi.properties?.id ?? ""),
+    ].join(":");
+    reachable.set(key, poi);
+  }
+  return [...reachable.values()];
+}
+
+function scoreReachabilityMode(
+  rows: Array<{ mode: string; rangeSeconds: number; count: number; categoryCount: number }>,
+  mode: "walking" | "cycling",
+  totalPois: number,
+): number {
+  const modeRows = rows.filter((row) => row.mode === mode);
+  const at5 = modeRows.find((row) => row.rangeSeconds === 300) ?? modeRows[0];
+  const at10 = modeRows.find((row) => row.rangeSeconds === 600) ?? modeRows[1] ?? at5;
+  const at15 = modeRows.find((row) => row.rangeSeconds === 900) ?? modeRows[modeRows.length - 1] ?? at10;
+  if (!at15) return 0;
+  const target = Math.min(totalPois, mode === "walking" ? 24 : 36);
+  const accessScore = Math.min(100, Math.round((at15.count / Math.max(1, target)) * 100));
+  const closeScore = Math.min(100, Math.round((((at5?.count ?? 0) * 0.6 + (at10?.count ?? 0) * 0.4) / Math.max(1, target * 0.55)) * 100));
+  const categoryScore = Math.min(100, Math.round((at15.categoryCount / 6) * 100));
+  return Math.round(accessScore * 0.45 + closeScore * 0.35 + categoryScore * 0.2);
+}
+
 function calculateMobilityScore(input: {
   transitStops: number | null;
   transitDensity: number | null;
   transitModeCounts: Array<{ mode: string; count: number }>;
   mobilityCollection: FeatureCollection | undefined;
   isochroneCollection: FeatureCollection | undefined;
+  activeReachabilityScore: number | null;
 }): { value: number | null; confidence: "high" | "medium" | "low"; caveats: string[] } {
   const modeCounts = summarizeMobilityModeCounts(input.mobilityCollection);
   const isochroneScore = calculateActiveIsochroneScore(input.isochroneCollection);
+  const reachabilityScore = input.activeReachabilityScore ?? isochroneScore;
   const hasIsochrones = isochroneScore > 0;
   const hasFallbackIsochrones = input.isochroneCollection?.features.some(
     (feature) =>
@@ -532,6 +684,7 @@ function calculateMobilityScore(input: {
     input.transitModeCounts.length > 0,
     input.mobilityCollection !== undefined,
     hasIsochrones,
+    input.activeReachabilityScore !== null,
   ].filter(Boolean).length;
   if (availableInputs === 0) {
     return {
@@ -556,10 +709,11 @@ function calculateMobilityScore(input: {
     Math.round(((modeCounts.bike * 8 + modeCounts.pedestrian * 6 + modeCounts.support * 3) / 120) * 100),
   );
   const score = Math.round(
-    transitAccessScore * 0.3 +
-      transitModeScore * 0.2 +
-      walkingCyclingScore * 0.25 +
-      isochroneScore * 0.25,
+    transitAccessScore * 0.25 +
+      transitModeScore * 0.15 +
+      walkingCyclingScore * 0.2 +
+      isochroneScore * 0.15 +
+      reachabilityScore * 0.25,
   );
 
   return {
@@ -571,7 +725,7 @@ function calculateMobilityScore(input: {
         ? "OpenRouteService routed isochrones were unavailable; geometric fallback catchments reduce confidence."
         : "OpenRouteService routed isochrones increase context but do not include timetable quality.",
       "Driving isochrones are rendered as context but do not increase the mobility score.",
-      `Mobility subscores: transit access ${transitAccessScore}, transit mode hierarchy ${transitModeScore}, walking/cycling infrastructure ${walkingCyclingScore}, walking/cycling isochrone context ${isochroneScore}.`,
+      `Mobility subscores: transit access ${transitAccessScore}, transit mode hierarchy ${transitModeScore}, walking/cycling infrastructure ${walkingCyclingScore}, walking/cycling isochrone context ${isochroneScore}, active POI reachability ${reachabilityScore}.`,
     ],
   };
 }
@@ -1022,6 +1176,41 @@ function isBlueFeature(feature: Feature): boolean {
     );
   }
   return natural === "water" || natural === "wetland" || Boolean(water) || Boolean(waterway);
+}
+
+function containsCoordinate(feature: Feature, coordinate: number[]): boolean {
+  if (feature.geometry.type === "Polygon") {
+    return polygonContainsCoordinate(feature.geometry.coordinates, coordinate);
+  }
+  if (feature.geometry.type === "MultiPolygon") {
+    return feature.geometry.coordinates.some((polygon) =>
+      polygonContainsCoordinate(polygon, coordinate),
+    );
+  }
+  return false;
+}
+
+function polygonContainsCoordinate(
+  polygonCoordinates: number[][][],
+  coordinate: number[],
+): boolean {
+  const outer = polygonCoordinates[0];
+  if (!outer || !ringContainsCoordinate(outer, coordinate)) return false;
+  return !polygonCoordinates.slice(1).some((hole) => ringContainsCoordinate(hole, coordinate));
+}
+
+function ringContainsCoordinate(ring: number[][], coordinate: number[]): boolean {
+  const [x, y] = coordinate;
+  let inside = false;
+  for (let index = 0, previous = ring.length - 1; index < ring.length; previous = index, index += 1) {
+    const [xi, yi] = ring[index];
+    const [xj, yj] = ring[previous];
+    const intersects =
+      yi > y !== yj > y &&
+      x < ((xj - xi) * (y - yi)) / ((yj - yi) || Number.EPSILON) + xi;
+    if (intersects) inside = !inside;
+  }
+  return inside;
 }
 
 function featureTouchesRadius(

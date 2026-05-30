@@ -91,6 +91,9 @@ export type LayerId =
   | "mobilityPedestrian"
   | "mobilitySupport"
   | "isochrones"
+  | "isochroneWalking"
+  | "isochroneCycling"
+  | "isochroneDriving"
   | "pois"
   | "poiEducation"
   | "poiHealth"
@@ -107,6 +110,13 @@ export type LayerId =
   | "contours";
 
 export type LayerState = Record<LayerId, boolean>;
+
+export type LayerVisualStyle = {
+  color: string;
+  width: number;
+};
+
+export type LayerStyleState = Record<LayerId, LayerVisualStyle>;
 
 export type AnalysisLoadStep = {
   id: string;
