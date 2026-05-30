@@ -54,6 +54,7 @@ const MAP_LAYER_COLORS = {
   mobilityBike: "#06b6d4",
   mobilityPedestrian: "#14b8a6",
   mobilitySupport: "#f59e0b",
+  isochrones: "#eab308",
   poi: "#fb7185",
   poiEducation: "#2563eb",
   poiHealth: "#dc2626",
@@ -846,6 +847,7 @@ function addAnalysisSourcesAndLayers(map: MapLibreMap): void {
     "parking-overlay",
     "transport-overlay",
     "mobility-overlay",
+    "isochrone-overlay",
     "barrier-overlay",
     "development-overlay",
     "sun-overlay",
@@ -1100,6 +1102,58 @@ function addAnalysisSourcesAndLayers(map: MapLibreMap): void {
     paint: {
       "fill-color": MAP_LAYER_COLORS.mobility,
       "fill-opacity": 0.14,
+    },
+  }, "mobility-lines");
+  addLayerIfMissing(map, {
+    id: "isochrone-fill",
+    type: "fill",
+    source: "isochrone-overlay",
+    filter: ["==", ["geometry-type"], "Polygon"],
+    paint: {
+      "fill-color": [
+        "match",
+        ["get", "isochroneMode"],
+        "walking",
+        "#22c55e",
+        "cycling",
+        "#06b6d4",
+        "driving",
+        "#eab308",
+        MAP_LAYER_COLORS.isochrones,
+      ],
+      "fill-opacity": [
+        "case",
+        ["==", ["get", "retrievalStatus"], "fallback"],
+        0.08,
+        0.16,
+      ],
+    },
+  }, "mobility-lines");
+  addLayerIfMissing(map, {
+    id: "isochrone-outline",
+    type: "line",
+    source: "isochrone-overlay",
+    filter: ["==", ["geometry-type"], "Polygon"],
+    paint: {
+      "line-color": [
+        "match",
+        ["get", "isochroneMode"],
+        "walking",
+        "#22c55e",
+        "cycling",
+        "#06b6d4",
+        "driving",
+        "#eab308",
+        MAP_LAYER_COLORS.isochrones,
+      ],
+      "line-width": 1.4,
+      "line-dasharray": [
+        "case",
+        ["==", ["get", "retrievalStatus"], "fallback"],
+        ["literal", [2, 2]],
+        ["literal", [1, 0]],
+      ],
+      "line-opacity": 0.9,
     },
   }, "mobility-lines");
   addLayerIfMissing(map, {
@@ -2128,6 +2182,7 @@ function syncScaleSources(
   setSourceData(map, "parking-overlay", showLContext ? analysis.overlays.parkingAreas : empty);
   setSourceData(map, "transport-overlay", showLContext ? analysis.overlays.transport : empty);
   setSourceData(map, "mobility-overlay", showLContext ? analysis.overlays.mobility : empty);
+  setSourceData(map, "isochrone-overlay", showLContext ? analysis.overlays.isochrones : empty);
   setSourceData(map, "barrier-overlay", empty);
   setSourceData(map, "development-overlay", showLContext ? analysis.overlays.development : empty);
 
@@ -2158,6 +2213,7 @@ function clearAnalysisSources(map: MapLibreMap): void {
     "parking-overlay",
     "transport-overlay",
     "mobility-overlay",
+    "isochrone-overlay",
     "barrier-overlay",
     "development-overlay",
     "sun-overlay",
@@ -2259,6 +2315,8 @@ function applyLayerVisibility(
   setLayerVisibility(map, "mobility-areas", showLContext && layers.mobility);
   setLayerVisibility(map, "mobility-points", showLContext && layers.mobility);
   setLayerVisibility(map, "mobility-support-points", showLContext && layers.mobilitySupport);
+  setLayerVisibility(map, "isochrone-fill", showLContext && layers.isochrones);
+  setLayerVisibility(map, "isochrone-outline", showLContext && layers.isochrones);
   setLayerVisibility(map, "development-fill", showLContext && layers.development);
   setLayerVisibility(map, "development-points", showLContext && layers.development);
   setLayerVisibility(map, "building-footprints-fill", showLContext && layers.buildingFootprints);
@@ -2325,6 +2383,8 @@ function hideAnalysisLayers(map: MapLibreMap): void {
     "mobility-areas",
     "mobility-points",
     "mobility-support-points",
+    "isochrone-fill",
+    "isochrone-outline",
     "development-fill",
     "development-points",
     "building-footprints-fill",

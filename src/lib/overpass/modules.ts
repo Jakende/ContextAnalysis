@@ -698,6 +698,15 @@ ${output()}`,
         `nwr["leisure"~"sports_centre|fitness_centre|playground|pitch|swimming_pool|park|garden|recreation_ground"]${around(params)};`,
         `nwr["office"~"government|coworking"]${around(params)};`,
       ]),
+    buildFallbackQuery: (params) =>
+      buildQuery([
+        `node["amenity"~"school|kindergarten|childcare|college|university|library|hospital|clinic|doctors|dentist|pharmacy|social_facility|townhall|courthouse|police|fire_station|post_office|community_centre|arts_centre|place_of_worship|marketplace|bank|atm|theatre|cinema|restaurant|cafe|bar|pub|fast_food|biergarten|food_court"]${around(params)};`,
+        `node["healthcare"]${around(params)};`,
+        `node["shop"]${around(params)};`,
+        `node["tourism"~"museum|gallery|attraction|viewpoint|hotel|hostel|guest_house|information"]${around(params)};`,
+        `node["leisure"~"sports_centre|fitness_centre|playground|pitch|swimming_pool|park|garden|recreation_ground"]${around(params)};`,
+        `node["office"~"government|coworking"]${around(params)};`,
+      ]),
     parse: parseOverpassElements,
   },
   {

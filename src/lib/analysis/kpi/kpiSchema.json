@@ -1,0 +1,221 @@
+{
+  "version": "0.2.0",
+  "defaultStrategyId": "balanced",
+  "definitions": [
+    {
+      "id": "xl_context",
+      "name": "Urban / Regional Context",
+      "category": "context",
+      "status": "context",
+      "defaultWeight": 0,
+      "sourceIndicator": "xl.context-score",
+      "normalization": {
+        "type": "direct",
+        "formula": "clamp(round(value), 0, 100)"
+      },
+      "formula": "Separate XL context score from municipality/FUA context, population/density where available, and known context-class resolver. It is not part of the Local Quality Score.",
+      "thresholds": [
+        "85-100 = Metropolitan core context.",
+        "70-84 = Large city context.",
+        "50-69 = Regional city context.",
+        "30-49 = Small city/town context.",
+        "Below 30 or missing = Limited regional evidence."
+      ]
+    },
+    {
+      "id": "mobility_access",
+      "name": "Mobility Access",
+      "category": "access",
+      "status": "core",
+      "defaultWeight": 0.3,
+      "sourceIndicator": "l.mobility-score",
+      "normalization": {
+        "type": "direct",
+        "formula": "clamp(round(value), 0, 100)"
+      },
+      "formula": "Combined public transport stop access, transit mode hierarchy/density, walking/cycling OSM infrastructure, and ORS walking/cycling context. Driving isochrones are context only.",
+      "thresholds": [
+        "10 transit stops in the L radius contributes 100 to the stop-count subscore.",
+        "18 stops/km² contributes 100 to the density subscore.",
+        "Routed ORS walking/cycling context contributes up to 80 to the isochrone subscore.",
+        "Driving isochrones do not increase the score."
+      ]
+    },
+    {
+      "id": "green_blue_access",
+      "name": "Green/Blue Access",
+      "category": "environment",
+      "status": "core",
+      "defaultWeight": 0.3,
+      "sourceIndicator": "l.green-percentage",
+      "normalization": {
+        "type": "target",
+        "target": 35,
+        "formula": "clamp(round((value / 35) * 100), 0, 100)"
+      },
+      "formula": "Green/open/blue share in the L-scale context normalized against a 35% target. Private green is excluded where known; semi-public green classes should receive partial credit in later exact clipping.",
+      "thresholds": [
+        "0% green/open/blue = 0.",
+        "17.5% green/open/blue = 50.",
+        "35% or more green/open/blue = 100."
+      ]
+    },
+    {
+      "id": "urban_mix",
+      "name": "Urban Mix",
+      "category": "urban fabric",
+      "status": "core",
+      "defaultWeight": 0.25,
+      "sourceIndicator": "l.land-use-mix",
+      "normalization": {
+        "type": "index",
+        "formula": "clamp(round(value * 100), 0, 100)"
+      },
+      "formula": "Combines area-based land-use family entropy at 60% and POI category diversity at 40% where both are available.",
+      "thresholds": [
+        "0.00 mix index = 0.",
+        "0.50 mix index = 50.",
+        "1.00 mix index = 100."
+      ]
+    },
+    {
+      "id": "social_infrastructure",
+      "name": "Social Infrastructure Access",
+      "category": "services",
+      "status": "core",
+      "defaultWeight": 0.15,
+      "sourceIndicator": "l.social-infrastructure-score",
+      "normalization": {
+        "type": "direct",
+        "formula": "clamp(round(value), 0, 100)"
+      },
+      "formula": "Distance-first score for education/childcare, health, grocery/commerce, and civic/admin POIs, with count as secondary support.",
+      "thresholds": [
+        "Nearest essential POI within 500 m = 100 distance subscore.",
+        "Nearest essential POI within 800 m = 70 distance subscore.",
+        "Nearest essential POI within 1,000 m = 40 distance subscore.",
+        "Category count contributes a secondary min(100, count * 25) subscore."
+      ]
+    },
+    {
+      "id": "climate_resilience",
+      "name": "Climate/Heat Resilience",
+      "category": "environment",
+      "status": "experimental",
+      "defaultWeight": 0,
+      "sourceIndicator": "experimental.climate-resilience",
+      "normalization": {
+        "type": "direct",
+        "formula": "clamp(round(value), 0, 100)"
+      },
+      "formula": "Experimental proxy planned from green percentage, tree density, blue presence, sealed/parking share, and shade context.",
+      "thresholds": [
+        "Not included in the MVP composite until proxy indicators are emitted."
+      ]
+    },
+    {
+      "id": "streetscape_quality",
+      "name": "Streetscape Quality",
+      "category": "streetscape",
+      "status": "experimental",
+      "defaultWeight": 0,
+      "sourceIndicator": "experimental.streetscape-quality",
+      "normalization": {
+        "type": "direct",
+        "formula": "clamp(round(value), 0, 100)"
+      },
+      "formula": "Experimental M-scale score planned from tree edge, enclosure, frontage, and walking/cycling infrastructure.",
+      "thresholds": [
+        "Height-to-width target range: 0.7-2.0.",
+        "Sun/shadow remains visual/caveat context, not a scored component."
+      ]
+    },
+    {
+      "id": "development_potential",
+      "name": "Development Potential",
+      "category": "opportunity",
+      "status": "deferred",
+      "defaultWeight": 0,
+      "sourceIndicator": "experimental.development-potential",
+      "normalization": {
+        "type": "direct",
+        "formula": "clamp(round(value), 0, 100)"
+      },
+      "formula": "Post-MVP separate opportunity score. It should not be part of the default urban quality score.",
+      "thresholds": [
+        "Protected green/open space must not count as underused development land.",
+        "Planning-law assessment is out of MVP scope."
+      ]
+    }
+  ],
+  "strategies": [
+    {
+      "id": "balanced",
+      "name": "Balanced Urban Quality",
+      "description": "Default urban quality diagnosis across mobility, green/blue access, mix, and everyday services.",
+      "weights": {
+        "mobility_access": 0.3,
+        "green_blue_access": 0.3,
+        "urban_mix": 0.25,
+        "social_infrastructure": 0.15
+      },
+      "classifications": {
+        "high": "Strong Urban Quality",
+        "medium": "Solid Urban Context",
+        "low": "Uneven Urban Context",
+        "minimal": "Weak / Limited Evidence"
+      }
+    },
+    {
+      "id": "mobility",
+      "name": "Mobility-Oriented",
+      "description": "Emphasizes low-car movement, public transport, and active mobility.",
+      "weights": {
+        "mobility_access": 0.45,
+        "urban_mix": 0.2,
+        "social_infrastructure": 0.2,
+        "green_blue_access": 0.15
+      },
+      "classifications": {
+        "high": "Low-Car Ready",
+        "medium": "Well Connected",
+        "low": "Partly Connected",
+        "minimal": "Mobility Gap"
+      }
+    },
+    {
+      "id": "green_climate",
+      "name": "Green/Climate",
+      "description": "Emphasizes green/blue access and climate proxy readiness using current MVP inputs.",
+      "weights": {
+        "green_blue_access": 0.4,
+        "mobility_access": 0.2,
+        "social_infrastructure": 0.2,
+        "urban_mix": 0.2
+      },
+      "classifications": {
+        "high": "High Resilience",
+        "medium": "Moderate Resilience",
+        "low": "Vulnerable",
+        "minimal": "Limited Data"
+      }
+    },
+    {
+      "id": "infill",
+      "name": "Infill Context",
+      "description": "Interim context preset for transformation discussions until a separate development-potential score is implemented.",
+      "weights": {
+        "mobility_access": 0.35,
+        "urban_mix": 0.3,
+        "green_blue_access": 0.2,
+        "social_infrastructure": 0.15
+      },
+      "classifications": {
+        "high": "High Transformation Context",
+        "medium": "Promising Context",
+        "low": "Selective Intervention Context",
+        "minimal": "Low / Unclear Context"
+      }
+    }
+  ]
+}

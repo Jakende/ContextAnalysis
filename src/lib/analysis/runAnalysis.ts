@@ -13,6 +13,7 @@ import {
 import { runSourceAdapters } from "../data/sourceAdapters";
 import { createDataSourceRunReport } from "../data/sourceRun";
 import { fetchZensusWmsIndicators } from "../data/zensusWms";
+import { fetchOpenRouteServiceIsochrones } from "../mobility/openRouteService";
 import { runOverpassModules } from "../overpass/client";
 import type {
   AnalysisResult,
@@ -24,6 +25,7 @@ import type {
   AnalysisLoadStep,
 } from "../types";
 import { featureCollection, geometryToFeature, pointGeometry } from "./geometry";
+import { createKpiMatrixModule } from "./kpi/kpiMatrix";
 import { analyzeL } from "./l/analyzeL";
 import { analyzeM } from "./m/analyzeM";
 import { analyzeXl } from "./xl/analyzeXl";
@@ -63,6 +65,7 @@ const DEFAULT_LAYER_STATE: LayerState = {
   mobilityBike: false,
   mobilityPedestrian: false,
   mobilitySupport: false,
+  isochrones: false,
   pois: false,
   poiEducation: false,
   poiHealth: false,
@@ -139,7 +142,7 @@ export async function runLocationAnalysis(input: {
     lat: input.lat,
     lon: input.lon,
     enabled: input.enableOverpass ?? true,
-    allowCache: false,
+    allowCache: true,
   });
   emitProgress(input.onProgress, {
     id: "overpass",
@@ -166,13 +169,14 @@ export async function runLocationAnalysis(input: {
   const gtfsStops = await loadGtfsStopsForPoint(selectedPoint);
   const urbanAtlas = await loadUrbanAtlasForPoint(selectedPoint);
   const contourLines = await loadContourLinesForPoint(selectedPoint);
+  const isochrones = await fetchOpenRouteServiceIsochrones(selectedPoint, computedAt);
   const terrainSamples = input.sectionLine
     ? await loadTerrainSamplesForSection(input.sectionLine)
     : [];
   emitProgress(input.onProgress, {
     id: "local-data",
     label: "Local, WMS, and sharded datasets",
-    detail: `${bkgBoundaries.features.length} BKG / ${fuaGeometries.features.length} FUA / ${gtfsStops.features.length} GTFS stops / ${urbanAtlas.features.length} Urban Atlas / ${lod2Buildings.features.length} building / ${contourLines.features.length} contour feature(s).`,
+    detail: `${bkgBoundaries.features.length} BKG / ${fuaGeometries.features.length} FUA / ${gtfsStops.features.length} GTFS stops / ${urbanAtlas.features.length} Urban Atlas / ${lod2Buildings.features.length} building / ${contourLines.features.length} contour / ${isochrones.collection.features.length} isochrone feature(s).`,
     status: "ok",
   });
 
@@ -201,6 +205,7 @@ export async function runLocationAnalysis(input: {
       urbanAtlas,
       overpass.collections.greenBlue ?? featureCollection(),
     ),
+    isochrones: isochrones.collection,
   };
   const xl = analyzeXl(selectedPoint, computedAt);
   const l = analyzeL(selectedPoint, computedAt, 500, analysisCollections);
@@ -211,7 +216,8 @@ export async function runLocationAnalysis(input: {
     input.sectionLine,
     terrainSamples,
   );
-  const sourceFetches = await runSourceAdapters({
+  const sourceFetches = [
+    ...(await runSourceAdapters({
     district: xl.district,
     selectedPoint,
     computedAt,
@@ -234,11 +240,25 @@ export async function runLocationAnalysis(input: {
       "mobilithek-gtfs": gtfsStops,
       "opentopography-contours": contourLines,
     },
-  });
+    })),
+    isochrones.receipt,
+  ];
   const xlSourceStatus = createXlSourceStatusModule(sourceFetches, computedAt);
   const fua = createFuaContextModule(fuaGeometries, computedAt);
   const zensus = createZensusGridModule(zensusGrid, computedAt);
   const zensusWms = createZensusWmsModule(zensusWmsIndicators, computedAt);
+  const kpi = createKpiMatrixModule(
+    [
+      ...xl.indicators,
+      ...fua.indicators,
+      ...zensusWms.indicators,
+      ...zensus.indicators,
+      ...xlSourceStatus.indicators,
+      ...l.indicators,
+      ...m.indicators,
+    ],
+    computedAt,
+  );
   emitProgress(input.onProgress, {
     id: "indicators",
     label: "XL/L/M indicators",
@@ -253,6 +273,7 @@ export async function runLocationAnalysis(input: {
     ...zensus.modules,
     ...xlSourceStatus.modules,
     ...l.modules,
+    ...kpi.modules,
     ...m.modules,
   ];
   const allIndicators = [
@@ -262,6 +283,7 @@ export async function runLocationAnalysis(input: {
     ...zensus.indicators,
     ...xlSourceStatus.indicators,
     ...l.indicators,
+    ...kpi.indicators,
     ...m.indicators,
   ];
   const sourceIds = [
@@ -317,6 +339,7 @@ export async function runLocationAnalysis(input: {
       mobility: mergeCollections(
         overpass.collections.mobilityInfrastructure ?? featureCollection(),
       ),
+      isochrones: isochrones.collection,
       barriers: mergeCollections(overpass.collections.barriers ?? featureCollection()),
       development: mergeCollections(
         overpass.collections.developmentHints ?? featureCollection(),
@@ -350,7 +373,7 @@ export async function runLocationAnalysis(input: {
       },
       caveats: [
         "Analysis is generated from structured indicators, not free-form LLM metrics.",
-        "Fresh live/API retrieval is requested for every new selected point; cached Nominatim or Overpass payloads are not used for point analysis.",
+        "Fresh live/API retrieval is requested for every new selected point; cached Overpass payloads may be used for the exact same query when all live endpoints fail.",
         ...("error" in geocoding && geocoding.error
           ? [`Reverse geocoding unavailable: ${geocoding.error}`]
           : []),

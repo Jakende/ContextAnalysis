@@ -90,6 +90,7 @@ export type LayerId =
   | "mobilityBike"
   | "mobilityPedestrian"
   | "mobilitySupport"
+  | "isochrones"
   | "pois"
   | "poiEducation"
   | "poiHealth"
@@ -227,6 +228,7 @@ export type MapOverlayCollection = {
   parkingAreas: FeatureCollection;
   transport: FeatureCollection;
   mobility: FeatureCollection;
+  isochrones: FeatureCollection;
   barriers: FeatureCollection;
   development: FeatureCollection;
   sun: FeatureCollection;

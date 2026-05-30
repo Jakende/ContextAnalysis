@@ -18,6 +18,7 @@ export function analyzeL(
   const liveTransportStops = liveCollections.transportStops;
   const liveTransportLines = liveCollections.transportLines;
   const liveMobility = liveCollections.mobilityInfrastructure;
+  const liveIsochrones = liveCollections.isochrones;
   const livePois = liveCollections.pois;
   const liveDevelopment = liveCollections.developmentHints;
   const liveLandUse = liveCollections.landUse;
@@ -58,23 +59,30 @@ export function analyzeL(
   const exactMobilityFeatures = liveMobility?.features.length;
   const exactPois = livePois?.features.length;
   const exactLandUseFeatures = landUseRadius?.features.length;
-  const landUseClasses = landUseRadius ? uniqueLandUseClasses(landUseRadius) : [];
   const landUseSummary = summarizeLandUse(landUseRadius, radiusMeters);
   const transitSummary = summarizeTransitStops(liveTransportStops, radiusMeters);
   const transitLineSummary = summarizeTransitLines(liveTransportLines);
   const poiSummary = summarizeFeatureCategories(livePois, "poiCategory");
   const mobilitySummary = summarizeFeatureCategories(liveMobility, "mobilityMode");
+  const isochroneSummary = summarizeFeatureCategories(liveIsochrones, "isochroneMode");
   const developmentSummary = summarizeFeatureCategories(liveDevelopment, "landuse", "amenity", "disused", "abandoned");
-  const landUseMix =
-    exactLandUseFeatures === undefined && urbanAtlasFeatures === 0
-      ? null
-      : Math.min(
-          0.95,
-          Math.round((0.25 + Math.min(landUseClasses.length || exactLandUseFeatures || 0, 18) / 24) * 100) / 100,
-        );
+  const landUseEntropyScore = calculateLandUseEntropyScore(landUseSummary);
+  const poiDiversityScore = calculatePoiDiversityScore(livePois);
+  const landUseMix = combineUrbanMixIndex(landUseEntropyScore, poiDiversityScore);
   const transitStops = transitSummary?.uniqueStopCount ?? exactTransitStops ?? null;
   const mobilityHints = exactMobilityFeatures ?? null;
+  const mobilityScore = calculateMobilityScore({
+    transitStops,
+    transitDensity: transitSummary?.stopDensityPerSqkm ?? null,
+    transitModeCounts: transitSummary?.modeCounts ?? [],
+    mobilityCollection: liveMobility,
+    isochroneCollection: liveIsochrones,
+  });
   const infrastructurePois = exactPois ?? null;
+  const socialInfrastructureScore = calculateSocialInfrastructureScore(
+    selectedPoint,
+    livePois,
+  );
   const liveCaveat =
     "Live OSM/Overpass data were queried for this point; completeness depends on OSM tagging.";
   const fallbackCaveat =
@@ -137,14 +145,24 @@ export function analyzeL(
       unit: "0-1",
       method:
         exactLandUseFeatures !== undefined || urbanAtlasFeatures > 0
-          ? "Computed as a class-diversity proxy from loaded Urban Atlas polygons and live OSM landuse/leisure/amenity polygons."
+          ? "Computed from area-based land-use family entropy at 60% and POI category diversity at 40% where both inputs are available."
           : "Live land-use source did not return a usable response and no local Urban Atlas preprocessing is loaded.",
       sourceIds: ["osm-core", "copernicus-urban-atlas", "urban-atlas-2021-catalog"],
-      confidence: urbanAtlasFeatures > 0 ? "high" : exactLandUseFeatures !== undefined ? "medium" : "low",
+      confidence: landUseEntropyScore !== null && poiDiversityScore !== null
+        ? "medium"
+        : urbanAtlasFeatures > 0 || exactLandUseFeatures !== undefined
+          ? "low"
+          : "low",
       caveats: [
         exactLandUseFeatures !== undefined || urbanAtlasFeatures > 0
           ? urbanAtlasCaveat
           : fallbackCaveat,
+        landUseEntropyScore !== null
+          ? `Land-use entropy subscore: ${landUseEntropyScore}.`
+          : "Land-use entropy subscore was not available.",
+        poiDiversityScore !== null
+          ? `POI diversity subscore: ${poiDiversityScore}.`
+          : "POI diversity subscore was not available.",
       ],
       computedAt,
     }),
@@ -301,6 +319,24 @@ export function analyzeL(
       computedAt,
     }),
     createIndicator({
+      id: "l.mobility-score",
+      label: "Mobility score",
+      scale: "L",
+      value: mobilityScore.value,
+      unit: "0-100",
+      method:
+        "Composite KPI from public-transport stop availability and density, transit mode hierarchy, OSM walking/cycling infrastructure hints, and configured OpenRouteService walking/cycling isochrone context. Driving isochrones are shown only as context.",
+      sourceIds: ["osm-core", "osm-overpass", "mobilithek-gtfs", "gtfs-de-local-transit", "openrouteservice-isochrones"],
+      confidence: mobilityScore.confidence,
+      caveats: [
+        ...mobilityScore.caveats,
+        isochroneSummary
+          ? `Isochrone modes present: ${isochroneSummary}.`
+          : "No isochrone polygons were available for the mobility score.",
+      ],
+      computedAt,
+    }),
+    createIndicator({
       id: "l.social-civic-pois",
       label: "Social/civic POIs",
       scale: "L",
@@ -313,6 +349,22 @@ export function analyzeL(
       sourceIds: ["osm-core", "osm-overpass"],
       confidence: exactPois !== undefined ? "medium" : "low",
       caveats: [exactPois !== undefined ? liveCaveat : fallbackCaveat],
+      computedAt,
+    }),
+    createIndicator({
+      id: "l.social-infrastructure-score",
+      label: "Social infrastructure access",
+      scale: "L",
+      value: socialInfrastructureScore.value,
+      unit: "0-100",
+      method:
+        "Distance-first essential-service score from education/childcare, healthcare, grocery/commerce, and civic/admin POIs. Each category combines nearest-distance access at 75% and category count at 25%.",
+      sourceIds: ["osm-core", "osm-overpass"],
+      confidence: socialInfrastructureScore.confidence,
+      caveats: [
+        ...socialInfrastructureScore.caveats,
+        exactPois !== undefined ? liveCaveat : fallbackCaveat,
+      ],
       computedAt,
     }),
     createIndicator({
@@ -355,7 +407,7 @@ export function analyzeL(
       id: "l.access-infrastructure",
       title: "Access and infrastructure",
       scale: "L",
-      indicators: indicators.slice(5, 12),
+      indicators: indicators.slice(5, 14),
       method: "Counts and class hints within the selected walkable radius.",
       sourceIds: ["osm-core", "osm-overpass", "mobilithek-gtfs", "gtfs-de-local-transit"],
       computedAt,
@@ -370,12 +422,12 @@ export function analyzeL(
       id: "l.potential",
       title: "Development hints",
       scale: "L",
-      indicators: [indicators[12]],
+      indicators: [indicators[14]],
       method: "Screening rules from open-data class hints.",
       sourceIds: ["osm-core", "copernicus-urban-atlas", "urban-atlas-2021-catalog"],
       computedAt,
       confidence: "low",
-      caveats: indicators[12].caveats,
+      caveats: indicators[14].caveats,
     },
   ];
 
@@ -410,6 +462,232 @@ function createLOverlays(
     blue: featureCollection(),
     trees: featureCollection(),
   };
+}
+
+function calculateLandUseEntropyScore(summary: LandUseSummary | null): number | null {
+  if (!summary?.familyShares.length) return null;
+  const areas = summary.familyShares
+    .map((share) => share.areaSqm)
+    .filter((area) => area > 0);
+  const total = areas.reduce((sum, area) => sum + area, 0);
+  if (total <= 0 || areas.length <= 1) return areas.length === 1 ? 25 : null;
+  const entropy = areas.reduce((sum, area) => {
+    const share = area / total;
+    return sum - share * Math.log(share);
+  }, 0);
+  const maxEntropy = Math.log(Math.max(2, 7));
+  return Math.round((entropy / maxEntropy) * 100);
+}
+
+function calculatePoiDiversityScore(collection: FeatureCollection | undefined): number | null {
+  if (!collection?.features.length) return null;
+  const counts = new Map<string, number>();
+  for (const feature of collection.features) {
+    const category = String(feature.properties?.poiCategory ?? "").trim();
+    if (!category) continue;
+    counts.set(category, (counts.get(category) ?? 0) + 1);
+  }
+  const values = [...counts.values()].filter((count) => count > 0);
+  const total = values.reduce((sum, count) => sum + count, 0);
+  if (total <= 0) return null;
+  if (values.length === 1) return 25;
+  const entropy = values.reduce((sum, count) => {
+    const share = count / total;
+    return sum - share * Math.log(share);
+  }, 0);
+  const maxEntropy = Math.log(Math.max(2, 7));
+  return Math.round((entropy / maxEntropy) * 100);
+}
+
+function combineUrbanMixIndex(
+  landUseEntropyScore: number | null,
+  poiDiversityScore: number | null,
+): number | null {
+  if (landUseEntropyScore === null && poiDiversityScore === null) return null;
+  if (landUseEntropyScore !== null && poiDiversityScore !== null) {
+    return Math.round((landUseEntropyScore * 0.6 + poiDiversityScore * 0.4)) / 100;
+  }
+  const score = landUseEntropyScore ?? poiDiversityScore ?? 0;
+  return Math.round(score) / 100;
+}
+
+function calculateMobilityScore(input: {
+  transitStops: number | null;
+  transitDensity: number | null;
+  transitModeCounts: Array<{ mode: string; count: number }>;
+  mobilityCollection: FeatureCollection | undefined;
+  isochroneCollection: FeatureCollection | undefined;
+}): { value: number | null; confidence: "high" | "medium" | "low"; caveats: string[] } {
+  const modeCounts = summarizeMobilityModeCounts(input.mobilityCollection);
+  const isochroneScore = calculateActiveIsochroneScore(input.isochroneCollection);
+  const hasIsochrones = isochroneScore > 0;
+  const hasFallbackIsochrones = input.isochroneCollection?.features.some(
+    (feature) =>
+      feature.properties?.retrievalStatus === "fallback" &&
+      ["walking", "cycling"].includes(String(feature.properties?.isochroneMode ?? "")),
+  );
+  const availableInputs = [
+    input.transitStops !== null,
+    input.transitDensity !== null,
+    input.transitModeCounts.length > 0,
+    input.mobilityCollection !== undefined,
+    hasIsochrones,
+  ].filter(Boolean).length;
+  if (availableInputs === 0) {
+    return {
+      value: null,
+      confidence: "low",
+      caveats: ["No transport, mobility, or isochrone inputs were available."],
+    };
+  }
+
+  const transitCountScore =
+    input.transitStops === null
+      ? 0
+      : Math.min(100, Math.round((input.transitStops / 10) * 100));
+  const transitDensityScore =
+    input.transitDensity === null
+      ? 0
+      : Math.min(100, Math.round((input.transitDensity / 18) * 100));
+  const transitAccessScore = Math.round(transitCountScore * 0.6 + transitDensityScore * 0.4);
+  const transitModeScore = calculateTransitModeScore(input.transitModeCounts);
+  const walkingCyclingScore = Math.min(
+    100,
+    Math.round(((modeCounts.bike * 8 + modeCounts.pedestrian * 6 + modeCounts.support * 3) / 120) * 100),
+  );
+  const score = Math.round(
+    transitAccessScore * 0.3 +
+      transitModeScore * 0.2 +
+      walkingCyclingScore * 0.25 +
+      isochroneScore * 0.25,
+  );
+
+  return {
+    value: score,
+    confidence: availableInputs >= 3 && !hasFallbackIsochrones ? "medium" : "low",
+    caveats: [
+      "Mobility score is a deterministic screening KPI, not a routing or service-quality model.",
+      hasFallbackIsochrones
+        ? "OpenRouteService routed isochrones were unavailable; geometric fallback catchments reduce confidence."
+        : "OpenRouteService routed isochrones increase context but do not include timetable quality.",
+      "Driving isochrones are rendered as context but do not increase the mobility score.",
+      `Mobility subscores: transit access ${transitAccessScore}, transit mode hierarchy ${transitModeScore}, walking/cycling infrastructure ${walkingCyclingScore}, walking/cycling isochrone context ${isochroneScore}.`,
+    ],
+  };
+}
+
+function calculateTransitModeScore(modeCounts: Array<{ mode: string; count: number }>): number {
+  const weights: Record<string, number> = {
+    bus: 18,
+    tram: 25,
+    subway: 30,
+    light_rail: 25,
+    rail: 25,
+    station: 20,
+    transit: 12,
+  };
+  const modes = new Set(modeCounts.filter((item) => item.count > 0).map((item) => item.mode));
+  return Math.min(
+    100,
+    [...modes].reduce((total, mode) => total + (weights[mode] ?? 12), 0),
+  );
+}
+
+function calculateActiveIsochroneScore(collection: FeatureCollection | undefined): number {
+  if (!collection?.features.length) return 0;
+  let score = 0;
+  for (const mode of ["walking", "cycling"]) {
+    const features = collection.features.filter(
+      (feature) => feature.properties?.isochroneMode === mode,
+    );
+    if (features.some((feature) => feature.properties?.retrievalStatus === "live" || feature.properties?.retrievalStatus === "cached")) {
+      score += 40;
+    } else if (features.some((feature) => feature.properties?.retrievalStatus === "fallback")) {
+      score += 18;
+    }
+  }
+  return Math.min(80, score);
+}
+
+function summarizeMobilityModeCounts(
+  collection: FeatureCollection | undefined,
+): { bike: number; pedestrian: number; support: number } {
+  const counts = { bike: 0, pedestrian: 0, support: 0 };
+  for (const feature of collection?.features ?? []) {
+    const mode = String(feature.properties?.mobilityMode ?? "");
+    if (mode === "bike") counts.bike += 1;
+    if (mode === "pedestrian") counts.pedestrian += 1;
+    if (mode === "support") counts.support += 1;
+  }
+  return counts;
+}
+
+function calculateSocialInfrastructureScore(
+  selectedPoint: SelectedPoint,
+  collection: FeatureCollection | undefined,
+): { value: number | null; confidence: "high" | "medium" | "low"; caveats: string[] } {
+  if (!collection?.features.length) {
+    return {
+      value: null,
+      confidence: "low",
+      caveats: ["No social, civic, health, education, or commerce POIs were available."],
+    };
+  }
+  const categories = [
+    { id: "education", label: "education/childcare", weight: 0.25 },
+    { id: "health", label: "healthcare", weight: 0.3 },
+    { id: "commerce", label: "grocery/commerce", weight: 0.25 },
+    { id: "civic", label: "civic/admin", weight: 0.2 },
+  ];
+  const rows = categories.map((category) => {
+    const features = collection.features.filter(
+      (feature) => feature.properties?.poiCategory === category.id && feature.geometry.type === "Point",
+    );
+    const distances = features.map((feature) =>
+      distanceBetweenCoordinates(
+        [selectedPoint.lon, selectedPoint.lat],
+        feature.geometry.type === "Point" ? feature.geometry.coordinates : [selectedPoint.lon, selectedPoint.lat],
+      ),
+    );
+    const nearest = distances.length ? Math.min(...distances) : null;
+    const distanceScore = nearest === null ? 0 : distanceToServiceScore(nearest);
+    const countScore = Math.min(100, features.length * 25);
+    return {
+      ...category,
+      count: features.length,
+      nearest,
+      score: Math.round(distanceScore * 0.75 + countScore * 0.25),
+    };
+  });
+  const availableRows = rows.filter((row) => row.count > 0);
+  if (!availableRows.length) {
+    return {
+      value: null,
+      confidence: "low",
+      caveats: ["Loaded POIs did not include essential-service categories for social infrastructure scoring."],
+    };
+  }
+  const weightTotal = availableRows.reduce((total, row) => total + row.weight, 0);
+  const value = Math.round(
+    availableRows.reduce((total, row) => total + row.score * row.weight, 0) /
+      Math.max(0.0001, weightTotal),
+  );
+  return {
+    value,
+    confidence: availableRows.length >= 3 ? "medium" : "low",
+    caveats: [
+      `Essential categories available: ${availableRows.map((row) => `${row.label}: ${row.count}`).join(" / ")}.`,
+      "Distance thresholds: 500 m = 100, 800 m = 70, 1,000 m = 40, beyond 1,000 m = 0.",
+      "POI categories are OSM-derived and may miss facilities that are not mapped.",
+    ],
+  };
+}
+
+function distanceToServiceScore(distanceMeters: number): number {
+  if (distanceMeters <= 500) return 100;
+  if (distanceMeters <= 800) return 70;
+  if (distanceMeters <= 1_000) return 40;
+  return 0;
 }
 
 function circleAreaSqm(radiusMeters: number): number {

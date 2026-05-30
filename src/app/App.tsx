@@ -42,6 +42,7 @@ const DEFAULT_LAYERS: LayerState = {
   mobilityBike: false,
   mobilityPedestrian: false,
   mobilitySupport: false,
+  isochrones: false,
   pois: false,
   poiEducation: false,
   poiHealth: false,

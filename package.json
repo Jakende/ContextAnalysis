@@ -19,6 +19,7 @@
     "preprocess:point-cache": "node scripts/preprocess/resolve-point-cache.mjs",
     "test:data-sources": "node scripts/validate/test-data-sources.mjs",
     "test:data-sources:regression": "node scripts/validate/test-data-sources.mjs --preset regression",
+    "test:kpi": "node scripts/validate/test-kpi-rules.mjs",
     "validate:ui": "python3 scripts/validate/validate_ui_css.py src/styles/design-system.css src/styles/app.css"
   },
   "keywords": [],

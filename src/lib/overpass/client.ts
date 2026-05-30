@@ -5,14 +5,15 @@ import type { OverpassModule, OverpassProvenance, QueryParams } from "../types";
 import { overpassModules } from "./modules";
 
 const OVERPASS_ENDPOINTS = [
-  "https://overpass-api.de/api/interpreter",
   "https://overpass.private.coffee/api/interpreter",
   "https://overpass.kumi.systems/api/interpreter",
+  "https://overpass-api.de/api/interpreter",
   "https://overpass.openstreetmap.jp/api/interpreter",
 ];
 const OVERPASS_CONCURRENCY = 2;
-const OVERPASS_PROXY_TIMEOUT_MS = 45_000;
-const OVERPASS_CACHE_VERSION = "v11-polygon-role-validation";
+const OVERPASS_PROXY_TIMEOUT_MS = 110_000;
+const OVERPASS_CACHE_MAX_AGE_MS = 1000 * 60 * 60 * 24 * 7;
+const OVERPASS_CACHE_VERSION = "v12-poi-timeout-cache-fallback";
 
 type OverpassProxyResponse = {
   ok: boolean;
@@ -93,7 +94,7 @@ async function runOneModule(
   }
 
   const cached = input.allowCache
-    ? getCached<FeatureCollection>(cacheKey, 1000 * 60 * 60 * 24)
+    ? getCached<FeatureCollection>(cacheKey, OVERPASS_CACHE_MAX_AGE_MS)
     : null;
 
   const endpointStatus: OverpassProvenance["endpointStatus"] = [];
@@ -134,9 +135,7 @@ async function runOneModule(
         featureCount: featureCollection.features.length,
         endpointStatus,
         caveats: usedFallbackQuery
-          ? [
-              "Primary Overpass route-relation query timed out or failed; fallback physical OSM public-transport corridor geometry was used for line display.",
-            ]
+          ? [fallbackCaveat(module.id)]
           : [],
       },
     };
@@ -182,6 +181,16 @@ async function runOneModule(
       ],
     },
   };
+}
+
+function fallbackCaveat(moduleId: string): string {
+  if (moduleId === "transportLines") {
+    return "Primary Overpass route-relation query timed out or failed; fallback physical OSM public-transport corridor geometry was used for line display.";
+  }
+  if (moduleId === "pois") {
+    return "Primary Overpass POI query timed out or failed; fallback node-only POI query was used to preserve essential service and amenity evidence.";
+  }
+  return "Primary Overpass query timed out or failed; fallback query was used for this module.";
 }
 
 async function fetchOverpassQuery(

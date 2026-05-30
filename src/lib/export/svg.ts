@@ -23,6 +23,7 @@ export function analysisToSvg(
     ...analysis.overlays.pois.features,
     ...analysis.overlays.transport.features,
     ...analysis.overlays.mobility.features,
+    ...analysis.overlays.isochrones.features,
     ...analysis.overlays.barriers.features,
     ...analysis.overlays.development.features,
     ...analysis.overlays.trees.features,
@@ -46,7 +47,7 @@ export function analysisToSvg(
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 720" role="img" aria-label="Urban Context Analysis editable analysis SVG">
   <metadata>${escapeXml(JSON.stringify(manifest))}</metadata>
   <style>
-    :root{--surface:#000000;--ink:#ffffff;--muted:#b3b3b3;--border:#3a3a3a;--accent:#ffffff;--map-xl:#93c5fd;--map-zensus:#8a8f8a;--map-xl-source:#f97316;--map-green:#31d158;--map-tree:#16a34a;--map-building:#60a5fa;--map-transport:#facc15;--map-mobility:#22d3ee;--map-poi:#fb7185;--map-barrier:#ef4444;--map-development:#f97316;--map-sun:#fde047}
+    :root{--surface:#000000;--ink:#ffffff;--muted:#b3b3b3;--border:#3a3a3a;--accent:#ffffff;--map-xl:#93c5fd;--map-zensus:#8a8f8a;--map-xl-source:#f97316;--map-green:#31d158;--map-tree:#16a34a;--map-building:#60a5fa;--map-transport:#facc15;--map-mobility:#22d3ee;--map-isochrone:#eab308;--map-poi:#fb7185;--map-barrier:#ef4444;--map-development:#f97316;--map-sun:#fde047}
     text{font-family:JetBrains Mono,SFMono-Regular,Menlo,Consolas,monospace;fill:var(--ink)}
     .frame{fill:var(--surface);stroke:var(--border);stroke-width:1}
     .buffer{fill:none;stroke:var(--muted);stroke-width:1;stroke-dasharray:6 6}
@@ -61,6 +62,7 @@ export function analysisToSvg(
     .poi{fill:var(--map-poi);stroke:var(--surface);stroke-width:1}
     .transport{fill:var(--map-transport);stroke:var(--surface);stroke-width:1}
     .mobility{fill:var(--map-mobility);fill-opacity:.9;stroke:var(--map-mobility);stroke-width:2;stroke-dasharray:5 4}
+    .isochrone{fill:var(--map-isochrone);fill-opacity:.14;stroke:var(--map-isochrone);stroke-width:1;stroke-dasharray:4 3}
     .barrier{fill:var(--map-barrier);stroke:var(--map-barrier);stroke-width:1}
     .development{fill:var(--map-development);fill-opacity:.25;stroke:var(--map-development);stroke-width:1}
     .point{fill:var(--ink);stroke:var(--surface);stroke-width:2}
@@ -77,6 +79,7 @@ export function analysisToSvg(
     <g id="m-street-segment">${featuresToSvg(analysis.overlays.mStreetSegment.features, project, "street")}</g>
     <g id="pois">${featuresToSvg(analysis.overlays.pois.features, project, "poi")}</g>
     <g id="transport">${featuresToSvg(analysis.overlays.transport.features, project, "transport")}</g>
+    <g id="isochrones">${featuresToSvg(analysis.overlays.isochrones.features, project, "isochrone")}</g>
     <g id="mobility">${featuresToSvg(analysis.overlays.mobility.features, project, "mobility")}</g>
     <g id="barriers">${featuresToSvg(analysis.overlays.barriers.features, project, "barrier")}</g>
     <g id="development">${featuresToSvg(analysis.overlays.development.features, project, "development")}</g>

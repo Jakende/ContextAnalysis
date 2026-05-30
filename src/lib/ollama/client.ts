@@ -1,6 +1,7 @@
 import type { AnalysisResult } from "../types";
 import { getSources } from "../data/sourceRegistry";
 import { analysisToMarkdown } from "../export/serializers";
+import { kpiFormulaLines } from "../analysis/kpi/kpiMatrix";
 
 type OllamaReport = {
   status: "ok" | "fallback" | "unavailable";
@@ -15,6 +16,7 @@ const REQUIRED_REPORT_HEADINGS = [
   "## L Neighbourhood",
   "## M Streetscape",
   "## Key Metrics",
+  "## KPI Definitions And Formulas",
   "## Data Sources",
   "## Caveats",
 ] as const;
@@ -38,6 +40,7 @@ Output:
 - Include these exact section headings, in this order:
 ${REQUIRED_REPORT_HEADINGS.join("\n")}
 - In each XL/L/M section, summarize the relevant modules, then list important indicators with value, unit, confidence, method, and caveats.
+- In the KPI Definitions And Formulas section, list KPI definitions, thresholds, normalization formulas, composite calculation, classification rules, and confidence notes from the JSON. Do not invent formulas.
 - Add "not available" for missing sections instead of omitting them.`;
 
 export async function generateOllamaReport(
@@ -248,6 +251,7 @@ function createReportPayload(analysis: AnalysisResult) {
       caveats: module.caveats,
       indicators: module.indicators.map((indicator) => indicator.id),
     })),
+    kpiDefinitionsAndFormulas: kpiFormulaLines(),
     sources: sources.map((source) => ({
       id: source.id,
       label: source.label,
