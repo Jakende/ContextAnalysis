@@ -75,91 +75,54 @@ const MOBILITY_RADIUS_STYLES = {
   "walking-5": {
     label: "Walking 5 min / 300 m",
     color: "#6ea877",
-    pattern: "mobility-hatch-walking-5",
-    hatch: "diagonal",
-    spacing: 10,
   },
   "walking-10": {
     label: "Walking 10 min / 500 m",
     color: "#5fa86b",
-    pattern: "mobility-hatch-walking-10",
-    hatch: "diagonal",
-    spacing: 7,
   },
   "walking-15": {
     label: "Walking 15 min / 800 m",
     color: "#3f8f58",
-    pattern: "mobility-hatch-walking-15",
-    hatch: "diagonal",
-    spacing: 5,
   },
   "cycling-5": {
     label: "Bike 5 min / 1.25 km",
     color: "#5db8c2",
-    pattern: "mobility-hatch-cycling-5",
-    hatch: "reverse",
-    spacing: 10,
   },
   "cycling-10": {
     label: "Bike 10 min / 2.5 km",
     color: "#54a9ba",
-    pattern: "mobility-hatch-cycling-10",
-    hatch: "reverse",
-    spacing: 7,
   },
   "cycling-15": {
     label: "Bike 15 min / 3.75 km",
     color: "#3b899e",
-    pattern: "mobility-hatch-cycling-15",
-    hatch: "reverse",
-    spacing: 5,
   },
   "transit-5": {
     label: "Transit 5 min / 400 m",
     color: "#d3b54d",
-    pattern: "mobility-hatch-transit-5",
-    hatch: "horizontal",
-    spacing: 10,
   },
   "transit-10": {
     label: "Transit 10 min / 800 m",
     color: "#c8a43f",
-    pattern: "mobility-hatch-transit-10",
-    hatch: "horizontal",
-    spacing: 7,
   },
   "transit-15": {
     label: "Transit 15 min / 1.2 km",
     color: "#aa8733",
-    pattern: "mobility-hatch-transit-15",
-    hatch: "horizontal",
-    spacing: 5,
   },
   "driving-5": {
     label: "Car 5 min / 2 km",
     color: "#d09a51",
-    pattern: "mobility-hatch-driving-5",
-    hatch: "vertical",
-    spacing: 10,
   },
   "driving-10": {
     label: "Car 10 min / 4 km",
     color: "#c8855b",
-    pattern: "mobility-hatch-driving-10",
-    hatch: "vertical",
-    spacing: 7,
   },
   "driving-15": {
     label: "Car 15 min / 6 km",
     color: "#b9654b",
-    pattern: "mobility-hatch-driving-15",
-    hatch: "cross",
-    spacing: 8,
   },
 } as const;
 
 type MobilityRadiusBandId = keyof typeof MOBILITY_RADIUS_STYLES;
-type MobilityHatchKind = (typeof MOBILITY_RADIUS_STYLES)[MobilityRadiusBandId]["hatch"];
 
 const LOCAL_TRANSIT_MODES = ["bus", "tram", "subway", "transit"];
 const RAIL_TRANSIT_MODES = ["light_rail", "rail"];
@@ -211,7 +174,6 @@ const INTERACTIVE_ANALYSIS_LAYER_IDS = [
   "xl-source-line",
   "xl-grid-line",
   "development-fill",
-  "l-buffer-fill",
   "isochrone-fill-walking",
   "isochrone-fill-cycling",
   "isochrone-fill-driving",
@@ -881,7 +843,7 @@ function MapLegend({
       ) : null}
       {items.map((item) => (
         <span className={`legend-row legend-row-${item.level ?? "item"}`} key={item.label}>
-          <i style={{ background: item.pattern ?? item.color }} />
+          <i style={{ background: item.color }} />
           {item.label}
           {typeof item.count === "number" ? <small>{item.count}</small> : null}
         </span>
@@ -896,7 +858,7 @@ function getLegendItems(
   analysis: AnalysisResult,
   layerStyles: LayerStyleState,
 ) {
-  const items: Array<{ label: string; color: string; count?: number; pattern?: string; level?: "parent" | "child" | "item" }> = [
+  const items: Array<{ label: string; color: string; count?: number; level?: "parent" | "child" | "item" }> = [
     { label: "Selected point", color: MAP_LAYER_COLORS.selected },
   ];
   if (activeScale === "XL") {
@@ -977,7 +939,7 @@ function getLegendItems(
 
 function getMobilityRadiusLegendItems(
   analysis: AnalysisResult,
-): Array<{ label: string; color: string; pattern: string; level: "child"; count?: number }> {
+): Array<{ label: string; color: string; level: "child"; count?: number }> {
   const availableBands = new Set(
     analysis.overlays.lBuffer.features
       .map((feature) => String(feature.properties?.radiusBand ?? ""))
@@ -992,34 +954,10 @@ function getMobilityRadiusLegendItems(
       return {
         label: style.label,
         color: style.color,
-        pattern: cssHatchPattern(style.color, style.hatch, style.spacing),
         level: "child" as const,
         count,
       };
     });
-}
-
-function cssHatchPattern(
-  color: string,
-  hatch: MobilityHatchKind,
-  spacing: number,
-): string {
-  const width = "1.5px";
-  const gap = `${spacing}px`;
-  if (hatch === "horizontal") {
-    return `repeating-linear-gradient(0deg, transparent 0 ${gap}, ${color} ${gap} calc(${gap} + ${width}))`;
-  }
-  if (hatch === "vertical") {
-    return `repeating-linear-gradient(90deg, transparent 0 ${gap}, ${color} ${gap} calc(${gap} + ${width}))`;
-  }
-  if (hatch === "cross") {
-    return [
-      `repeating-linear-gradient(0deg, transparent 0 ${gap}, ${color} ${gap} calc(${gap} + ${width}))`,
-      `repeating-linear-gradient(90deg, transparent 0 ${gap}, ${color} ${gap} calc(${gap} + ${width}))`,
-    ].join(", ");
-  }
-  const angle = hatch === "reverse" ? "-45deg" : "45deg";
-  return `repeating-linear-gradient(${angle}, transparent 0 ${gap}, ${color} ${gap} calc(${gap} + ${width}))`;
 }
 
 function showAnalysisFeatureInfo(
@@ -1254,91 +1192,6 @@ function addIsochroneLayers(
   }, beforeId);
 }
 
-function ensureMobilityRadiusPatternImages(map: MapLibreMap): void {
-  for (const [id, style] of Object.entries(MOBILITY_RADIUS_STYLES)) {
-    if (map.hasImage(style.pattern)) continue;
-    map.addImage(
-      style.pattern,
-      createHatchImage(style.color, style.hatch, style.spacing, id.includes("-10") || id.includes("-15") ? 1.6 : 1.25),
-    );
-  }
-}
-
-function createHatchImage(
-  color: string,
-  hatch: MobilityHatchKind,
-  spacing: number,
-  lineWidth: number,
-): ImageData {
-  const size = 24;
-  const canvas = document.createElement("canvas");
-  canvas.width = size;
-  canvas.height = size;
-  const context = canvas.getContext("2d");
-  if (!context) {
-    return new ImageData(size, size);
-  }
-  context.clearRect(0, 0, size, size);
-  context.strokeStyle = color;
-  context.globalAlpha = 0.78;
-  context.lineWidth = lineWidth;
-  context.lineCap = "square";
-  drawHatchLines(context, size, spacing, hatch);
-  return context.getImageData(0, 0, size, size);
-}
-
-function drawHatchLines(
-  context: CanvasRenderingContext2D,
-  size: number,
-  spacing: number,
-  hatch: MobilityHatchKind,
-): void {
-  if (hatch === "horizontal") {
-    for (let y = 0; y <= size; y += spacing) {
-      context.beginPath();
-      context.moveTo(0, y);
-      context.lineTo(size, y);
-      context.stroke();
-    }
-    return;
-  }
-  if (hatch === "vertical") {
-    for (let x = 0; x <= size; x += spacing) {
-      context.beginPath();
-      context.moveTo(x, 0);
-      context.lineTo(x, size);
-      context.stroke();
-    }
-    return;
-  }
-  if (hatch === "cross") {
-    drawHatchLines(context, size, spacing, "vertical");
-    drawHatchLines(context, size, spacing, "horizontal");
-    return;
-  }
-  const reverse = hatch === "reverse";
-  for (let offset = -size; offset <= size * 2; offset += spacing) {
-    context.beginPath();
-    if (reverse) {
-      context.moveTo(offset, 0);
-      context.lineTo(offset - size, size);
-    } else {
-      context.moveTo(offset, 0);
-      context.lineTo(offset + size, size);
-    }
-    context.stroke();
-  }
-}
-
-function mobilityRadiusPatternExpression(): any {
-  return [
-    "match",
-    ["get", "radiusBand"],
-    ...Object.entries(MOBILITY_RADIUS_STYLES).flatMap(([id, style]) => [id, style.pattern]),
-    "mobility-hatch-walking-10",
-  ];
-}
-
 function mobilityRadiusColorExpression(fallbackColor: string): any {
   return [
     "match",
@@ -1386,8 +1239,6 @@ function addAnalysisSourcesAndLayers(map: MapLibreMap): void {
       });
     }
   }
-
-  ensureMobilityRadiusPatternImages(map);
 
   addLayerIfMissing(map, {
     id: "xl-context-fill",
@@ -1524,16 +1375,6 @@ function addAnalysisSourcesAndLayers(map: MapLibreMap): void {
       "line-color": MAP_LAYER_COLORS.urbanAtlas,
       "line-width": 0.8,
       "line-opacity": 0.85,
-    },
-  });
-  addLayerIfMissing(map, {
-    id: "l-buffer-fill",
-    type: "fill",
-    source: "l-buffer",
-    filter: ["all", ["==", ["geometry-type"], "Polygon"], ["has", "radiusBand"]],
-    paint: {
-      "fill-pattern": mobilityRadiusPatternExpression(),
-      "fill-opacity": 0.72,
     },
   });
   addLayerIfMissing(map, {
@@ -2827,7 +2668,6 @@ function applyLayerVisibility(
   setLayerVisibility(map, "xl-source-line", isXl && layers.xlSources);
   setLayerVisibility(map, "urban-atlas-fill", showLContext && layers.urbanAtlas);
   setLayerVisibility(map, "urban-atlas-line", showLContext && layers.urbanAtlas);
-  setLayerVisibility(map, "l-buffer-fill", showLContext && layers.lBuffer);
   setLayerVisibility(map, "l-buffer-line", showLContext && layers.lBuffer);
   setLayerVisibility(map, "l-buffer-labels", showLContext && layers.lBuffer);
   setLayerVisibility(map, "poi-points", showLContext && layers.pois);
@@ -2901,7 +2741,6 @@ function hideAnalysisLayers(map: MapLibreMap): void {
     "xl-source-line",
     "urban-atlas-fill",
     "urban-atlas-line",
-    "l-buffer-fill",
     "l-buffer-line",
     "l-buffer-labels",
     "poi-points",
@@ -3005,7 +2844,6 @@ function applyLayerStyles(map: MapLibreMap, styles: LayerStyleState): void {
   setLineStyle(map, "xl-source-line", styles.xlSources);
   setFillStyle(map, "urban-atlas-fill", styles.urbanAtlas, 0.18);
   setLineStyle(map, "urban-atlas-line", styles.urbanAtlas);
-  setPaint(map, "l-buffer-fill", "fill-opacity", 0.72);
   setPaint(map, "l-buffer-line", "line-color", mobilityRadiusColorExpression(styles.lBuffer.color));
   setPaint(map, "l-buffer-line", "line-width", [
     "case",

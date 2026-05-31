@@ -16,6 +16,8 @@ assert.deepEqual(coreIds, [
   "green_blue_access",
   "urban_mix",
   "social_infrastructure",
+  "tree_canopy",
+  "station_axis",
 ]);
 assert.equal(coreIds.includes("transit"), false, "transit must not be a standalone core KPI");
 
@@ -32,6 +34,8 @@ assert.equal(normalize(byId.green_blue_access, 70), 100);
 assert.equal(normalize(byId.urban_mix, 0.62), 62);
 assert.equal(normalize(byId.mobility_access, 80), 80);
 assert.equal(normalize(byId.social_infrastructure, null), null);
+assert.equal(normalize(byId.tree_canopy, 67), 67);
+assert.equal(normalize(byId.station_axis, 91), 91);
 
 const balanced = schema.strategies.find((strategy) => strategy.id === schema.defaultStrategyId);
 assert.equal(classify(85, balanced), "Strong Urban Quality");
@@ -45,8 +49,10 @@ const sampleScores = {
   green_blue_access: 50,
   urban_mix: 75,
   social_infrastructure: 100,
+  tree_canopy: 60,
+  station_axis: 85,
 };
-assert.equal(scoreComposite(sampleScores, balanced), 73);
+assert.equal(scoreComposite(sampleScores, balanced), 74);
 assert.equal(classifyContext(97), "Metropolitan core context");
 assert.equal(classifyContext(75), "Large city context");
 assert.equal(classifyContext(58), "Regional city context");

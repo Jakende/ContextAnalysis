@@ -14,6 +14,7 @@ import {
 import { runSourceAdapters } from "../data/sourceAdapters";
 import { createDataSourceRunReport } from "../data/sourceRun";
 import { fetchZensusWmsIndicators } from "../data/zensusWms";
+import { createBenchmarkModule } from "./benchmark/benchmark";
 import { MOBILITY_ANALYSIS_RADIUS_METERS } from "./mobility/mobilityScales";
 import { fetchOpenRouteServiceIsochrones } from "../mobility/openRouteService";
 import { runOverpassModules } from "../overpass/client";
@@ -306,6 +307,19 @@ export async function runLocationAnalysis(input: {
     ],
     computedAt,
   );
+  const benchmark = createBenchmarkModule(
+    [
+      ...xl.indicators,
+      ...fua.indicators,
+      ...zensusWms.indicators,
+      ...zensus.indicators,
+      ...xlSourceStatus.indicators,
+      ...l.indicators,
+      ...kpi.indicators,
+      ...m.indicators,
+    ],
+    computedAt,
+  );
   emitProgress(input.onProgress, {
     id: "indicators",
     label: "XL/L/M indicators",
@@ -321,6 +335,7 @@ export async function runLocationAnalysis(input: {
     ...xlSourceStatus.modules,
     ...l.modules,
     ...kpi.modules,
+    ...benchmark.modules,
     ...m.modules,
   ];
   const allIndicators = [
@@ -331,6 +346,7 @@ export async function runLocationAnalysis(input: {
     ...xlSourceStatus.indicators,
     ...l.indicators,
     ...kpi.indicators,
+    ...benchmark.indicators,
     ...m.indicators,
   ];
   const sourceIds = [

@@ -1,5 +1,5 @@
 {
-  "version": "0.2.0",
+  "version": "0.3.0",
   "defaultStrategyId": "balanced",
   "definitions": [
     {
@@ -27,7 +27,7 @@
       "name": "Mobility Access",
       "category": "access",
       "status": "core",
-      "defaultWeight": 0.3,
+      "defaultWeight": 0.22,
       "sourceIndicator": "l.mobility-score",
       "normalization": {
         "type": "direct",
@@ -46,7 +46,7 @@
       "name": "Green/Blue Access",
       "category": "environment",
       "status": "core",
-      "defaultWeight": 0.3,
+      "defaultWeight": 0.2,
       "sourceIndicator": "l.green-percentage",
       "normalization": {
         "type": "target",
@@ -65,7 +65,7 @@
       "name": "Urban Mix",
       "category": "urban fabric",
       "status": "core",
-      "defaultWeight": 0.25,
+      "defaultWeight": 0.18,
       "sourceIndicator": "l.land-use-mix",
       "normalization": {
         "type": "index",
@@ -83,7 +83,7 @@
       "name": "Social Infrastructure Access",
       "category": "services",
       "status": "core",
-      "defaultWeight": 0.15,
+      "defaultWeight": 0.14,
       "sourceIndicator": "l.social-infrastructure-score",
       "normalization": {
         "type": "direct",
@@ -95,6 +95,43 @@
         "Nearest essential POI within 800 m = 70 distance subscore.",
         "Nearest essential POI within 1,000 m = 40 distance subscore.",
         "Category count contributes a secondary min(100, count * 25) subscore."
+      ]
+    },
+    {
+      "id": "tree_canopy",
+      "name": "Tree Canopy",
+      "category": "environment",
+      "status": "core",
+      "defaultWeight": 0.13,
+      "sourceIndicator": "l.tree-canopy-score",
+      "normalization": {
+        "type": "direct",
+        "formula": "clamp(round(value), 0, 100)"
+      },
+      "formula": "Proxy score from mapped tree points, tree-row evidence, and green/open-space support. It is a canopy/shade screening KPI, not measured canopy cover.",
+      "thresholds": [
+        "65 mapped tree points/km² contributes 100 to the tree-density subscore.",
+        "Each mapped tree-row feature contributes 35 points up to 100 for the row subscore.",
+        "Green/open-space percentage supports the score using the same 35% target as Green/Blue Access."
+      ]
+    },
+    {
+      "id": "station_axis",
+      "name": "Station Axis",
+      "category": "access",
+      "status": "core",
+      "defaultWeight": 0.13,
+      "sourceIndicator": "l.station-axis-score",
+      "normalization": {
+        "type": "direct",
+        "formula": "clamp(round(value), 0, 100)"
+      },
+      "formula": "Transit-axis screening score from nearest stop/station distance, mode hierarchy, stop density, and public-transport route/corridor evidence.",
+      "thresholds": [
+        "Nearest stop/station within 300 m = 100 distance subscore.",
+        "Nearest stop/station within 500 m = 80 distance subscore.",
+        "Tram, subway, light-rail, and rail modes contribute stronger mode evidence than bus-only access.",
+        "Line/corridor evidence comes from loaded Overpass route and corridor geometries where available."
       ]
     },
     {
@@ -154,10 +191,12 @@
       "name": "Balanced Urban Quality",
       "description": "Default urban quality diagnosis across mobility, green/blue access, mix, and everyday services.",
       "weights": {
-        "mobility_access": 0.3,
-        "green_blue_access": 0.3,
-        "urban_mix": 0.25,
-        "social_infrastructure": 0.15
+        "mobility_access": 0.22,
+        "green_blue_access": 0.2,
+        "urban_mix": 0.18,
+        "social_infrastructure": 0.14,
+        "tree_canopy": 0.13,
+        "station_axis": 0.13
       },
       "classifications": {
         "high": "Strong Urban Quality",
@@ -171,10 +210,12 @@
       "name": "Mobility-Oriented",
       "description": "Emphasizes low-car movement, public transport, and active mobility.",
       "weights": {
-        "mobility_access": 0.45,
-        "urban_mix": 0.2,
-        "social_infrastructure": 0.2,
-        "green_blue_access": 0.15
+        "mobility_access": 0.3,
+        "station_axis": 0.25,
+        "urban_mix": 0.16,
+        "social_infrastructure": 0.14,
+        "green_blue_access": 0.08,
+        "tree_canopy": 0.07
       },
       "classifications": {
         "high": "Low-Car Ready",
@@ -188,10 +229,12 @@
       "name": "Green/Climate",
       "description": "Emphasizes green/blue access and climate proxy readiness using current MVP inputs.",
       "weights": {
-        "green_blue_access": 0.4,
-        "mobility_access": 0.2,
-        "social_infrastructure": 0.2,
-        "urban_mix": 0.2
+        "green_blue_access": 0.28,
+        "tree_canopy": 0.25,
+        "mobility_access": 0.15,
+        "social_infrastructure": 0.12,
+        "urban_mix": 0.12,
+        "station_axis": 0.08
       },
       "classifications": {
         "high": "High Resilience",
@@ -205,10 +248,12 @@
       "name": "Infill Context",
       "description": "Interim context preset for transformation discussions until a separate development-potential score is implemented.",
       "weights": {
-        "mobility_access": 0.35,
-        "urban_mix": 0.3,
-        "green_blue_access": 0.2,
-        "social_infrastructure": 0.15
+        "mobility_access": 0.24,
+        "station_axis": 0.2,
+        "urban_mix": 0.24,
+        "green_blue_access": 0.13,
+        "social_infrastructure": 0.12,
+        "tree_canopy": 0.07
       },
       "classifications": {
         "high": "High Transformation Context",

@@ -52,12 +52,12 @@ export function FactSheetPanel({
             </strong>
             <span>{analysis.selectedPoint.label ?? "Address not available"}</span>
           </div>
+          {activeScale === "L" ? <KpiWeightMatrix analysis={analysis} /> : null}
           <div className="module-list">
             {modules?.map((module) => (
               <FactModule key={module.id} module={module} />
             ))}
           </div>
-          {activeScale === "L" ? <KpiWeightMatrix analysis={analysis} /> : null}
           <FeatureEvidencePanel analysis={analysis} activeScale={activeScale} />
           <AnalysisCharts analysis={analysis} activeScale={activeScale} />
           <details className="source-run-list">
@@ -131,14 +131,30 @@ function KpiWeightMatrix({ analysis }: { analysis: AnalysisResult }) {
       </div>
       <div className="kpi-row-list">
         {scored.rows.map((row) => (
-          <div className="kpi-row" key={row.definition.id}>
+          <details
+            className="kpi-row"
+            key={row.definition.id}
+            data-missing={row.score === null}
+          >
+            <summary>
             <span>
               <strong>{row.definition.name}</strong>
-              <small>{row.definition.category}</small>
+              <small>
+                {row.definition.category} / {row.source ? row.source.confidence : "missing"}
+              </small>
             </span>
             <b>{row.score ?? "n/a"}</b>
             <small>{Math.round(row.weight * 100)}%</small>
-          </div>
+            </summary>
+            <div className="kpi-row-detail">
+              <span>Source indicator: {row.definition.sourceIndicator}</span>
+              <span>Method: {row.source?.method ?? "Input is not available for this selected point."}</span>
+              <span>
+                Sources: {row.source?.sourceIds.length ? row.source.sourceIds.join(", ") : "not available"}
+              </span>
+              <span>Normalization: {row.definition.normalization.formula}</span>
+            </div>
+          </details>
         ))}
       </div>
       <details className="kpi-advanced">

@@ -33,31 +33,6 @@
   text-transform: uppercase;
 }
 
-.guided-rail {
-  display: grid;
-  gap: var(--space-2);
-  padding: var(--space-2);
-  background: var(--surface-2);
-}
-
-.guided-rail-header {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--space-2);
-  align-items: center;
-}
-
-.guided-rail-state {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--muted);
-}
-
-.guided-rail .mode-row {
-  margin-bottom: 0;
-}
-
 .mode-row {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -68,42 +43,6 @@
   background: var(--surface);
   color: var(--ink);
   border-color: var(--border);
-}
-
-.guided-rail .mode-row button {
-  min-height: 30px;
-}
-
-.guided-copy {
-  color: var(--muted);
-  font-size: 12px;
-}
-
-.guided-steps {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: grid;
-  gap: 2px;
-}
-
-.guided-steps li {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--space-2);
-  border-top: 1px solid var(--border);
-  padding-top: 2px;
-  color: var(--muted);
-  font-size: 11px;
-}
-
-.guided-steps li.is-complete {
-  color: var(--ink);
-}
-
-.guided-steps li span {
-  color: var(--muted);
-  font-size: 10px;
 }
 
 .top-rail .theme-toggle {
@@ -1093,7 +1032,6 @@
 .legend-row-child i {
   width: 18px;
   height: 12px;
-  background-color: transparent;
 }
 
 .legend-row small {
@@ -1454,20 +1392,39 @@
 }
 
 .kpi-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 42px 42px;
-  gap: var(--space-2);
-  align-items: center;
+  display: block;
   padding: var(--space-2);
   border: 1px solid var(--border);
   background: var(--surface-2);
 }
 
-.kpi-row-editable {
-  grid-template-columns: minmax(0, 1fr) 42px minmax(88px, 0.45fr);
+.kpi-row[data-missing="true"] {
+  border-style: dashed;
+  color: var(--muted);
 }
 
-.kpi-row span {
+.kpi-row summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 42px 42px;
+  gap: var(--space-2);
+  align-items: center;
+  cursor: pointer;
+  list-style: none;
+}
+
+.kpi-row summary::-webkit-details-marker {
+  display: none;
+}
+
+.kpi-row-editable {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 42px minmax(88px, 0.45fr);
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.kpi-row span,
+.kpi-row-detail {
   display: grid;
   gap: 2px;
   min-width: 0;
@@ -1487,6 +1444,15 @@
 
 .kpi-row b {
   text-align: right;
+}
+
+.kpi-row-detail {
+  margin-top: var(--space-2);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.45;
 }
 
 .kpi-row input {

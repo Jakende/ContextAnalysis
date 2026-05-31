@@ -107,6 +107,17 @@ export const sourceRegistry = {
     notes:
       "MVP sample CSVs are local placeholders with source-compatible schema. Replace with authoritative exports during preprocessing.",
   },
+  "uca-benchmark-peers": {
+    id: "uca-benchmark-peers",
+    label: "Urban Context Analysis benchmark peer table",
+    type: "local-file",
+    localPath: "src/lib/analysis/benchmark/benchmark.ts",
+    attribution: "Urban Context Analysis MVP reference table",
+    scale: ["XL", "L"],
+    updateMode: "manual",
+    notes:
+      "Static MVP peer scores for initial multi-city and district benchmarking. Replace with preprocessed benchmark tables before production use.",
+  },
   "zensus-grid-2022": {
     id: "zensus-grid-2022",
     label: "Zensus 2022 grid cells / Zensus-Atlas WMS",

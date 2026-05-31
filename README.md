@@ -9,7 +9,7 @@
 | Area | What it does |
 | --- | --- |
 | `XL` | City and region context: districts, demographics, housing, rents, and FUA-ready references. |
-| `L` | Neighbourhood context: land use, green and blue space, transit access, and development hints. |
+| `L` | Neighbourhood context: land use, green and blue space, transit access, station-axis evidence, tree canopy proxy, and development hints. |
 | `M` | Streetscape context: street segment, trees, building massing, sun/shadow hints, and section SVG. |
 
 | Stack | Details |
@@ -41,8 +41,9 @@ Current implementation notes:
 
 - Select a point on the map or search for a place.
 - Switch between `XL`, `L`, and `M` without losing the selected location.
+- Review KPI-first local quality, Tree Canopy, Station Axis, and benchmark indicators before raw modules.
 - Toggle analytical layers for `3D`, `trees`, `sun`, `section`, and `green`.
-- Use the map-first direct workflow for immediate analysis; `GuidedExplorer` exists in the codebase but is not currently mounted in the main app shell.
+- Use the map-first direct workflow for immediate analysis.
 - Export the structured result, not just a screenshot.
 
 ## Run locally
@@ -112,6 +113,7 @@ Local CSVs in `src/lib/data/csv/` are schema-compatible MVP samples. Replace the
 - [Data sources](docs/data-sources.md)
 - [Methods](docs/methods.md)
 - [Indicators](docs/indicators.md)
+- [Product plan](plans.md)
 
 ## Status
 

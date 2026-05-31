@@ -743,16 +743,18 @@ Status: Finalized after review.
 
 1. ✅ **Primary default use case:** **Urban quality diagnosis**. This is the most universal use case that serves the broadest range of users and planning scenarios.
 
-2. ✅ **KPI families for MVP:** **4 core families:**
+2. ✅ **KPI families for MVP:** **6 core families:**
    - Mobility Access (combined PT, walking, cycling)
    - Green/Blue Access
    - Urban Mix (entropy-based)
    - Social Infrastructure Access
+   - Tree Canopy (proxy-based tree/shade evidence)
+   - Station Axis (transit-axis access and corridor evidence)
 
-3. ✅ **Experimental KPI families:** **3 families:**
+3. ✅ **Experimental KPI families:** **2 families:**
    - Climate/Heat Resilience (proxy-based)
    - Streetscape Quality (M-scale, aggregated to L)
-   - Development Potential (deferred to post-MVP)
+   - Development Potential remains deferred to post-MVP and should not be part of the default urban quality score.
 
 4. ✅ **Score format:** **Local Quality Score + separate XL Context Score + radar/profile view**. Local quality remains the primary local output; XL context prevents Munich/Rosenheim-style context ambiguity.
 

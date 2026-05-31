@@ -181,10 +181,16 @@ export function analysisToMarkdown(analysis: AnalysisResult): string {
     "l.transit-line-details",
     "l.mobility-score",
     "l.social-infrastructure-score",
+    "l.tree-canopy-score",
+    "l.station-axis-score",
     "xl.context-score",
     "xl.context-class",
     "kpi.local-quality-score",
     "kpi.local-quality-class",
+    "benchmark.local-quality-rank",
+    "benchmark.local-quality-percentile",
+    "benchmark.strongest-relative-kpi",
+    "benchmark.weakest-relative-kpi",
     "m.street-width",
     "m.building-height",
   ]) {
@@ -195,6 +201,7 @@ export function analysisToMarkdown(analysis: AnalysisResult): string {
   }
 
   appendKpiFormulaSection(lines);
+  appendBenchmarkSection(lines, analysis);
   appendFeatureInventory(lines, analysis);
 
   lines.push("", "## Data Sources");
@@ -253,6 +260,22 @@ function appendKpiFormulaSection(lines: string[]): void {
   lines.push("", "## KPI Definitions And Formulas");
   for (const line of kpiFormulaLines()) {
     lines.push(`- ${line}`);
+  }
+}
+
+function appendBenchmarkSection(lines: string[], analysis: AnalysisResult): void {
+  const benchmarkIndicators = analysis.indicators.filter((indicator) =>
+    indicator.id.startsWith("benchmark."),
+  );
+  lines.push("", "## Multi-City Benchmark");
+  if (!benchmarkIndicators.length) {
+    lines.push("- not available");
+    return;
+  }
+  for (const indicator of benchmarkIndicators) {
+    lines.push(
+      `- **${indicator.label}:** ${formatValue(indicator.value)}${indicator.unit ? ` ${indicator.unit}` : ""} (${indicator.confidence} confidence)`,
+    );
   }
 }
 

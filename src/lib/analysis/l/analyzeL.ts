@@ -95,6 +95,17 @@ export function analyzeL(
     selectedPoint,
     livePois,
   );
+  const treeCanopyScore = calculateTreeCanopyScore({
+    trees: liveTrees,
+    greenPercent,
+    radiusMeters,
+  });
+  const stationAxisScore = calculateStationAxisScore({
+    selectedPoint,
+    transitStops: liveTransportStops,
+    transitSummary,
+    transitLineSummary,
+  });
   const liveCaveat =
     "Live OSM/Overpass data were queried for this point; completeness depends on OSM tagging.";
   const fallbackCaveat =
@@ -413,6 +424,70 @@ export function analyzeL(
       computedAt,
     }),
     createIndicator({
+      id: "l.tree-canopy-score",
+      label: "Tree Canopy",
+      scale: "L",
+      value: treeCanopyScore.value,
+      unit: "0-100",
+      geometry: liveTrees?.features[0]?.geometry ?? overlays.green.features[0]?.geometry,
+      method:
+        treeCanopyScore.value !== null
+          ? "Proxy score from loaded OSM tree/tree-row evidence and green/open-space share in the L-scale context."
+          : "No tree, tree-row, or green-space evidence was available for a tree-canopy proxy.",
+      sourceIds: ["osm-core", "osm-overpass", "copernicus-urban-atlas", "urban-atlas-2021-catalog"],
+      confidence: treeCanopyScore.confidence,
+      caveats: [
+        ...treeCanopyScore.caveats,
+        "This is not measured canopy cover; it distinguishes mapped trees/tree rows from true canopy coverage.",
+      ],
+      computedAt,
+    }),
+    createIndicator({
+      id: "l.tree-canopy-evidence",
+      label: "Tree canopy evidence",
+      scale: "L",
+      value: treeCanopyScore.detail,
+      method:
+        "Summarized tree count, tree-row evidence, and green/open-space support used by the Tree Canopy KPI.",
+      sourceIds: ["osm-core", "osm-overpass", "copernicus-urban-atlas", "urban-atlas-2021-catalog"],
+      confidence: treeCanopyScore.confidence,
+      caveats: treeCanopyScore.caveats,
+      computedAt,
+    }),
+    createIndicator({
+      id: "l.station-axis-score",
+      label: "Station Axis",
+      scale: "L",
+      value: stationAxisScore.value,
+      unit: "0-100",
+      geometry: liveTransportLines?.features.find(
+        (feature) => feature.geometry.type === "LineString",
+      )?.geometry ?? liveTransportStops?.features.find((feature) => feature.geometry.type === "Point")?.geometry,
+      method:
+        stationAxisScore.value !== null
+          ? "Screening score from nearest transit stop/station distance, mode hierarchy, stop density, and public-transport line or corridor evidence."
+          : "No transit stop or line evidence was available for a station-axis proxy.",
+      sourceIds: ["mobilithek-gtfs", "gtfs-de-local-transit", "osm-overpass", "osm-core"],
+      confidence: stationAxisScore.confidence,
+      caveats: [
+        ...stationAxisScore.caveats,
+        "Station Axis is a corridor/access screening metric, not a routing-grade accessibility model.",
+      ],
+      computedAt,
+    }),
+    createIndicator({
+      id: "l.station-axis-evidence",
+      label: "Station axis evidence",
+      scale: "L",
+      value: stationAxisScore.detail,
+      method:
+        "Summarized nearest stop/station distance, high-capacity mode presence, stop density, and line evidence used by the Station Axis KPI.",
+      sourceIds: ["mobilithek-gtfs", "gtfs-de-local-transit", "osm-overpass", "osm-core"],
+      confidence: stationAxisScore.confidence,
+      caveats: stationAxisScore.caveats,
+      computedAt,
+    }),
+    createIndicator({
       id: "l.development-potential",
       label: "Development potential hints",
       scale: "L",
@@ -453,7 +528,7 @@ export function analyzeL(
       id: "l.access-infrastructure",
       title: "Access and infrastructure",
       scale: "L",
-      indicators: indicators.slice(5, 16),
+      indicators: indicators.slice(5, 20),
       method: "Counts, class hints, mode/time isochrone comparison, and POI reachability within the selected context.",
       sourceIds: ["osm-core", "osm-overpass", "mobilithek-gtfs", "gtfs-de-local-transit", "openrouteservice-isochrones"],
       computedAt,
@@ -469,12 +544,12 @@ export function analyzeL(
       id: "l.potential",
       title: "Development hints",
       scale: "L",
-      indicators: [indicators[16]],
+      indicators: [indicators[20]],
       method: "Screening rules from open-data class hints.",
       sourceIds: ["osm-core", "copernicus-urban-atlas", "urban-atlas-2021-catalog"],
       computedAt,
       confidence: "low",
-      caveats: indicators[16].caveats,
+      caveats: indicators[20].caveats,
     },
   ];
 
@@ -749,6 +824,145 @@ function calculateMobilityScore(input: {
       `Mobility subscores: transit access ${transitAccessScore}, transit mode hierarchy ${transitModeScore}, walking/cycling infrastructure ${walkingCyclingScore}, walking/cycling isochrone context ${isochroneScore}, multimodal reachability ${reachabilityScore}.`,
     ],
   };
+}
+
+function calculateTreeCanopyScore(input: {
+  trees: FeatureCollection | undefined;
+  greenPercent: number | null;
+  radiusMeters: number;
+}): { value: number | null; confidence: "high" | "medium" | "low"; detail: string; caveats: string[] } {
+  const features = input.trees?.features ?? [];
+  const treeCount = features.filter((feature) => feature.geometry.type === "Point").length;
+  const treeRows = features.filter((feature) => feature.geometry.type === "LineString").length;
+  const greenScore =
+    input.greenPercent === null
+      ? null
+      : Math.min(100, Math.round((input.greenPercent / 35) * 100));
+  if (!features.length && greenScore === null) {
+    return {
+      value: null,
+      confidence: "low",
+      detail: "not available",
+      caveats: ["No OSM tree/tree-row features or green/open-space percentage were available."],
+    };
+  }
+
+  const areaSqkm = circleAreaSqm(input.radiusMeters) / 1_000_000;
+  const treeDensity = treeCount / Math.max(0.0001, areaSqkm);
+  const treeCountScore = Math.min(100, Math.round((treeDensity / 65) * 100));
+  const treeRowScore = Math.min(100, treeRows * 35);
+  const fallbackGreenScore = greenScore ?? 0;
+  const value = Math.round(
+    treeCountScore * 0.45 +
+      treeRowScore * 0.25 +
+      fallbackGreenScore * 0.3,
+  );
+  const confidence =
+    features.length >= 12
+      ? "medium"
+      : features.length > 0 || greenScore !== null
+        ? "low"
+        : "low";
+
+  return {
+    value,
+    confidence,
+    detail: `trees ${treeCount}, tree rows ${treeRows}, density ${Math.round(treeDensity)} trees/km2, green support ${greenScore ?? "n/a"}`,
+    caveats: [
+      `${treeCount} mapped tree point(s) and ${treeRows} tree-row feature(s) were loaded in the L-scale context.`,
+      greenScore !== null
+        ? `Green/open-space support score from green percentage: ${greenScore}.`
+        : "No green/open-space percentage was available as supporting canopy context.",
+      "Tree density target for the proxy is 65 mapped tree points per km2; sparse OSM tagging lowers confidence.",
+    ],
+  };
+}
+
+function calculateStationAxisScore(input: {
+  selectedPoint: SelectedPoint;
+  transitStops: FeatureCollection | undefined;
+  transitSummary: TransitSummary | null;
+  transitLineSummary: TransitLineSummary | null;
+}): { value: number | null; confidence: "high" | "medium" | "low"; detail: string; caveats: string[] } {
+  const stopPoints = (input.transitStops?.features ?? []).filter(
+    (feature) => feature.geometry.type === "Point",
+  );
+  const lineCount = input.transitLineSummary?.lineLabels.length ?? 0;
+  if (!stopPoints.length && lineCount === 0) {
+    return {
+      value: null,
+      confidence: "low",
+      detail: "not available",
+      caveats: ["No GTFS/OSM transit stop or line evidence was available."],
+    };
+  }
+
+  const nearestStop = nearestTransitStop(input.selectedPoint, stopPoints);
+  const nearestDistance = nearestStop?.distance ?? null;
+  const distanceScore =
+    nearestDistance === null ? 0 : stationDistanceScore(nearestDistance);
+  const modeScore = calculateTransitModeScore(input.transitSummary?.modeCounts ?? []);
+  const densityScore =
+    input.transitSummary?.stopDensityPerSqkm === undefined
+      ? 0
+      : Math.min(100, Math.round((input.transitSummary.stopDensityPerSqkm / 18) * 100));
+  const lineScore = Math.min(100, lineCount * 16);
+  const value = Math.round(
+    distanceScore * 0.35 +
+      modeScore * 0.25 +
+      lineScore * 0.25 +
+      densityScore * 0.15,
+  );
+  const highCapacityModes = (input.transitSummary?.modeCounts ?? [])
+    .filter((item) => ["tram", "subway", "light_rail", "rail"].includes(item.mode) && item.count > 0)
+    .map((item) => item.mode);
+  const confidence =
+    stopPoints.length > 0 && lineCount > 0
+      ? "medium"
+      : stopPoints.length > 0
+        ? "low"
+        : "low";
+
+  return {
+    value,
+    confidence,
+    detail: `nearest ${nearestDistance === null ? "n/a" : `${Math.round(nearestDistance)} m`}, modes ${formatModeMix(input.transitSummary?.modeCounts ?? [])}, lines ${lineCount}`,
+    caveats: [
+      nearestDistance === null
+        ? "Nearest stop distance was not available."
+        : `Nearest loaded stop/station is approximately ${Math.round(nearestDistance)} m away.`,
+      highCapacityModes.length
+        ? `High-capacity modes detected: ${highCapacityModes.join(", ")}.`
+        : "No tram, subway, light-rail, or rail mode was detected in the loaded stop evidence.",
+      `${lineCount} public-transport line label(s) were extracted from loaded Overpass route/corridor evidence.`,
+      "GTFS stop points are preferred where preprocessed; OSM line relations may be incomplete.",
+    ],
+  };
+}
+
+function nearestTransitStop(
+  selectedPoint: SelectedPoint,
+  features: Feature[],
+): { feature: Feature; distance: number } | null {
+  const distances = features
+    .filter((feature) => feature.geometry.type === "Point")
+    .map((feature) => ({
+      feature,
+      distance: distanceBetweenCoordinates(
+        [selectedPoint.lon, selectedPoint.lat],
+        feature.geometry.type === "Point" ? feature.geometry.coordinates : [selectedPoint.lon, selectedPoint.lat],
+      ),
+    }))
+    .sort((left, right) => left.distance - right.distance);
+  return distances[0] ?? null;
+}
+
+function stationDistanceScore(distanceMeters: number): number {
+  if (distanceMeters <= 300) return 100;
+  if (distanceMeters <= 500) return 80;
+  if (distanceMeters <= 800) return 55;
+  if (distanceMeters <= 1_200) return 25;
+  return 0;
 }
 
 function calculateTransitModeScore(modeCounts: Array<{ mode: string; count: number }>): number {

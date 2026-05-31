@@ -1,5 +1,9 @@
 # AGENTS.md — Urban Context Analysis MVP
 
+## Session startup
+
+At the beginning of each session, read this file and then read `plans.md` before proposing or implementing product changes. Treat `plans.md` as the standing product roadmap and prioritization layer.
+
 ## 0. Current implementation status
 
 Last checked locally on **2026-05-31**.
@@ -14,7 +18,7 @@ Last checked locally on **2026-05-31**.
 
 - The main mounted experience is the map-first workspace in `src/app/App.tsx`.
 - The map and inspector use a resizable workspace split. The map fullscreen control targets the full workspace so the inspector remains available in fullscreen.
-- `GuidedExplorer` exists in the codebase, but it is not currently mounted in the main application shell.
+- The current product direction is direct and map-first; do not add a guided workflow unless explicitly requested again.
 - Exports include JSON, CSV, GeoJSON, SVG, PNG, Markdown, HTML, Ollama report, ZIP package, Provenance JSON, and GPKG.
 - GPKG export is implemented in `src/lib/export/gpkg.ts` with `sql.js`. It preserves full raw feature properties in `properties_json`, materializes only a bounded prioritized subset of properties as typed SQLite columns, and tolerates duplicate provenance event IDs in `data_source_run`.
 - Ollama report export remains local-first and must summarize computed analysis JSON only. If Ollama is unavailable, deterministic non-LLM exports still work.
@@ -67,9 +71,9 @@ Implement:
    - `green`
    - Add more toggles only if they remain understandable and modular.
 
-4. **Interaction modes**
-   - **Guided mode:** stepwise exploration, user is guided through selection, scale, layers, and export.
+4. **Interaction mode**
    - **Direct mode:** precise selection and immediate fact-sheet generation.
+   - Do not add a guided workflow unless explicitly requested again.
 
 5. **Modular fact sheet**
    - Fact sheet must be generated from structured analysis JSON, not from free-form LLM text.
@@ -125,7 +129,6 @@ Preferred default:
   - `ScaleSwitcher`
   - `LayerTogglePanel`
   - `FactSheetPanel`
-  - `GuidedExplorer`
   - `DirectSelectionPanel`
   - `ExportPanel`
 
@@ -175,7 +178,6 @@ Use this target structure unless the existing project already has a clearer conv
       map/
       factsheet/
       export/
-      guided/
     lib/
       analysis/
         xl/
@@ -1050,8 +1052,8 @@ Never fail silently.
 1. User can click a point on the map.
 2. XL, L, and M scale panels load.
 3. Layer toggles alter the map without breaking fact-sheet state.
-4. Guided mode walks through selection → scale → layer → export.
-5. Direct mode allows immediate point selection and analysis.
+4. Direct mode allows immediate point selection and analysis.
+5. KPI modules show traceable values, confidence, caveats, and source IDs.
 6. At least one XL CSV indicator is shown where local data are present.
 7. At least one L green/land-use indicator is shown.
 8. At least one M street-segment indicator is shown.
