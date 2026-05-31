@@ -7,6 +7,19 @@ const ORS_URL = "https://api.openrouteservice.org/v2/isochrones";
 const CACHE_VERSION = "v1";
 const CACHE_MAX_AGE_MS = 1000 * 60 * 60 * 24 * 14;
 const DEFAULT_RANGES_SECONDS = [300, 600, 900];
+const PROFILE_REQUEST_TIMEOUT_MS = 8_000;
+
+const FALLBACK_RADII = [
+  { mode: "walking", rangeSeconds: 300, radiusMeters: 350 },
+  { mode: "walking", rangeSeconds: 600, radiusMeters: 700 },
+  { mode: "walking", rangeSeconds: 900, radiusMeters: 1_050 },
+  { mode: "cycling", rangeSeconds: 300, radiusMeters: 1_250 },
+  { mode: "cycling", rangeSeconds: 600, radiusMeters: 2_500 },
+  { mode: "cycling", rangeSeconds: 900, radiusMeters: 3_750 },
+  { mode: "driving", rangeSeconds: 300, radiusMeters: 2_000 },
+  { mode: "driving", rangeSeconds: 600, radiusMeters: 4_000 },
+  { mode: "driving", rangeSeconds: 900, radiusMeters: 6_000 },
+] as const;
 
 export type IsochroneResult = {
   collection: FeatureCollection;
@@ -45,21 +58,49 @@ export async function fetchOpenRouteServiceIsochrones(
   }
 
   try {
-    const collections = await Promise.all(
-      profiles.map((profile) => fetchProfileIsochrone(profile.id, profile.label, selectedPoint, apiKey)),
+    const profileResults = await Promise.all(
+      profiles.map(async (profile) => {
+        try {
+          return {
+            mode: profile.label,
+            collection: await fetchProfileIsochrone(profile.id, profile.label, selectedPoint, apiKey),
+            fallback: false,
+            error: undefined,
+          };
+        } catch (error) {
+          return {
+            mode: profile.label,
+            collection: createFallbackIsochroneForMode(selectedPoint, computedAt, profile.label),
+            fallback: true,
+            error: error instanceof Error ? error.message : String(error),
+          };
+        }
+      }),
     );
-    const collection = featureCollection(collections.flatMap((item) => item.features));
+    const collection = featureCollection(profileResults.flatMap((item) => item.collection.features));
+    const fallbackModes = profileResults.filter((item) => item.fallback);
     return {
       collection,
       receipt: createReceipt({
         startedAt,
         computedAt,
-        status: "ok",
+        status: fallbackModes.length === profiles.length ? "failed" : "ok",
         featureCount: collection.features.length,
+        error:
+          fallbackModes.length === profiles.length
+            ? fallbackModes.map((item) => `${item.mode}: ${item.error}`).join(" / ")
+            : undefined,
         method:
-          "Requested walking, cycling, and driving isochrone polygons from OpenRouteService with 5-, 10-, and 15-minute ranges and cached responses by coordinate/profile/range.",
+          "Requested walking, cycling, and driving isochrone polygons from OpenRouteService with 5-, 10-, and 15-minute ranges and cached responses by coordinate/profile/range. Failed profiles fall back independently instead of discarding successful modes.",
         caveats: [
           "OpenRouteService isochrones depend on external API availability, quota, and network model coverage.",
+          ...(fallbackModes.length
+            ? [
+                `Fallback geometric catchments were used for: ${fallbackModes
+                  .map((item) => item.mode)
+                  .join(", ")}.`,
+              ]
+            : []),
         ],
       }),
     };
@@ -115,7 +156,7 @@ async function fetchProfileIsochrone(
         location_type: "start",
       }),
     },
-    12_000,
+    PROFILE_REQUEST_TIMEOUT_MS,
   );
   if (!response.ok) {
     const body = await response.text().catch(() => "");
@@ -152,30 +193,42 @@ function createFallbackIsochrones(
   selectedPoint: SelectedPoint,
   computedAt: string,
 ): FeatureCollection {
-  const radii = [
-    { mode: "walking", rangeSeconds: 300, radiusMeters: 350 },
-    { mode: "walking", rangeSeconds: 600, radiusMeters: 700 },
-    { mode: "walking", rangeSeconds: 900, radiusMeters: 1_050 },
-    { mode: "cycling", rangeSeconds: 300, radiusMeters: 1_250 },
-    { mode: "cycling", rangeSeconds: 600, radiusMeters: 2_500 },
-    { mode: "cycling", rangeSeconds: 900, radiusMeters: 3_750 },
-    { mode: "driving", rangeSeconds: 300, radiusMeters: 2_000 },
-    { mode: "driving", rangeSeconds: 600, radiusMeters: 4_000 },
-    { mode: "driving", rangeSeconds: 900, radiusMeters: 6_000 },
-  ];
   return featureCollection(
-    radii.map(({ mode, radiusMeters, rangeSeconds }) =>
-      geometryToFeature(bufferPolygon(selectedPoint.lat, selectedPoint.lon, radiusMeters, 96) as Polygon, {
-        sourceId: "openrouteservice-isochrones",
-        isochroneMode: mode,
-        radiusMeters,
-        rangeSeconds,
-        rangeMinutes: rangeSeconds / 60,
-        computedAt,
-        retrievalStatus: "fallback",
-      }),
+    FALLBACK_RADII.map(({ mode, radiusMeters, rangeSeconds }) =>
+      createFallbackFeature(selectedPoint, computedAt, mode, radiusMeters, rangeSeconds),
     ),
   );
+}
+
+function createFallbackIsochroneForMode(
+  selectedPoint: SelectedPoint,
+  computedAt: string,
+  mode: "walking" | "cycling" | "driving",
+): FeatureCollection {
+  return featureCollection(
+    FALLBACK_RADII.filter((item) => item.mode === mode).map(
+      ({ radiusMeters, rangeSeconds }) =>
+        createFallbackFeature(selectedPoint, computedAt, mode, radiusMeters, rangeSeconds),
+    ),
+  );
+}
+
+function createFallbackFeature(
+  selectedPoint: SelectedPoint,
+  computedAt: string,
+  mode: "walking" | "cycling" | "driving",
+  radiusMeters: number,
+  rangeSeconds: number,
+) {
+  return geometryToFeature(bufferPolygon(selectedPoint.lat, selectedPoint.lon, radiusMeters, 96) as Polygon, {
+    sourceId: "openrouteservice-isochrones",
+    isochroneMode: mode,
+    radiusMeters,
+    rangeSeconds,
+    rangeMinutes: rangeSeconds / 60,
+    computedAt,
+    retrievalStatus: "fallback",
+  });
 }
 
 function createReceipt(input: {

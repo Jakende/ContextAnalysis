@@ -1071,11 +1071,29 @@
   font-size: 12px;
 }
 
+.legend-row-parent {
+  margin-top: 2px;
+  font-weight: 700;
+}
+
+.legend-row-child {
+  grid-template-columns: 18px 1fr auto;
+  padding-left: var(--space-2);
+  color: var(--muted);
+  font-size: 11px;
+}
+
 .legend-row i {
   display: block;
   width: 12px;
   height: 12px;
   border: 1px solid #000000;
+}
+
+.legend-row-child i {
+  width: 18px;
+  height: 12px;
+  background-color: transparent;
 }
 
 .legend-row small {

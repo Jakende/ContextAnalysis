@@ -7,13 +7,14 @@ import {
   type PointerEvent as ReactPointerEvent,
   type SetStateAction,
 } from "react";
+import type { Feature, FeatureCollection } from "geojson";
 import { ExportPanel } from "../components/export/ExportPanel";
 import { FactSheetPanel } from "../components/factsheet/FactSheetPanel";
 import { MapView } from "../components/map/MapView";
 import { recomputeMSectionFromAnalysis } from "../lib/analysis/m/analyzeM";
 import { runLocationAnalysis } from "../lib/analysis/runAnalysis";
 import { resolvePointCache } from "../lib/api/pointCache";
-import { loadTerrainSamplesForSection } from "../lib/data/localSpatial";
+import { loadLod2BuildingsForPoint, loadTerrainSamplesForSection } from "../lib/data/localSpatial";
 import { pointCacheResultsToRunEvents } from "../lib/data/sourceRun";
 import type {
   AnalysisResult,
@@ -245,9 +246,21 @@ export function App() {
     }
 
     try {
-      const terrainSamples = await loadTerrainSamplesForSection(nextSectionLine);
+      const [terrainSamples, sectionBuildings] = await Promise.all([
+        loadTerrainSamplesForSection(nextSectionLine),
+        loadBuildingsForSectionLine(nextSectionLine),
+      ]);
+      const analysisForSection = sectionBuildings.features.length
+        ? {
+            ...analysis,
+            overlays: {
+              ...analysis.overlays,
+              buildings: mergeUniqueFeatureCollections(analysis.overlays.buildings, sectionBuildings),
+            },
+          }
+        : analysis;
       const { result, sectionSvg: nextSectionSvg } = recomputeMSectionFromAnalysis(
-        analysis,
+        analysisForSection,
         nextSectionLine,
         terrainSamples,
       );
@@ -515,6 +528,12 @@ function createInitialLoadSteps(): AnalysisLoadStep[] {
       status: "queued",
     },
     {
+      id: "mobility-catchments",
+      label: "Mobility catchments",
+      detail: "Waiting for mode-specific catchments.",
+      status: "queued",
+    },
+    {
       id: "indicators",
       label: "XL/L/M indicators",
       detail: "Waiting for deterministic analysis.",
@@ -562,6 +581,68 @@ function compactMessage(message: string): string {
   if (/CDSE credentials/i.test(message)) return "CDSE credentials missing";
   if (/Point cache updated/i.test(message)) return "updated";
   return message.split(/\r?\n/)[0].slice(0, 90);
+}
+
+async function loadBuildingsForSectionLine(sectionLine: SectionLine): Promise<FeatureCollection> {
+  const center = {
+    lat: (sectionLine.start.lat + sectionLine.end.lat) / 2,
+    lon: (sectionLine.start.lon + sectionLine.end.lon) / 2,
+  };
+  const radiusMeters = Math.min(
+    2_000,
+    Math.max(900, sectionLineLengthMeters(sectionLine) / 2 + 180),
+  );
+  return loadLod2BuildingsForPoint(
+    {
+      ...center,
+      point: {
+        type: "Point",
+        coordinates: [center.lon, center.lat],
+      },
+    },
+    radiusMeters,
+  );
+}
+
+function sectionLineLengthMeters(sectionLine: SectionLine): number {
+  const refLat = (sectionLine.start.lat + sectionLine.end.lat) / 2;
+  const start = projectLonLatMeters(sectionLine.start.lon, sectionLine.start.lat, refLat);
+  const end = projectLonLatMeters(sectionLine.end.lon, sectionLine.end.lat, refLat);
+  return Math.hypot(end.x - start.x, end.y - start.y);
+}
+
+function projectLonLatMeters(lon: number, lat: number, refLat: number): { x: number; y: number } {
+  return {
+    x: lon * 111_320 * Math.cos((refLat * Math.PI) / 180),
+    y: lat * 111_320,
+  };
+}
+
+function mergeUniqueFeatureCollections(
+  base: FeatureCollection,
+  extra: FeatureCollection,
+): FeatureCollection {
+  const seen = new Set<string>();
+  const features: Feature[] = [];
+  for (const feature of [...base.features, ...extra.features]) {
+    const key = featureIdentity(feature);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    features.push(feature);
+  }
+  return { type: "FeatureCollection", features };
+}
+
+function featureIdentity(feature: Feature): string {
+  const props = feature.properties ?? {};
+  return String(
+    feature.id ??
+      props.id ??
+      props.osmId ??
+      props.gml_id ??
+      props.sourceFeatureId ??
+      `${props.sourceId ?? "feature"}:${JSON.stringify(feature.geometry).slice(0, 220)}`,
+  );
 }
 
 function FullscreenIcon() {

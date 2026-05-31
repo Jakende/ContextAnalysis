@@ -1,10 +1,23 @@
-import type { Feature, FeatureCollection, Geometry, LineString, Point } from "geojson";
+import type {
+  Feature,
+  FeatureCollection,
+  Geometry,
+  LineString,
+  MultiLineString,
+  Point,
+} from "geojson";
 import type { SectionLine, SelectedPoint } from "../types";
-import { bboxAroundPoint, featureCollection } from "../analysis/geometry";
+import {
+  bboxAroundPoint,
+  featureCollection,
+  metersToLatitudeDegrees,
+  metersToLongitudeDegrees,
+} from "../analysis/geometry";
 
 const ZENSUS_GRID_URL = "/data/processed/zensus-grid.geojson";
 const DEM_SAMPLES_URL = "/data/processed/opentopography-dem/samples.geojson";
 const CONTOUR_LINES_URL = "/data/processed/opentopography-contours/contours.geojson";
+export const CONTOUR_FALLBACK_SOURCE_ID = "uca-contour-fallback";
 const LOD2_BUILDINGS_URL = "/data/processed/lod2-buildings.geojson";
 const LOD2_DEUTSCHLAND_INDEX_URL = "/data/processed/lod2-deutschland/index.json";
 const LOD2_FEDERAL_STATES_INDEX_URL = "/data/processed/lod2-federal-states/index.json";
@@ -154,25 +167,121 @@ export async function loadContourLinesForPoint(
   selectedPoint: SelectedPoint,
   radiusMeters = 1_200,
 ): Promise<FeatureCollection> {
-  const collection = await fetchFeatureCollection(CONTOUR_LINES_URL);
-  if (!collection) return featureCollection();
   const bbox = bboxAroundPoint(selectedPoint.lat, selectedPoint.lon, radiusMeters);
+
+  const collection = await fetchFeatureCollection(CONTOUR_LINES_URL);
+  if (!collection) {
+    return createFallbackContourLines(
+      selectedPoint,
+      radiusMeters,
+      `Local OpenTopography contour GeoJSON was not available at ${CONTOUR_LINES_URL}.`,
+    );
+  }
+
   const features = collection.features
-    .filter((feature): feature is Feature<LineString> => feature.geometry.type === "LineString")
     .filter((feature) => geometryIntersectsBbox(feature.geometry, bbox))
-    .map((feature) => ({
+    .flatMap(normalizeContourFeature);
+
+  if (!features.length) {
+    return createFallbackContourLines(
+      selectedPoint,
+      radiusMeters,
+      "The local OpenTopography contour dataset loaded, but no contour lines intersected this M-scale analysis area.",
+    );
+  }
+
+  return featureCollection(features);
+}
+
+function normalizeContourFeature(feature: Feature): Feature<LineString>[] {
+  if (feature.geometry.type === "LineString") {
+    return [
+      {
+        ...feature,
+        geometry: feature.geometry,
+        properties: {
+          ...(feature.properties ?? {}),
+          sourceId: feature.properties?.sourceId ?? "opentopography-contours",
+          contourStatus: "measured",
+        },
+      },
+    ];
+  }
+
+  if (feature.geometry.type !== "MultiLineString") return [];
+
+  const geometry = feature.geometry as MultiLineString;
+  return geometry.coordinates
+    .filter((coordinates) => coordinates.length >= 2)
+    .map((coordinates, index) => ({
       ...feature,
+      id: feature.id === undefined ? undefined : `${String(feature.id)}:${index}`,
+      geometry: {
+        type: "LineString",
+        coordinates,
+      },
       properties: {
         ...(feature.properties ?? {}),
         sourceId: feature.properties?.sourceId ?? "opentopography-contours",
+        contourStatus: "measured",
+        contourPart: index + 1,
       },
     }));
+}
+
+function createFallbackContourLines(
+  selectedPoint: SelectedPoint,
+  radiusMeters: number,
+  caveat: string,
+): FeatureCollection {
+  const lineCount = 9;
+  const pointCount = 40;
+  const maxOffset = radiusMeters * 0.84;
+  const spacing = (maxOffset * 2) / Math.max(1, lineCount - 1);
+  const features: Feature<LineString>[] = [];
+
+  for (let index = 0; index < lineCount; index += 1) {
+    const baseOffset = -maxOffset + spacing * index;
+    const coordinates: number[][] = [];
+    for (let step = 0; step <= pointCount; step += 1) {
+      const t = step / pointCount;
+      const xMeters = -radiusMeters + radiusMeters * 2 * t;
+      const waveMeters =
+        Math.sin(t * Math.PI * 2.4 + index * 0.7) * radiusMeters * 0.045;
+      const yMeters = baseOffset + xMeters * 0.1 + waveMeters;
+      if (Math.abs(yMeters) > radiusMeters * 1.08) continue;
+      coordinates.push([
+        selectedPoint.lon + metersToLongitudeDegrees(xMeters, selectedPoint.lat),
+        selectedPoint.lat + metersToLatitudeDegrees(yMeters),
+      ]);
+    }
+    if (coordinates.length < 2) continue;
+    features.push({
+      type: "Feature",
+      id: `fallback-contour-${index + 1}`,
+      geometry: {
+        type: "LineString",
+        coordinates,
+      },
+      properties: {
+        label: "Approximate contour guide",
+        contourStatus: "fallback",
+        interval: "visual",
+        relativeElevation: index - Math.floor(lineCount / 2),
+        sourceId: CONTOUR_FALLBACK_SOURCE_ID,
+        sourceLabel: "Contour fallback",
+        caveat:
+          `${caveat} These guide lines are generated only to keep the contour overlay inspectable; they are not measured terrain and are not used as elevation metrics.`,
+      },
+    });
+  }
+
   return featureCollection(features);
 }
 
 export async function loadLod2BuildingsForPoint(
   selectedPoint: SelectedPoint,
-  radiusMeters = 900,
+  radiusMeters = 1_200,
 ): Promise<FeatureCollection> {
   const bbox = bboxAroundPoint(selectedPoint.lat, selectedPoint.lon, radiusMeters);
   const sources = [

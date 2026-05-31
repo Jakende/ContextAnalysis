@@ -253,6 +253,15 @@ function featureGroupsForScale(
   if (activeScale === "L") {
     return [
       {
+        id: "mobility-radii",
+        title: "Mobility radii",
+        description: "Mode-specific calculation radii used for walking, cycling, transit and car reachability KPIs.",
+        collection: analysis.overlays.lBuffer,
+        geometry: "Polygon",
+        labelKeys: ["label", "mobilityMode", "id"],
+        summaryKeys: ["mobilityMode", "radiusBandLabel", "radiusMeters", "timeMinutes", "sourceScale", "primaryKpiRadius"],
+      },
+      {
         id: "osm-transport-lines",
         title: "OSM public transport lines",
         description: "Live Overpass route/way line features with OSM refs, names, operators, relation IDs and raw tags.",
@@ -348,7 +357,17 @@ function featureGroupsForScale(
       description: "LOD2 / Overture / OSM building attributes and height fields.",
       collection: analysis.overlays.buildings,
       labelKeys: ["name", "id", "building", "building:part"],
-      summaryKeys: ["sourceId", "height", "building:height", "heightMeters", "building:levels", "roof:shape"],
+      summaryKeys: [
+        "sourceId",
+        "height",
+        "estimatedHeight",
+        "sectionHeightMeters",
+        "sectionHeightSource",
+        "building:height",
+        "heightMeters",
+        "building:levels",
+        "roof:shape",
+      ],
     },
     {
       id: "trees",
@@ -367,8 +386,18 @@ function featureGroupsForScale(
         analysis.overlays.sectionLine,
         analysis.overlays.contours,
       ),
-      labelKeys: ["name", "highway", "id", "elevation"],
-      summaryKeys: ["highway", "width", "lanes", "surface", "elevation", "sourceId"],
+      labelKeys: ["name", "label", "highway", "id", "elevation"],
+      summaryKeys: [
+        "highway",
+        "width",
+        "lanes",
+        "surface",
+        "elevation",
+        "contourStatus",
+        "interval",
+        "sourceId",
+        "caveat",
+      ],
     },
     {
       id: "m-raw-overpass",

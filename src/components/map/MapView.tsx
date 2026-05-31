@@ -71,6 +71,96 @@ const MAP_LAYER_COLORS = {
   sun: "#d8bc52",
 } as const;
 
+const MOBILITY_RADIUS_STYLES = {
+  "walking-5": {
+    label: "Walking 5 min / 300 m",
+    color: "#6ea877",
+    pattern: "mobility-hatch-walking-5",
+    hatch: "diagonal",
+    spacing: 10,
+  },
+  "walking-10": {
+    label: "Walking 10 min / 500 m",
+    color: "#5fa86b",
+    pattern: "mobility-hatch-walking-10",
+    hatch: "diagonal",
+    spacing: 7,
+  },
+  "walking-15": {
+    label: "Walking 15 min / 800 m",
+    color: "#3f8f58",
+    pattern: "mobility-hatch-walking-15",
+    hatch: "diagonal",
+    spacing: 5,
+  },
+  "cycling-5": {
+    label: "Bike 5 min / 1.25 km",
+    color: "#5db8c2",
+    pattern: "mobility-hatch-cycling-5",
+    hatch: "reverse",
+    spacing: 10,
+  },
+  "cycling-10": {
+    label: "Bike 10 min / 2.5 km",
+    color: "#54a9ba",
+    pattern: "mobility-hatch-cycling-10",
+    hatch: "reverse",
+    spacing: 7,
+  },
+  "cycling-15": {
+    label: "Bike 15 min / 3.75 km",
+    color: "#3b899e",
+    pattern: "mobility-hatch-cycling-15",
+    hatch: "reverse",
+    spacing: 5,
+  },
+  "transit-5": {
+    label: "Transit 5 min / 400 m",
+    color: "#d3b54d",
+    pattern: "mobility-hatch-transit-5",
+    hatch: "horizontal",
+    spacing: 10,
+  },
+  "transit-10": {
+    label: "Transit 10 min / 800 m",
+    color: "#c8a43f",
+    pattern: "mobility-hatch-transit-10",
+    hatch: "horizontal",
+    spacing: 7,
+  },
+  "transit-15": {
+    label: "Transit 15 min / 1.2 km",
+    color: "#aa8733",
+    pattern: "mobility-hatch-transit-15",
+    hatch: "horizontal",
+    spacing: 5,
+  },
+  "driving-5": {
+    label: "Car 5 min / 2 km",
+    color: "#d09a51",
+    pattern: "mobility-hatch-driving-5",
+    hatch: "vertical",
+    spacing: 10,
+  },
+  "driving-10": {
+    label: "Car 10 min / 4 km",
+    color: "#c8855b",
+    pattern: "mobility-hatch-driving-10",
+    hatch: "vertical",
+    spacing: 7,
+  },
+  "driving-15": {
+    label: "Car 15 min / 6 km",
+    color: "#b9654b",
+    pattern: "mobility-hatch-driving-15",
+    hatch: "cross",
+    spacing: 8,
+  },
+} as const;
+
+type MobilityRadiusBandId = keyof typeof MOBILITY_RADIUS_STYLES;
+type MobilityHatchKind = (typeof MOBILITY_RADIUS_STYLES)[MobilityRadiusBandId]["hatch"];
+
 const LOCAL_TRANSIT_MODES = ["bus", "tram", "subway", "transit"];
 const RAIL_TRANSIT_MODES = ["light_rail", "rail"];
 const FEATURE_QUERY_RADIUS_PX = 6;
@@ -89,6 +179,7 @@ const INTERACTIVE_ANALYSIS_LAYER_IDS = [
   "mobility-points",
   "barrier-points",
   "development-points",
+  "l-buffer-line",
   "tree-circles",
   "tree-canopy-circles",
   "transport-lines-bus",
@@ -120,6 +211,7 @@ const INTERACTIVE_ANALYSIS_LAYER_IDS = [
   "xl-source-line",
   "xl-grid-line",
   "development-fill",
+  "l-buffer-fill",
   "isochrone-fill-walking",
   "isochrone-fill-cycling",
   "isochrone-fill-driving",
@@ -145,12 +237,24 @@ const POPUP_ATTRIBUTE_KEYS = [
   "poiCategory",
   "transportMode",
   "mobilityMode",
+  "mobilityCategory",
+  "radiusBand",
+  "radiusBandLabel",
+  "timeMinutes",
+  "sourceScale",
+  "primaryKpiRadius",
   "isochroneMode",
   "rangeMinutes",
   "rangeSeconds",
+  "contourStatus",
+  "relativeElevation",
+  "interval",
   "overpassModuleId",
   "osmElementType",
   "sourceId",
+  "sourceLabel",
+  "sourceVersion",
+  "generatedAt",
   "osmId",
   "id",
   "ref",
@@ -169,6 +273,9 @@ const POPUP_ATTRIBUTE_KEYS = [
   "railway",
   "building",
   "height",
+  "estimatedHeight",
+  "sectionHeightMeters",
+  "sectionHeightSource",
   "building:height",
   "building:levels",
   "valueStatus",
@@ -773,8 +880,8 @@ function MapLegend({
         </div>
       ) : null}
       {items.map((item) => (
-        <span className="legend-row" key={item.label}>
-          <i style={{ background: item.color }} />
+        <span className={`legend-row legend-row-${item.level ?? "item"}`} key={item.label}>
+          <i style={{ background: item.pattern ?? item.color }} />
           {item.label}
           {typeof item.count === "number" ? <small>{item.count}</small> : null}
         </span>
@@ -789,7 +896,7 @@ function getLegendItems(
   analysis: AnalysisResult,
   layerStyles: LayerStyleState,
 ) {
-  const items: Array<{ label: string; color: string; count?: number }> = [
+  const items: Array<{ label: string; color: string; count?: number; pattern?: string; level?: "parent" | "child" | "item" }> = [
     { label: "Selected point", color: MAP_LAYER_COLORS.selected },
   ];
   if (activeScale === "XL") {
@@ -801,6 +908,15 @@ function getLegendItems(
     }
   }
   if (activeScale === "L") {
+    if (layers.lBuffer) {
+      items.push({
+        label: "Mobility radii",
+        color: layerStyles.lBuffer.color,
+        count: analysis.overlays.lBuffer.features.filter((feature) => feature.properties?.radiusBand).length,
+        level: "parent",
+      });
+      items.push(...getMobilityRadiusLegendItems(analysis));
+    }
     if (layers.urbanAtlas) items.push({ label: "Urban Atlas", color: layerStyles.urbanAtlas.color });
     if (layers.green) items.push({ label: "Green", color: layerStyles.green.color });
     if (layers.blue) items.push({ label: "Blue / water", color: layerStyles.blue.color });
@@ -842,11 +958,68 @@ function getLegendItems(
     if (layers.buildingFootprints) items.push({ label: "L OSM buildings", color: layerStyles.buildingFootprints.color });
     if (layers["3D"]) items.push({ label: "3D buildings", color: layerStyles["3D"].color });
     if (layers.trees) items.push({ label: "Trees", color: layerStyles.trees.color });
-    if (layers.contours) items.push({ label: "OpenTopography contours", color: layerStyles.contours.color });
+    if (layers.contours) {
+      const contourFeatures = analysis.overlays.contours.features;
+      const fallbackContours = contourFeatures.some(
+        (feature) => feature.properties?.contourStatus === "fallback",
+      );
+      items.push({
+        label: fallbackContours ? "Approx contour fallback" : "OpenTopography contours",
+        color: layerStyles.contours.color,
+        count: contourFeatures.length,
+      });
+    }
     if (layers.sun) items.push({ label: "Sun hints", color: layerStyles.sun.color });
     if (layers.section) items.push({ label: "Section line", color: layerStyles.section.color });
   }
   return items;
+}
+
+function getMobilityRadiusLegendItems(
+  analysis: AnalysisResult,
+): Array<{ label: string; color: string; pattern: string; level: "child"; count?: number }> {
+  const availableBands = new Set(
+    analysis.overlays.lBuffer.features
+      .map((feature) => String(feature.properties?.radiusBand ?? ""))
+      .filter((id): id is MobilityRadiusBandId => id in MOBILITY_RADIUS_STYLES),
+  );
+  return Object.entries(MOBILITY_RADIUS_STYLES)
+    .filter(([id]) => availableBands.has(id as MobilityRadiusBandId))
+    .map(([id, style]) => {
+      const count = analysis.overlays.lBuffer.features.filter(
+        (feature) => feature.properties?.radiusBand === id,
+      ).length;
+      return {
+        label: style.label,
+        color: style.color,
+        pattern: cssHatchPattern(style.color, style.hatch, style.spacing),
+        level: "child" as const,
+        count,
+      };
+    });
+}
+
+function cssHatchPattern(
+  color: string,
+  hatch: MobilityHatchKind,
+  spacing: number,
+): string {
+  const width = "1.5px";
+  const gap = `${spacing}px`;
+  if (hatch === "horizontal") {
+    return `repeating-linear-gradient(0deg, transparent 0 ${gap}, ${color} ${gap} calc(${gap} + ${width}))`;
+  }
+  if (hatch === "vertical") {
+    return `repeating-linear-gradient(90deg, transparent 0 ${gap}, ${color} ${gap} calc(${gap} + ${width}))`;
+  }
+  if (hatch === "cross") {
+    return [
+      `repeating-linear-gradient(0deg, transparent 0 ${gap}, ${color} ${gap} calc(${gap} + ${width}))`,
+      `repeating-linear-gradient(90deg, transparent 0 ${gap}, ${color} ${gap} calc(${gap} + ${width}))`,
+    ].join(", ");
+  }
+  const angle = hatch === "reverse" ? "-45deg" : "45deg";
+  return `repeating-linear-gradient(${angle}, transparent 0 ${gap}, ${color} ${gap} calc(${gap} + ${width}))`;
 }
 
 function showAnalysisFeatureInfo(
@@ -1081,6 +1254,100 @@ function addIsochroneLayers(
   }, beforeId);
 }
 
+function ensureMobilityRadiusPatternImages(map: MapLibreMap): void {
+  for (const [id, style] of Object.entries(MOBILITY_RADIUS_STYLES)) {
+    if (map.hasImage(style.pattern)) continue;
+    map.addImage(
+      style.pattern,
+      createHatchImage(style.color, style.hatch, style.spacing, id.includes("-10") || id.includes("-15") ? 1.6 : 1.25),
+    );
+  }
+}
+
+function createHatchImage(
+  color: string,
+  hatch: MobilityHatchKind,
+  spacing: number,
+  lineWidth: number,
+): ImageData {
+  const size = 24;
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const context = canvas.getContext("2d");
+  if (!context) {
+    return new ImageData(size, size);
+  }
+  context.clearRect(0, 0, size, size);
+  context.strokeStyle = color;
+  context.globalAlpha = 0.78;
+  context.lineWidth = lineWidth;
+  context.lineCap = "square";
+  drawHatchLines(context, size, spacing, hatch);
+  return context.getImageData(0, 0, size, size);
+}
+
+function drawHatchLines(
+  context: CanvasRenderingContext2D,
+  size: number,
+  spacing: number,
+  hatch: MobilityHatchKind,
+): void {
+  if (hatch === "horizontal") {
+    for (let y = 0; y <= size; y += spacing) {
+      context.beginPath();
+      context.moveTo(0, y);
+      context.lineTo(size, y);
+      context.stroke();
+    }
+    return;
+  }
+  if (hatch === "vertical") {
+    for (let x = 0; x <= size; x += spacing) {
+      context.beginPath();
+      context.moveTo(x, 0);
+      context.lineTo(x, size);
+      context.stroke();
+    }
+    return;
+  }
+  if (hatch === "cross") {
+    drawHatchLines(context, size, spacing, "vertical");
+    drawHatchLines(context, size, spacing, "horizontal");
+    return;
+  }
+  const reverse = hatch === "reverse";
+  for (let offset = -size; offset <= size * 2; offset += spacing) {
+    context.beginPath();
+    if (reverse) {
+      context.moveTo(offset, 0);
+      context.lineTo(offset - size, size);
+    } else {
+      context.moveTo(offset, 0);
+      context.lineTo(offset + size, size);
+    }
+    context.stroke();
+  }
+}
+
+function mobilityRadiusPatternExpression(): any {
+  return [
+    "match",
+    ["get", "radiusBand"],
+    ...Object.entries(MOBILITY_RADIUS_STYLES).flatMap(([id, style]) => [id, style.pattern]),
+    "mobility-hatch-walking-10",
+  ];
+}
+
+function mobilityRadiusColorExpression(fallbackColor: string): any {
+  return [
+    "match",
+    ["get", "radiusBand"],
+    ...Object.entries(MOBILITY_RADIUS_STYLES).flatMap(([id, style]) => [id, style.color]),
+    fallbackColor,
+  ];
+}
+
 function addAnalysisSourcesAndLayers(map: MapLibreMap): void {
   ensureOsmRasterLayer(map);
   ensureVersaTilesVectorLayer(map);
@@ -1119,6 +1386,8 @@ function addAnalysisSourcesAndLayers(map: MapLibreMap): void {
       });
     }
   }
+
+  ensureMobilityRadiusPatternImages(map);
 
   addLayerIfMissing(map, {
     id: "xl-context-fill",
@@ -1258,14 +1527,68 @@ function addAnalysisSourcesAndLayers(map: MapLibreMap): void {
     },
   });
   addLayerIfMissing(map, {
+    id: "l-buffer-fill",
+    type: "fill",
+    source: "l-buffer",
+    filter: ["all", ["==", ["geometry-type"], "Polygon"], ["has", "radiusBand"]],
+    paint: {
+      "fill-pattern": mobilityRadiusPatternExpression(),
+      "fill-opacity": 0.72,
+    },
+  });
+  addLayerIfMissing(map, {
     id: "l-buffer-line",
     type: "line",
     source: "l-buffer",
     paint: {
-      "line-color": MAP_LAYER_COLORS.buffer,
-      "line-width": 1,
-      "line-dasharray": [3, 3],
-      "line-opacity": 0.8,
+      "line-color": mobilityRadiusColorExpression(MAP_LAYER_COLORS.buffer),
+      "line-width": [
+        "case",
+        ["==", ["get", "primaryKpiRadius"], true],
+        2.4,
+        ["==", ["get", "mobilityMode"], "base"],
+        1.3,
+        1.7,
+      ],
+      "line-dasharray": [
+        "case",
+        ["==", ["get", "mobilityMode"], "base"],
+        ["literal", [3, 3]],
+        ["==", ["get", "mobilityMode"], "walking"],
+        ["literal", [1, 0.1]],
+        ["==", ["get", "mobilityMode"], "cycling"],
+        ["literal", [5, 2]],
+        ["==", ["get", "mobilityMode"], "transit"],
+        ["literal", [4, 2]],
+        ["literal", [2, 2]],
+      ],
+      "line-opacity": [
+        "case",
+        ["==", ["get", "mobilityMode"], "base"],
+        0.72,
+        ["==", ["get", "primaryKpiRadius"], true],
+        0.92,
+        0.62,
+      ],
+    },
+  });
+  addLayerIfMissing(map, {
+    id: "l-buffer-labels",
+    type: "symbol",
+    source: "l-buffer",
+    minzoom: 11,
+    layout: {
+      "text-field": ["coalesce", ["get", "label"], ""],
+      "text-size": 10,
+      "text-font": ["Noto Sans Regular"],
+      "text-offset": [0, 0.8],
+      "text-allow-overlap": false,
+    },
+    paint: {
+      "text-color": MAP_LAYER_COLORS.buffer,
+      "text-halo-color": "#000000",
+      "text-halo-width": 1,
+      "text-opacity": 0.78,
     },
   });
   addLayerIfMissing(map, {
@@ -1908,6 +2231,8 @@ function addAnalysisSourcesAndLayers(map: MapLibreMap): void {
         [
           "to-number",
           ["get", "height"],
+          ["get", "estimatedHeight"],
+          ["get", "sectionHeightMeters"],
           ["get", "building:height"],
           0,
         ],
@@ -1922,6 +2247,8 @@ function addAnalysisSourcesAndLayers(map: MapLibreMap): void {
       "fill-extrusion-height": [
         "to-number",
         ["get", "height"],
+        ["get", "estimatedHeight"],
+        ["get", "sectionHeightMeters"],
         ["get", "building:height"],
         0,
       ],
@@ -2079,7 +2406,14 @@ function addAnalysisSourcesAndLayers(map: MapLibreMap): void {
     minzoom: 15,
     layout: {
       "symbol-placement": "line",
-      "text-field": ["case", ["has", "elevation"], ["concat", ["to-string", ["get", "elevation"]], " m"], ""],
+      "text-field": [
+        "case",
+        ["has", "elevation"],
+        ["concat", ["to-string", ["get", "elevation"]], " m"],
+        ["==", ["get", "contourStatus"], "fallback"],
+        "approx",
+        "",
+      ],
       "text-size": 10,
       "text-font": ["Noto Sans Regular"],
     },
@@ -2493,7 +2827,9 @@ function applyLayerVisibility(
   setLayerVisibility(map, "xl-source-line", isXl && layers.xlSources);
   setLayerVisibility(map, "urban-atlas-fill", showLContext && layers.urbanAtlas);
   setLayerVisibility(map, "urban-atlas-line", showLContext && layers.urbanAtlas);
+  setLayerVisibility(map, "l-buffer-fill", showLContext && layers.lBuffer);
   setLayerVisibility(map, "l-buffer-line", showLContext && layers.lBuffer);
+  setLayerVisibility(map, "l-buffer-labels", showLContext && layers.lBuffer);
   setLayerVisibility(map, "poi-points", showLContext && layers.pois);
   setLayerVisibility(map, "poi-education-points", showLContext && layers.poiEducation);
   setLayerVisibility(map, "poi-health-points", showLContext && layers.poiHealth);
@@ -2565,7 +2901,9 @@ function hideAnalysisLayers(map: MapLibreMap): void {
     "xl-source-line",
     "urban-atlas-fill",
     "urban-atlas-line",
+    "l-buffer-fill",
     "l-buffer-line",
+    "l-buffer-labels",
     "poi-points",
     "poi-education-points",
     "poi-health-points",
@@ -2667,7 +3005,17 @@ function applyLayerStyles(map: MapLibreMap, styles: LayerStyleState): void {
   setLineStyle(map, "xl-source-line", styles.xlSources);
   setFillStyle(map, "urban-atlas-fill", styles.urbanAtlas, 0.18);
   setLineStyle(map, "urban-atlas-line", styles.urbanAtlas);
-  setLineStyle(map, "l-buffer-line", styles.lBuffer);
+  setPaint(map, "l-buffer-fill", "fill-opacity", 0.72);
+  setPaint(map, "l-buffer-line", "line-color", mobilityRadiusColorExpression(styles.lBuffer.color));
+  setPaint(map, "l-buffer-line", "line-width", [
+    "case",
+    ["==", ["get", "primaryKpiRadius"], true],
+    styles.lBuffer.width + 0.6,
+    ["==", ["get", "mobilityMode"], "base"],
+    Math.max(1, styles.lBuffer.width - 0.4),
+    styles.lBuffer.width,
+  ]);
+  setPaint(map, "l-buffer-labels", "text-color", styles.lBuffer.color);
   setFillStyle(map, "green-fill", styles.green, 0.25);
   setLineStyle(map, "green-outline", styles.green);
   setFillStyle(map, "blue-fill", styles.blue, 0.3);

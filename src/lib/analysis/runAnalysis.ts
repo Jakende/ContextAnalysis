@@ -1,6 +1,7 @@
 import type { FeatureCollection } from "geojson";
 import { reverseGeocode } from "../api/geocoding";
 import {
+  CONTOUR_FALLBACK_SOURCE_ID,
   loadBkgBoundariesForPoint,
   loadContourLinesForPoint,
   loadFuaGeometriesForPoint,
@@ -13,6 +14,7 @@ import {
 import { runSourceAdapters } from "../data/sourceAdapters";
 import { createDataSourceRunReport } from "../data/sourceRun";
 import { fetchZensusWmsIndicators } from "../data/zensusWms";
+import { MOBILITY_ANALYSIS_RADIUS_METERS } from "./mobility/mobilityScales";
 import { fetchOpenRouteServiceIsochrones } from "../mobility/openRouteService";
 import { runOverpassModules } from "../overpass/client";
 import type {
@@ -151,9 +153,16 @@ export async function runLocationAnalysis(input: {
   emitProgress(input.onProgress, {
     id: "local-data",
     label: "Local, WMS, and sharded datasets",
-    detail: "Loading independent local, WMS, GTFS, Urban Atlas, building, contour, and isochrone sources in parallel.",
+    detail: "Loading independent local, WMS, GTFS, Urban Atlas, building, contour, and terrain sources in parallel.",
     status: "running",
   });
+  emitProgress(input.onProgress, {
+    id: "mobility-catchments",
+    label: "Mobility catchments",
+    detail: "Requesting cached/routed isochrones or deterministic mode buffers without blocking local source reads.",
+    status: "running",
+  });
+  const isochronePromise = fetchOpenRouteServiceIsochrones(selectedPoint, computedAt);
   const [
     zensusGrid,
     zensusWmsIndicators,
@@ -163,7 +172,6 @@ export async function runLocationAnalysis(input: {
     gtfsStops,
     urbanAtlas,
     contourLines,
-    isochrones,
     terrainSamples,
   ] = await Promise.all([
     loadZensusGridForPoint(selectedPoint),
@@ -171,10 +179,9 @@ export async function runLocationAnalysis(input: {
     loadLod2BuildingsForPoint(selectedPoint),
     loadBkgBoundariesForPoint(selectedPoint),
     loadFuaGeometriesForPoint(selectedPoint),
-    loadGtfsStopsForPoint(selectedPoint),
+    loadGtfsStopsForPoint(selectedPoint, MOBILITY_ANALYSIS_RADIUS_METERS),
     loadUrbanAtlasForPoint(selectedPoint),
     loadContourLinesForPoint(selectedPoint),
-    fetchOpenRouteServiceIsochrones(selectedPoint, computedAt),
     input.sectionLine
       ? loadTerrainSamplesForSection(input.sectionLine)
       : Promise.resolve([]),
@@ -182,8 +189,20 @@ export async function runLocationAnalysis(input: {
   emitProgress(input.onProgress, {
     id: "local-data",
     label: "Local, WMS, and sharded datasets",
-    detail: `${bkgBoundaries.features.length} BKG / ${fuaGeometries.features.length} FUA / ${gtfsStops.features.length} GTFS stops / ${urbanAtlas.features.length} Urban Atlas / ${lod2Buildings.features.length} building / ${contourLines.features.length} contour / ${isochrones.collection.features.length} isochrone feature(s).`,
+    detail: `${bkgBoundaries.features.length} BKG / ${fuaGeometries.features.length} FUA / ${gtfsStops.features.length} GTFS stops / ${urbanAtlas.features.length} Urban Atlas / ${lod2Buildings.features.length} building / ${contourLines.features.length} contour feature(s).`,
     status: "ok",
+  });
+  const isochrones = await isochronePromise;
+  emitProgress(input.onProgress, {
+    id: "mobility-catchments",
+    label: "Mobility catchments",
+    detail: `${isochrones.collection.features.length} walking/cycling/driving catchment feature(s) available for mode-specific reachability.`,
+    status:
+      isochrones.receipt.status === "failed"
+        ? "failed"
+        : isochrones.receipt.status === "skipped"
+          ? "skipped"
+          : "ok",
   });
   const overpass = await overpassPromise;
   emitProgress(input.onProgress, {
@@ -233,6 +252,12 @@ export async function runLocationAnalysis(input: {
     input.sectionLine,
     terrainSamples,
   );
+  const contourUsesFallback = contourLines.features.some(
+    (feature) => feature.properties?.sourceId === CONTOUR_FALLBACK_SOURCE_ID,
+  );
+  const contourUsesOpenTopography = contourLines.features.some(
+    (feature) => feature.properties?.sourceId === "opentopography-contours",
+  );
   const sourceFetches = [
     ...(await runSourceAdapters({
     district: xl.district,
@@ -255,7 +280,12 @@ export async function runLocationAnalysis(input: {
       "urban-atlas-2021-catalog": urbanAtlas,
       "gtfs-de-local-transit": gtfsStops,
       "mobilithek-gtfs": gtfsStops,
-      "opentopography-contours": contourLines,
+      ...(contourUsesOpenTopography
+        ? { "opentopography-contours": contourLines }
+        : {}),
+      ...(contourUsesFallback
+        ? { [CONTOUR_FALLBACK_SOURCE_ID]: contourLines }
+        : {}),
     },
     })),
     isochrones.receipt,

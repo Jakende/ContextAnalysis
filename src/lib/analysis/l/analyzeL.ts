@@ -6,6 +6,7 @@ import {
   geometryToFeature,
 } from "../geometry";
 import { createIndicator } from "../indicators/createIndicator";
+import { analyzeMobilityScales } from "../mobility/mobilityScales";
 
 export function analyzeL(
   selectedPoint: SelectedPoint,
@@ -13,7 +14,6 @@ export function analyzeL(
   radiusMeters = 500,
   liveCollections: Record<string, FeatureCollection | undefined> = {},
 ): { modules: FactSheetModule[]; indicators: Indicator[]; overlays: ReturnType<typeof createLOverlays> } {
-  const overlays = createLOverlays(selectedPoint, radiusMeters);
   const liveGreenBlue = liveCollections.greenBlue;
   const liveTransportStops = liveCollections.transportStops;
   const liveTransportLines = liveCollections.transportLines;
@@ -23,6 +23,15 @@ export function analyzeL(
   const liveDevelopment = liveCollections.developmentHints;
   const liveLandUse = liveCollections.landUse;
   const liveTrees = liveCollections.trees;
+  const mobilityScales = analyzeMobilityScales({
+    selectedPoint,
+    computedAt,
+    pois: livePois,
+    transportStops: liveTransportStops,
+    mobilityInfrastructure: liveMobility,
+    isochrones: liveIsochrones,
+  });
+  const overlays = createLOverlays(selectedPoint, radiusMeters, mobilityScales.bufferFeatures);
   const urbanAtlas = liveCollections.urbanAtlas;
   const urbanAtlasRadius = urbanAtlas
     ? featureCollection(
@@ -79,6 +88,7 @@ export function analyzeL(
     mobilityCollection: liveMobility,
     isochroneCollection: liveIsochrones,
     activeReachabilityScore: isochroneReachability?.activeScore ?? null,
+    multimodalReachabilityScore: mobilityScales.combinedScore,
   });
   const infrastructurePois = exactPois ?? null;
   const socialInfrastructureScore = calculateSocialInfrastructureScore(
@@ -360,7 +370,7 @@ export function analyzeL(
       value: mobilityScore.value,
       unit: "0-100",
       method:
-        "Composite KPI from public-transport stop availability and density, transit mode hierarchy, OSM walking/cycling infrastructure hints, OpenRouteService walking/cycling isochrone context, and POI reachability by active modes. Driving isochrones are comparison context only.",
+        "Composite KPI from public-transport stop availability and density, transit mode hierarchy, OSM walking/cycling infrastructure hints, OpenRouteService walking/cycling isochrone context, and mode-specific walking, cycling, transit, and car reachability.",
       sourceIds: ["osm-core", "osm-overpass", "mobilithek-gtfs", "gtfs-de-local-transit", "openrouteservice-isochrones"],
       confidence: mobilityScore.confidence,
       caveats: [
@@ -424,6 +434,7 @@ export function analyzeL(
       ],
       computedAt,
     }),
+    ...mobilityScales.indicators,
   ];
 
   const modules: FactSheetModule[] = [
@@ -453,6 +464,7 @@ export function analyzeL(
           : caveat,
       ],
     },
+    mobilityScales.module,
     {
       id: "l.potential",
       title: "Development hints",
@@ -482,13 +494,17 @@ export function analyzeL(
 function createLOverlays(
   selectedPoint: SelectedPoint,
   radiusMeters: number,
+  mobilityScaleBuffers: ReturnType<typeof analyzeMobilityScales>["bufferFeatures"] = [],
 ) {
   const { lat, lon } = selectedPoint;
   const lBuffer = featureCollection([
     geometryToFeature(bufferPolygon(lat, lon, radiusMeters), {
       id: "l-buffer",
+      label: `L base ${radiusMeters} m`,
+      mobilityMode: "base",
       radiusMeters,
     }),
+    ...mobilityScaleBuffers,
   ]);
 
   return {
@@ -668,10 +684,14 @@ function calculateMobilityScore(input: {
   mobilityCollection: FeatureCollection | undefined;
   isochroneCollection: FeatureCollection | undefined;
   activeReachabilityScore: number | null;
+  multimodalReachabilityScore: number | null;
 }): { value: number | null; confidence: "high" | "medium" | "low"; caveats: string[] } {
   const modeCounts = summarizeMobilityModeCounts(input.mobilityCollection);
   const isochroneScore = calculateActiveIsochroneScore(input.isochroneCollection);
-  const reachabilityScore = input.activeReachabilityScore ?? isochroneScore;
+  const reachabilityScore =
+    input.multimodalReachabilityScore ??
+    input.activeReachabilityScore ??
+    isochroneScore;
   const hasIsochrones = isochroneScore > 0;
   const hasFallbackIsochrones = input.isochroneCollection?.features.some(
     (feature) =>
@@ -685,6 +705,7 @@ function calculateMobilityScore(input: {
     input.mobilityCollection !== undefined,
     hasIsochrones,
     input.activeReachabilityScore !== null,
+    input.multimodalReachabilityScore !== null,
   ].filter(Boolean).length;
   if (availableInputs === 0) {
     return {
@@ -709,11 +730,11 @@ function calculateMobilityScore(input: {
     Math.round(((modeCounts.bike * 8 + modeCounts.pedestrian * 6 + modeCounts.support * 3) / 120) * 100),
   );
   const score = Math.round(
-    transitAccessScore * 0.25 +
-      transitModeScore * 0.15 +
-      walkingCyclingScore * 0.2 +
-      isochroneScore * 0.15 +
-      reachabilityScore * 0.25,
+    transitAccessScore * 0.2 +
+      transitModeScore * 0.12 +
+      walkingCyclingScore * 0.16 +
+      isochroneScore * 0.12 +
+      reachabilityScore * 0.4,
   );
 
   return {
@@ -724,8 +745,8 @@ function calculateMobilityScore(input: {
       hasFallbackIsochrones
         ? "OpenRouteService routed isochrones were unavailable; geometric fallback catchments reduce confidence."
         : "OpenRouteService routed isochrones increase context but do not include timetable quality.",
-      "Driving isochrones are rendered as context but do not increase the mobility score.",
-      `Mobility subscores: transit access ${transitAccessScore}, transit mode hierarchy ${transitModeScore}, walking/cycling infrastructure ${walkingCyclingScore}, walking/cycling isochrone context ${isochroneScore}, active POI reachability ${reachabilityScore}.`,
+      "Driving reachability is included as one mode in the multimodal reachability score, but public-space quality still depends on local walking/cycling and transit evidence.",
+      `Mobility subscores: transit access ${transitAccessScore}, transit mode hierarchy ${transitModeScore}, walking/cycling infrastructure ${walkingCyclingScore}, walking/cycling isochrone context ${isochroneScore}, multimodal reachability ${reachabilityScore}.`,
     ],
   };
 }

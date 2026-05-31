@@ -1,4 +1,11 @@
-import type { Feature, FeatureCollection, LineString, Point, Polygon } from "geojson";
+import type {
+  Feature,
+  FeatureCollection,
+  LineString,
+  MultiPolygon,
+  Point,
+  Polygon,
+} from "geojson";
 import type {
   AnalysisResult,
   FactSheetModule,
@@ -13,6 +20,14 @@ import {
 } from "../geometry";
 import { createIndicator } from "../indicators/createIndicator";
 
+type BuildingGeometry = Polygon | MultiPolygon;
+type BuildingFeature = Feature<BuildingGeometry>;
+
+type BuildingHeightInfo = {
+  height: number;
+  source: "measured" | "levels-estimated" | "default-estimated";
+};
+
 export function analyzeM(
   selectedPoint: SelectedPoint,
   computedAt: string,
@@ -25,10 +40,9 @@ export function analyzeM(
     (feature): feature is Feature<LineString> =>
       feature.geometry.type === "LineString",
   );
-  const liveBuildingFeatures = (liveCollections.buildings?.features ?? []).filter(
-    (feature): feature is Feature<Polygon> =>
-      feature.geometry.type === "Polygon",
-  );
+  const liveBuildingFeatures = (liveCollections.buildings?.features ?? [])
+    .filter(isBuildingFeature)
+    .map(enrichBuildingFeature);
   const liveTreeFeatures = liveCollections.trees?.features ?? [];
   const streetFeature = nearestLineFeature(
     liveStreetFeatures,
@@ -86,15 +100,19 @@ export function analyzeM(
   const hasLiveTrees = corridorTreeFeatures.length > 0;
   const taggedWidth = readNumericTag(streetFeature, ["width", "est_width"]);
   const measuredWidth = taggedWidth === null ? null : Math.round(taggedWidth);
-  const liveBuildingHeight = corridorBuildingFeatures
+  const liveBuildingHeightInfo =
+    corridorBuildingFeatures
       .map((feature) => readBuildingHeight(feature))
-      .find((height): height is number => height !== null) ?? null;
-  const buildingHeight = liveBuildingHeight === null ? null : Math.round(liveBuildingHeight);
+      .sort((left, right) =>
+        (left?.source === "measured" ? 0 : 1) - (right?.source === "measured" ? 0 : 1),
+      )
+      .find((height): height is BuildingHeightInfo => height !== null) ?? null;
+  const buildingHeight = liveBuildingHeightInfo === null ? null : Math.round(liveBuildingHeightInfo.height);
   const treePresence = liveCollections.trees ? corridorTreeFeatures.length : null;
   const sectionModel = createSectionModel({
     sectionLine,
     selectedPoint,
-    buildings: corridorBuildingFeatures,
+    buildings: sectionLine ? liveBuildingFeatures : corridorBuildingFeatures,
     trees: corridorTreeFeatures,
     terrainSamples,
   });
@@ -175,11 +193,16 @@ export function analyzeM(
       geometry: overlays.buildings.features[0]?.geometry,
       method:
         hasLiveBuildings
-          ? "Read live OSM building footprints and direct height tags where present; LOD2 remains the preferred local source when preprocessed."
+          ? "Read loaded building footprints and direct height tags where present; if a footprint has no measured height, the M-section uses a visibly labelled estimated height from levels or a conservative default."
           : "No live OSM building footprint/height data and no local LOD2 tiles are loaded for this point.",
       sourceIds: ["lod2-deutschland-bkg", "lod2-federal-states", "lod2-bayern", "overture-buildings", "overture-building-parts", "osm-core"],
-      confidence: hasLiveBuildings ? "medium" : "low",
-      caveats: [caveat, "building:levels is not converted into height in real-data-only mode."],
+      confidence: hasLiveBuildings && liveBuildingHeightInfo?.source === "measured" ? "medium" : "low",
+      caveats: [
+        caveat,
+        liveBuildingHeightInfo?.source === "measured"
+          ? "At least one intersecting building has a measured height attribute."
+          : "Estimated heights are only used for section/3D visualization when measured height is missing and are marked as estimated.",
+      ],
       computedAt,
     }),
     createIndicator({
@@ -224,7 +247,7 @@ export function analyzeM(
       geometry: sectionLineToGeometry(sectionLine),
       method:
         sectionLine
-          ? "Section is calculated from the user-defined line. Loaded buildings, tree locations, and available OpenTopography DEM samples are orthogonally projected onto the section."
+          ? "Section is calculated from the user-defined line. Loaded building footprints, tree locations, and available OpenTopography DEM samples are projected onto the section; missing building heights are labelled as estimated."
           : "No user-defined section line is set. The section SVG stays in setup mode instead of rendering a generic street section.",
       sourceIds: ["opentopography-dem", "lod2-deutschland-bkg", "lod2-federal-states", "lod2-bayern", "overture-buildings", "osm-core", "osm-overpass"],
       confidence: sectionLine ? "medium" : "low",
@@ -232,7 +255,7 @@ export function analyzeM(
         sectionLine
           ? terrainSamples.length > 0
             ? "Terrain samples come from the configured local OpenTopography DEM GeoJSON; no synthetic terrain is emitted."
-            : "No local OpenTopography DEM samples were found for the drawn line; no synthetic terrain profile is emitted."
+            : "No local OpenTopography DEM samples were found for the drawn line; the SVG uses an approximate visual baseline and does not emit measured elevation values."
           : "Set a section line in M scale to calculate a meaningful cross-section.",
       ],
       computedAt,
@@ -268,7 +291,7 @@ export function analyzeM(
       scale: "M",
       indicators: [indicators[1], indicators[5], indicators[6]],
       method:
-        "User-defined section line with projected real building/tree evidence and configured local OpenTopography DEM samples where available.",
+        "User-defined section line with footprint intersections, projected tree evidence, and local DEM terrain where available.",
       sourceIds: ["osm-core", "osm-overpass", "lod2-deutschland-bkg", "lod2-federal-states", "lod2-bayern", "overture-buildings", "opentopography-dem"],
       computedAt,
       confidence: sectionLine ? "medium" : "low",
@@ -291,8 +314,8 @@ export function recomputeMSectionFromAnalysis(
 ): { result: AnalysisResult; sectionSvg: string } {
   const computedAt = new Date().toISOString();
   const buildings = analysis.overlays.buildings.features.filter(
-    (feature): feature is Feature<Polygon> => feature.geometry.type === "Polygon",
-  );
+    isBuildingFeature,
+  ).map(enrichBuildingFeature);
   const trees = analysis.overlays.trees.features.filter(
     (feature) =>
       feature.geometry.type === "Point" || feature.geometry.type === "LineString",
@@ -301,7 +324,7 @@ export function recomputeMSectionFromAnalysis(
   const width = numberIndicatorValue(analysis, "m.street-width");
   const buildingHeight =
     buildings
-      .map((feature) => readBuildingHeight(feature))
+      .map((feature) => readBuildingHeight(feature)?.height ?? null)
       .filter((height): height is number => height !== null)
       .sort((a, b) => b - a)[0] ?? null;
   const sectionModel = createSectionModel({
@@ -326,13 +349,13 @@ export function recomputeMSectionFromAnalysis(
     unit: "section length",
     geometry: sectionLineToGeometry(sectionLine),
     method:
-      "Section is calculated immediately from the user-defined line and the already loaded M-scale building/tree overlays plus configured local OpenTopography DEM samples where available.",
+      "Section is calculated immediately from the user-defined line and the already loaded M-scale building/tree overlays plus configured local OpenTopography DEM samples where available; missing building heights are labelled as estimated.",
     sourceIds: ["opentopography-dem", "lod2-deutschland-bkg", "lod2-federal-states", "lod2-bayern", "overture-buildings", "osm-core", "osm-overpass"],
     confidence: "medium",
     caveats: [
       terrainSamples.length > 0
         ? "Terrain samples come from the configured local OpenTopography DEM GeoJSON; no synthetic terrain is emitted."
-        : "Section dimensions are driven by the drawn line; no local OpenTopography DEM samples were found and no synthetic terrain is emitted.",
+        : "Section dimensions are driven by the drawn line; no local OpenTopography DEM samples were found, so the SVG uses an approximate visual baseline without measured elevation values.",
     ],
     computedAt,
   });
@@ -343,7 +366,7 @@ export function recomputeMSectionFromAnalysis(
           ...module,
           indicators: replaceIndicator(module.indicators, sectionIndicator),
           method:
-            "User-defined section line with projected real building/tree evidence and configured local OpenTopography DEM samples where available.",
+            "User-defined section line with footprint intersections, projected tree evidence, and local DEM terrain where available.",
           sourceIds: uniqueSourceIds([
             ...module.sourceIds,
             "opentopography-dem",
@@ -435,11 +458,32 @@ function nearestLineFeature(
     .sort((a, b) => a.distance - b.distance)[0]?.feature;
 }
 
+function isBuildingFeature(feature: Feature): feature is BuildingFeature {
+  return feature.geometry.type === "Polygon" || feature.geometry.type === "MultiPolygon";
+}
+
+function enrichBuildingFeature(feature: BuildingFeature): BuildingFeature {
+  const info = readBuildingHeight(feature);
+  return {
+    ...feature,
+    properties: {
+      ...(feature.properties ?? {}),
+      ...(info
+        ? {
+            sectionHeightMeters: info.height,
+            sectionHeightSource: info.source,
+            ...(info.source === "measured" ? {} : { estimatedHeight: info.height }),
+          }
+        : {}),
+    },
+  };
+}
+
 function nearestPolygonFeatures(
-  features: Array<Feature<Polygon>>,
+  features: BuildingFeature[],
   line: LineString,
   maxDistanceMeters: number,
-): Array<Feature<Polygon>> {
+): BuildingFeature[] {
   return features
     .map((feature) => ({
       feature,
@@ -476,16 +520,20 @@ function featureDistanceToLine(feature: Feature, line: LineString): number {
       ),
     );
   }
-  if (feature.geometry.type === "Polygon") {
+  if (feature.geometry.type === "Polygon" || feature.geometry.type === "MultiPolygon") {
     return polygonDistanceToLine(feature.geometry, line);
   }
   return Number.POSITIVE_INFINITY;
 }
 
-function polygonDistanceToLine(polygon: Polygon, line: LineString): number {
+function polygonDistanceToLine(geometry: BuildingGeometry, line: LineString): number {
+  const rings = exteriorRings(geometry);
+  if (!rings.length) return Number.POSITIVE_INFINITY;
   return Math.min(
-    ...polygon.coordinates[0].map((coordinate) =>
-      lineDistanceToPoint(line, coordinate[1], coordinate[0]),
+    ...rings.flatMap((ring) =>
+      ring.map((coordinate) =>
+        lineDistanceToPoint(line, coordinate[1], coordinate[0]),
+      ),
     ),
   );
 }
@@ -553,9 +601,35 @@ function readNumericTag(
   return null;
 }
 
-function readBuildingHeight(feature: Feature): number | null {
-  const direct = readNumericTag(feature, ["height", "building:height"]);
-  return direct;
+function readBuildingHeight(feature: Feature): BuildingHeightInfo | null {
+  const direct = readNumericTag(feature, [
+    "height",
+    "building:height",
+    "measuredHeight",
+    "measured_height",
+    "heightMeters",
+    "sectionHeightMeters",
+  ]);
+  if (direct !== null && direct > 0) {
+    return { height: clampHeight(direct), source: "measured" };
+  }
+  const levels = readNumericTag(feature, [
+    "building:levels",
+    "levels",
+    "building_levels",
+    "render_levels",
+  ]);
+  if (levels !== null && levels > 0) {
+    return { height: clampHeight(levels * 3.2), source: "levels-estimated" };
+  }
+  if (feature.properties?.building || feature.properties?.sourceId === "overture-buildings") {
+    return { height: 11.5, source: "default-estimated" };
+  }
+  return null;
+}
+
+function clampHeight(height: number): number {
+  return Math.max(2.5, Math.min(180, height));
 }
 
 function pointCoordinatesForTree(feature: Feature): number[][] {
@@ -608,12 +682,17 @@ function createMOverlays(_selectedPoint: SelectedPoint, sectionLine?: SectionLin
 type SectionModel = {
   line: SectionLine | null;
   lengthMeters: number;
+  terrainStatus: "measured" | "approximate";
   terrainSamples: Array<{ distance: number; elevation: number }>;
   buildings: Array<{
     start: number;
     end: number;
     height: number;
+    heightSource: BuildingHeightInfo["source"];
     side: "left" | "right" | "center";
+    setbackMeters: number;
+    sourceId?: string;
+    label: string;
   }>;
   trees: Array<{ distance: number; canopyHeight: number; side: "left" | "right" | "center" }>;
 };
@@ -632,14 +711,14 @@ function sectionLineToGeometry(sectionLine?: SectionLine | null): LineString | u
 function createSectionLineFeature(sectionLine: SectionLine): Feature<LineString> {
   return geometryToFeature(sectionLineToGeometry(sectionLine)!, {
     id: "m-user-section-line",
-    sourceId: "opentopography-dem",
+    sourceId: "user-defined-section",
   }) as Feature<LineString>;
 }
 
 function createSectionModel(input: {
   sectionLine?: SectionLine | null;
   selectedPoint: SelectedPoint;
-  buildings: Array<Feature<Polygon>>;
+  buildings: BuildingFeature[];
   trees: Feature[];
   terrainSamples?: Array<{ distance: number; elevation: number }>;
 }): SectionModel {
@@ -647,6 +726,7 @@ function createSectionModel(input: {
     return {
       line: null,
       lengthMeters: 0,
+      terrainStatus: "approximate",
       terrainSamples: [],
       buildings: [],
       trees: [],
@@ -658,6 +738,7 @@ function createSectionModel(input: {
     return {
       line: null,
       lengthMeters: 0,
+      terrainStatus: "approximate",
       terrainSamples: [],
       buildings: [],
       trees: [],
@@ -676,11 +757,15 @@ function createSectionModel(input: {
   return {
     line: input.sectionLine,
     lengthMeters,
-    terrainSamples: input.terrainSamples ?? [],
+    terrainStatus: input.terrainSamples?.length ? "measured" : "approximate",
+    terrainSamples: input.terrainSamples?.length
+      ? input.terrainSamples
+      : createApproximateTerrainSamples(lengthMeters),
     buildings: input.buildings
       .map((feature) => projectPolygonToSection(feature, startMeters, dx, dy, lengthMeters, refLat))
       .filter((item): item is SectionModel["buildings"][number] => item !== null)
-      .slice(0, 24),
+      .sort((left, right) => left.start - right.start || left.setbackMeters - right.setbackMeters)
+      .slice(0, 80),
     trees: input.trees
       .flatMap((feature) => pointCoordinatesForTree(feature))
       .map((coordinate) => projectPointToSection(coordinate, startMeters, dx, dy, lengthMeters, refLat))
@@ -690,26 +775,108 @@ function createSectionModel(input: {
 }
 
 function projectPolygonToSection(
-  feature: Feature<Polygon>,
+  feature: BuildingFeature,
   startMeters: { x: number; y: number },
   dx: number,
   dy: number,
   lengthMeters: number,
   refLat: number,
 ): SectionModel["buildings"][number] | null {
-  const height = readBuildingHeight(feature);
-  if (height === null || height <= 0) return null;
-  const projected = feature.geometry.coordinates[0].map((coordinate) =>
-    projectCoordinateToSection(coordinate, startMeters, dx, dy, lengthMeters, refLat),
-  );
-  const near = projected.filter((item) => Math.abs(item.sideOffset) <= 42);
-  if (!near.length) return null;
-  const distances = near.map((item) => item.distance);
+  const heightInfo = readBuildingHeight(feature);
+  if (!heightInfo || heightInfo.height <= 0) return null;
+  const rings = exteriorRings(feature.geometry);
+  const candidates = rings
+    .map((ring) => {
+      const projected = ring.map((coordinate) =>
+        projectCoordinateToSection(coordinate, startMeters, dx, dy, lengthMeters, refLat),
+      );
+      return (
+        projectedRingIntersection(projected, lengthMeters) ??
+        projectedRingNearInterval(projected, lengthMeters)
+      );
+    })
+    .filter((item): item is { start: number; end: number; setbackMeters: number; side: "left" | "right" | "center" } => item !== null)
+    .sort((left, right) => left.setbackMeters - right.setbackMeters || (right.end - right.start) - (left.end - left.start));
+  const interval = candidates[0];
+  if (!interval) return null;
   return {
-    start: Math.max(0, Math.min(...distances)),
-    end: Math.min(lengthMeters, Math.max(...distances)),
-    height,
-    side: sideFromOffset(average(near.map((item) => item.sideOffset))),
+    start: interval.start,
+    end: interval.end,
+    height: heightInfo.height,
+    heightSource: heightInfo.source,
+    side: interval.side,
+    setbackMeters: interval.setbackMeters,
+    sourceId: typeof feature.properties?.sourceId === "string" ? feature.properties.sourceId : undefined,
+    label: buildingLabel(feature),
+  };
+}
+
+function projectedRingIntersection(
+  projected: Array<{ distance: number; sideOffset: number }>,
+  lengthMeters: number,
+): { start: number; end: number; setbackMeters: number; side: "left" | "right" | "center" } | null {
+  if (projected.length < 3) return null;
+  const cuts = [0, lengthMeters];
+  for (let index = 0; index < projected.length; index += 1) {
+    const current = projected[index];
+    const next = projected[(index + 1) % projected.length];
+    if (current.sideOffset === 0) cuts.push(current.distance);
+    const crosses =
+      (current.sideOffset < 0 && next.sideOffset > 0) ||
+      (current.sideOffset > 0 && next.sideOffset < 0);
+    if (!crosses) continue;
+    const t = current.sideOffset / (current.sideOffset - next.sideOffset);
+    const distance = current.distance + (next.distance - current.distance) * t;
+    if (distance >= 0 && distance <= lengthMeters) cuts.push(distance);
+  }
+  const sortedCuts = uniqueSorted(cuts.map((distance) => clamp(distance, 0, lengthMeters)));
+  const intervals: Array<{ start: number; end: number }> = [];
+  for (let index = 1; index < sortedCuts.length; index += 1) {
+    const start = sortedCuts[index - 1];
+    const end = sortedCuts[index];
+    if (end - start < 0.75) continue;
+    const mid = (start + end) / 2;
+    if (ringContainsProjectedPoint(projected, mid, 0)) {
+      intervals.push({ start, end });
+    }
+  }
+  if (!intervals.length) return null;
+  const best = intervals.sort((left, right) => right.end - right.start - (left.end - left.start))[0];
+  return {
+    ...best,
+    setbackMeters: 0,
+    side: "center",
+  };
+}
+
+function projectedRingNearInterval(
+  projected: Array<{ distance: number; sideOffset: number }>,
+  lengthMeters: number,
+): { start: number; end: number; setbackMeters: number; side: "left" | "right" | "center" } | null {
+  if (projected.length < 3) return null;
+  const minProjectedDistance = Math.min(...projected.map((point) => point.distance));
+  const maxProjectedDistance = Math.max(...projected.map((point) => point.distance));
+  if (maxProjectedDistance < -24 || minProjectedDistance > lengthMeters + 24) return null;
+  const overlapStart = clamp(minProjectedDistance, 0, lengthMeters);
+  const overlapEnd = clamp(maxProjectedDistance, 0, lengthMeters);
+  if (overlapEnd - overlapStart < 0.75) return null;
+  const inRange = projected.filter((point) => point.distance >= -32 && point.distance <= lengthMeters + 32);
+  const candidates = inRange.length ? inRange : projected;
+  const closest = candidates.reduce((best, point) =>
+    Math.abs(point.sideOffset) < Math.abs(best.sideOffset) ? point : best,
+  );
+  const setbackMeters = Math.abs(closest.sideOffset);
+  if (setbackMeters > 72) return null;
+  const distances = candidates.map((point) => clamp(point.distance, 0, lengthMeters));
+  const minDistance = Math.min(overlapStart, ...distances);
+  const maxDistance = Math.max(overlapEnd, ...distances);
+  const center = clamp((overlapStart + overlapEnd) / 2 || average(distances), 0, lengthMeters);
+  const fallbackHalfWidth = Math.max(4, Math.min(18, (maxDistance - minDistance) / 2 || 8));
+  return {
+    start: clamp(Math.min(minDistance, center - fallbackHalfWidth), 0, lengthMeters),
+    end: clamp(Math.max(maxDistance, center + fallbackHalfWidth), 0, lengthMeters),
+    setbackMeters,
+    side: sideFromOffset(closest.sideOffset),
   };
 }
 
@@ -747,6 +914,42 @@ function projectCoordinateToSection(
   return { distance, sideOffset };
 }
 
+function exteriorRings(geometry: BuildingGeometry): number[][][] {
+  if (geometry.type === "Polygon") return [geometry.coordinates[0] ?? []];
+  return geometry.coordinates.map((polygon) => polygon[0] ?? []).filter((ring) => ring.length > 0);
+}
+
+function ringContainsProjectedPoint(
+  ring: Array<{ distance: number; sideOffset: number }>,
+  distance: number,
+  sideOffset: number,
+): boolean {
+  let inside = false;
+  for (let index = 0, previous = ring.length - 1; index < ring.length; previous = index, index += 1) {
+    const current = ring[index];
+    const last = ring[previous];
+    const intersects =
+      current.sideOffset > sideOffset !== last.sideOffset > sideOffset &&
+      distance <
+        ((last.distance - current.distance) * (sideOffset - current.sideOffset)) /
+          ((last.sideOffset - current.sideOffset) || Number.EPSILON) +
+          current.distance;
+    if (intersects) inside = !inside;
+  }
+  return inside;
+}
+
+function uniqueSorted(values: number[]): number[] {
+  return [...values]
+    .filter((value) => Number.isFinite(value))
+    .sort((left, right) => left - right)
+    .filter((value, index, array) => index === 0 || Math.abs(value - array[index - 1]) > 0.35);
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
+}
+
 function sideFromOffset(offset: number): "left" | "right" | "center" {
   if (offset < -3) return "left";
   if (offset > 3) return "right";
@@ -759,12 +962,24 @@ function average(values: number[]): number {
     : 0;
 }
 
-function terrainYForSample(
-  sample: { elevation: number },
-  minElevation: number,
-  profileBaseY: number,
-): number {
-  return profileBaseY - Math.min(58, (sample.elevation - minElevation) * 3.2);
+function createApproximateTerrainSamples(lengthMeters: number): Array<{ distance: number; elevation: number }> {
+  const sampleCount = Math.max(4, Math.min(10, Math.ceil(lengthMeters / 18)));
+  return Array.from({ length: sampleCount }, (_, index) => {
+    const t = sampleCount === 1 ? 0 : index / (sampleCount - 1);
+    return {
+      distance: lengthMeters * t,
+      elevation: Math.sin(t * Math.PI * 1.4) * 0.35 + t * 0.45,
+    };
+  });
+}
+
+function buildingLabel(feature: Feature): string {
+  return String(
+    feature.properties?.name ??
+      feature.properties?.building ??
+      feature.properties?.sourceId ??
+      "building",
+  );
 }
 
 function createSectionSvg(input: {
@@ -775,7 +990,7 @@ function createSectionSvg(input: {
   model: SectionModel;
 }): string {
   if (!input.model.line) {
-    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 360" role="img" aria-label="User-defined street cross-section setup">
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 420" role="img" aria-label="User-defined street cross-section setup">
   <metadata>{"source":"Urban Context Analysis","status":"section-line-required"}</metadata>
   <style>
     svg{--section-surface:var(--surface,#000);--section-ink:var(--ink,#fff);--section-muted:var(--muted,#b3b3b3);--section-border:var(--border,#3a3a3a)}
@@ -783,36 +998,46 @@ function createSectionSvg(input: {
     .line{stroke:var(--section-border);stroke-width:1;fill:none}
     .muted{fill:var(--section-muted)}
   </style>
-  <rect width="720" height="360" fill="var(--section-surface)"/>
+  <rect width="920" height="420" fill="var(--section-surface)"/>
   <text x="24" y="38">SECTION LINE REQUIRED</text>
   <text x="24" y="64" class="muted">M scale: click "Set section line", then choose start and end on the map.</text>
-  <line x1="92" y1="246" x2="628" y2="122" class="line" stroke-dasharray="8 6"/>
-  <circle cx="92" cy="246" r="10" fill="none" stroke="var(--section-ink)"/>
-  <circle cx="628" cy="122" r="10" fill="none" stroke="var(--section-ink)"/>
+  <line x1="112" y1="286" x2="808" y2="132" class="line" stroke-dasharray="8 6"/>
+  <circle cx="112" cy="286" r="10" fill="none" stroke="var(--section-ink)"/>
+  <circle cx="808" cy="132" r="10" fill="none" stroke="var(--section-ink)"/>
 </svg>`;
   }
 
   const model = input.model;
   const hasTerrain = model.terrainSamples.length > 0;
+  const hasMeasuredTerrain = model.terrainStatus === "measured";
   const minElevation = hasTerrain
     ? Math.min(...model.terrainSamples.map((sample) => sample.elevation))
     : 0;
+  const maxElevation = hasTerrain
+    ? Math.max(...model.terrainSamples.map((sample) => sample.elevation))
+    : minElevation;
+  const terrainRange = Math.max(0.25, maxElevation - minElevation);
   const maxBuilding = Math.max(24, ...model.buildings.map((building) => building.height));
   const heightDomain = Math.max(18, maxBuilding + 8);
   const xForDistance = (distance: number) =>
-    42 + (distance / Math.max(1, model.lengthMeters)) * 636;
-  const profileBaseY = 292;
+    64 + (distance / Math.max(1, model.lengthMeters)) * 792;
+  const profileBaseY = 332;
+  const profileTopY = 72;
   const yForRelativeHeight = (height: number, groundY: number) =>
-    groundY - (height / heightDomain) * 190;
+    groundY - (height / heightDomain) * 230;
+  const yForTerrainSample = (sample: { elevation: number }) =>
+    profileBaseY -
+    ((sample.elevation - minElevation) / terrainRange) *
+      (hasMeasuredTerrain ? 52 : 16);
   const terrainYForDistance = (distance: number): number => {
     const samples = model.terrainSamples;
     if (!samples.length) return profileBaseY;
     if (distance <= samples[0].distance) {
-      return terrainYForSample(samples[0], minElevation, profileBaseY);
+      return yForTerrainSample(samples[0]);
     }
     const last = samples[samples.length - 1];
     if (distance >= last.distance) {
-      return terrainYForSample(last, minElevation, profileBaseY);
+      return yForTerrainSample(last);
     }
     for (let index = 1; index < samples.length; index += 1) {
       const previous = samples[index - 1];
@@ -821,8 +1046,8 @@ function createSectionSvg(input: {
         const span = next.distance - previous.distance || 1;
         const t = (distance - previous.distance) / span;
         return (
-          terrainYForSample(previous, minElevation, profileBaseY) * (1 - t) +
-          terrainYForSample(next, minElevation, profileBaseY) * t
+          yForTerrainSample(previous) * (1 - t) +
+          yForTerrainSample(next) * t
         );
       }
     }
@@ -831,19 +1056,42 @@ function createSectionSvg(input: {
   const terrainPath = model.terrainSamples
     .map((sample, index) => {
       const x = xForDistance(sample.distance);
-      const y = terrainYForSample(sample, minElevation, profileBaseY);
+      const y = yForTerrainSample(sample);
       return `${index === 0 ? "M" : "L"} ${x.toFixed(1)} ${y.toFixed(1)}`;
     })
     .join(" ");
+  const gridStep = model.lengthMeters <= 90 ? 10 : model.lengthMeters <= 240 ? 25 : 50;
+  const gridSvg = Array.from(
+    { length: Math.floor(model.lengthMeters / gridStep) + 1 },
+    (_, index) => index * gridStep,
+  )
+    .filter((distance) => distance <= model.lengthMeters)
+    .map((distance) => {
+      const x = xForDistance(distance);
+      return `<line x1="${x.toFixed(1)}" y1="${profileTopY}" x2="${x.toFixed(1)}" y2="${profileBaseY + 16}" class="grid"/>
+    <text x="${(x - 4).toFixed(1)}" y="${profileBaseY + 34}" class="tick">${Math.round(distance)}</text>`;
+    })
+    .join("\n    ");
   const buildingSvg = model.buildings
     .map((building, index) => {
       const x = xForDistance(building.start);
       const width = Math.max(8, xForDistance(building.end) - x);
       const groundY = terrainYForDistance((building.start + building.end) / 2);
       const y = yForRelativeHeight(building.height, groundY);
-      const sideClass = building.side === "left" ? "building-left" : "building-right";
-      return `<rect class="${sideClass}" x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${width.toFixed(1)}" height="${(groundY - y).toFixed(1)}"/>
-    <text x="${(x + 2).toFixed(1)}" y="${Math.max(22, y - 5).toFixed(1)}" class="muted">${Math.round(building.height)}M</text>`;
+      const sideClass =
+        building.side === "left"
+          ? "building-left"
+          : building.side === "right"
+            ? "building-right"
+            : "building-center";
+      const heightClass = building.heightSource === "measured" ? "measured" : "estimated";
+      const label = `${Math.round(building.height)}m${building.heightSource === "measured" ? "" : " est"}`;
+      const labelX = Math.min(818, Math.max(66, x + 3));
+      return `<g class="building ${sideClass} ${heightClass}" data-source="${escapeXml(building.sourceId ?? "unknown")}">
+      <rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${width.toFixed(1)}" height="${(groundY - y).toFixed(1)}"/>
+      <line x1="${x.toFixed(1)}" y1="${groundY.toFixed(1)}" x2="${(x + width).toFixed(1)}" y2="${groundY.toFixed(1)}" class="base"/>
+      <text x="${labelX.toFixed(1)}" y="${Math.max(24, y - 6).toFixed(1)}" class="building-label">${escapeXml(label)}</text>
+    </g>`;
     })
     .join("\n    ");
   const treeSvg = model.trees
@@ -858,42 +1106,50 @@ function createSectionSvg(input: {
   const widthLabel = input.width === null ? "NA" : `${input.width}M`;
   const lengthLabel = `${Math.round(model.lengthMeters)}M`;
   const treeLabel = model.trees.length ? String(model.trees.length) : "0";
-  const terrainLabel = hasTerrain ? "OPENTOPOGRAPHY DEM PROFILE" : "OPENTOPOGRAPHY DEM NOT LOADED";
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 360" role="img" aria-label="User-defined terrain and building cross-section">
-  <metadata>{"source":"Urban Context Analysis structured M-scale section","terrain":"${hasTerrain ? "opentopography-dem" : "not loaded"}","street":"${escapeXml(input.streetName)}"}</metadata>
+  const terrainLabel = hasMeasuredTerrain ? "OPENTOPOGRAPHY DEM" : "APPROX TERRAIN BASELINE";
+  const measuredBuildingCount = model.buildings.filter((building) => building.heightSource === "measured").length;
+  const estimatedBuildingCount = model.buildings.length - measuredBuildingCount;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 420" role="img" aria-label="User-defined terrain and building cross-section">
+  <metadata>{"source":"Urban Context Analysis structured M-scale section","terrain":"${hasMeasuredTerrain ? "opentopography-dem" : "approximate-baseline"}","street":"${escapeXml(input.streetName)}","buildings":${model.buildings.length}}</metadata>
   <style>
-    svg{--section-surface:var(--surface,#000);--section-surface-2:var(--surface-2,#111);--section-ink:var(--ink,#fff);--section-muted:var(--muted,#b3b3b3);--section-border:var(--border,#3a3a3a);--section-terrain:#f3d35c;--section-building:#60a5fa;--section-tree:#31d158}
-    text{font-family:JetBrains Mono,SFMono-Regular,Menlo,Consolas,monospace;fill:var(--section-ink);font-size:12px}
+    svg{--section-surface:var(--surface,#000);--section-surface-2:var(--surface-2,#111);--section-ink:var(--ink,#fff);--section-muted:var(--muted,#b3b3b3);--section-border:var(--border,#3a3a3a);--section-grid:rgba(127,127,127,.22);--section-terrain:#d8bc52;--section-building:#6da9c8;--section-building-2:#9b8cc8;--section-tree:#5fa86b}
+    text{font-family:JetBrains Mono,SFMono-Regular,Menlo,Consolas,monospace;fill:var(--section-ink);font-size:11px}
     .axis,.line{stroke:var(--section-border);stroke-width:1;fill:none}
+    .grid{stroke:var(--section-grid);stroke-width:1}
+    .tick{fill:var(--section-muted);font-size:9px}
     .muted{fill:var(--section-muted)}
-    .terrain{stroke:var(--section-terrain);stroke-width:2;fill:none}
-    .terrain-missing{stroke:var(--section-muted);stroke-width:1;fill:none;stroke-dasharray:6 5}
-    .building-left{fill:rgba(96,165,250,.36);stroke:var(--section-building);stroke-width:1}
-    .building-right{fill:rgba(96,165,250,.18);stroke:var(--section-building);stroke-width:1;stroke-dasharray:4 3}
+    .terrain{stroke:var(--section-terrain);stroke-width:2.4;fill:none}
+    .terrain.approx{stroke-dasharray:7 5;stroke-width:1.6}
+    .terrain-fill{fill:rgba(216,188,82,.08)}
+    .building rect{stroke-width:1.2}
+    .building.measured rect{fill:rgba(109,169,200,.42);stroke:var(--section-building)}
+    .building.estimated rect{fill:rgba(109,169,200,.22);stroke:var(--section-building);stroke-dasharray:5 3}
+    .building-right rect{fill:rgba(155,140,200,.24);stroke:var(--section-building-2)}
+    .building .base{stroke:rgba(255,255,255,.45);stroke-width:1}
+    .building-label{fill:var(--section-muted);font-size:9px}
     .tree-trunk{stroke:var(--section-muted);stroke-width:1}
-    .tree-crown{fill:rgba(49,209,88,.24);stroke:var(--section-tree);stroke-width:1}
+    .tree-crown{fill:rgba(95,168,107,.24);stroke:var(--section-tree);stroke-width:1}
+    .note{font-size:10px;fill:var(--section-muted)}
   </style>
-  <rect width="720" height="360" fill="var(--section-surface)"/>
+  <rect width="920" height="420" fill="var(--section-surface)"/>
   <g id="metadata-labels">
     <text x="24" y="30">${escapeXml(input.streetName)}</text>
-    <text x="24" y="52" class="muted">SECTION ${lengthLabel} / ${terrainLabel} / STREET WIDTH ${widthLabel} / TREES ${treeLabel}</text>
+    <text x="24" y="52" class="muted">SECTION ${lengthLabel} / ${terrainLabel} / STREET WIDTH ${widthLabel} / BUILDINGS ${model.buildings.length} (${measuredBuildingCount} measured, ${estimatedBuildingCount} estimated) / TREES ${treeLabel}</text>
   </g>
   <g id="profile">
-    ${buildingSvg || `<text x="44" y="94" class="muted">NO BUILDING INTERSECTION WITH SECTION LINE</text>`}
-    ${treeSvg || `<text x="44" y="116" class="muted">NO TREE LOCATION INTERSECTION WITH SECTION LINE</text>`}
-    ${
-      hasTerrain
-        ? `<path d="${terrainPath}" class="terrain"/>`
-        : `<line x1="42" y1="${profileBaseY}" x2="678" y2="${profileBaseY}" class="terrain-missing"/>
-    <text x="44" y="${profileBaseY - 10}" class="muted">OpenTopography DEM NOT LOADED</text>`
-    }
-    <line x1="42" y1="${profileBaseY}" x2="678" y2="${profileBaseY}" class="axis"/>
+    ${gridSvg}
+    <path d="M 64 ${profileBaseY} ${terrainPath.replace(/^M /, "L ")} L 856 ${profileBaseY} Z" class="terrain-fill"/>
+    ${buildingSvg || `<text x="72" y="106" class="muted">NO BUILDING FOOTPRINT INTERSECTS OR TOUCHES THE SECTION CORRIDOR</text>`}
+    ${treeSvg || `<text x="72" y="126" class="muted">NO TREE LOCATION INTERSECTION WITH SECTION LINE</text>`}
+    <path d="${terrainPath}" class="terrain${hasMeasuredTerrain ? "" : " approx"}"/>
+    <line x1="64" y1="${profileBaseY}" x2="856" y2="${profileBaseY}" class="axis"/>
   </g>
   <g id="scale-bar">
-    <line x1="42" y1="330" x2="${xForDistance(Math.min(50, model.lengthMeters)).toFixed(1)}" y2="330" stroke="var(--section-ink)"/>
-    <text x="42" y="348" class="muted">0</text>
-    <text x="${Math.max(76, xForDistance(Math.min(50, model.lengthMeters)) - 18).toFixed(1)}" y="348" class="muted">${Math.min(50, Math.round(model.lengthMeters))}M</text>
+    <line x1="64" y1="382" x2="${xForDistance(Math.min(50, model.lengthMeters)).toFixed(1)}" y2="382" stroke="var(--section-ink)"/>
+    <text x="64" y="400" class="muted">0</text>
+    <text x="${Math.max(94, xForDistance(Math.min(50, model.lengthMeters)) - 18).toFixed(1)}" y="400" class="muted">${Math.min(50, Math.round(model.lengthMeters))}M</text>
   </g>
+  <text x="24" y="402" class="note">${hasMeasuredTerrain ? "Terrain profile uses local OpenTopography DEM samples." : "DEM samples are missing; terrain is an approximate visual baseline only."} Estimated building heights are dashed.</text>
 </svg>`;
 }
 

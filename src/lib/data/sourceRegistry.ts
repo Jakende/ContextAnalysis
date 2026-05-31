@@ -242,6 +242,16 @@ export const sourceRegistry = {
     notes:
       "Preferred visual terrain layer. Generate with GDAL gdal_contour from local DEM clips and export LineString features with elevation, interval, sourceId and generatedAt attributes.",
   },
+  "uca-contour-fallback": {
+    id: "uca-contour-fallback",
+    label: "UCA contour fallback guide lines",
+    type: "local-file",
+    attribution: "Urban Context Analysis",
+    scale: ["M"],
+    updateMode: "manual",
+    notes:
+      "Client-side visual guide lines emitted only when the local OpenTopography contour GeoJSON is missing or has no coverage for the selected point. This is not a terrain data source and must not feed elevation indicators.",
+  },
   "eurostat-gisco-fua": {
     id: "eurostat-gisco-fua",
     label: "Eurostat GISCO Cities and Functional Urban Areas",

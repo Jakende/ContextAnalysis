@@ -115,6 +115,11 @@ export async function runSourceAdapters(
   const registryReceipts = await Promise.all(
     Object.keys(sourceRegistry)
       .filter((sourceId) => !DIRECT_ADAPTER_SOURCE_IDS.has(sourceId))
+      .filter((sourceId) =>
+        sourceId === "uca-contour-fallback"
+          ? Boolean(input.localCollections?.[sourceId])
+          : true,
+      )
       .map((sourceId) => registryBackedSourceReceipt(sourceId, input)),
   );
   receipts.push(...registryReceipts);
@@ -372,6 +377,23 @@ function loadedLocalCollectionReceipt(
   queriedAt: string,
 ): SourceFetchReceipt {
   const featureCount = collection.features.length;
+  if (source.id === "uca-contour-fallback") {
+    const caveat = collection.features
+      .map((feature) => feature.properties?.caveat)
+      .find((value): value is string => typeof value === "string");
+    return receipt(source, {
+      status: featureCount > 0 ? "ok" : "missing",
+      queriedAt,
+      elapsedMs: 0,
+      featureCount,
+      method:
+        "Generated temporary contour guide lines because measured local OpenTopography contours were unavailable for the selected M-scale area.",
+      caveats: [
+        caveat ??
+          "Fallback contour guide lines are visual only, not measured elevation, and are excluded from terrain indicators.",
+      ],
+    });
+  }
   return receipt(source, {
     status: featureCount > 0 ? "ok" : "missing",
     queriedAt,

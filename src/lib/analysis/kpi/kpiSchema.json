@@ -33,12 +33,12 @@
         "type": "direct",
         "formula": "clamp(round(value), 0, 100)"
       },
-      "formula": "Combined public transport stop access, transit mode hierarchy/density, walking/cycling OSM infrastructure, and ORS walking/cycling context. Driving isochrones are context only.",
+      "formula": "Combined public transport stop access, transit mode hierarchy/density, walking/cycling OSM infrastructure, ORS walking/cycling context, and mode-specific walking, cycling, transit, and driving reachability.",
       "thresholds": [
         "10 transit stops in the L radius contributes 100 to the stop-count subscore.",
         "18 stops/km² contributes 100 to the density subscore.",
         "Routed ORS walking/cycling context contributes up to 80 to the isochrone subscore.",
-        "Driving isochrones do not increase the score."
+        "Mode-specific reachability visualizes 5/10/15-minute radius bands. KPI scoring uses walking 500 m/10 min, cycling 2,500 m/10 min, transit 800 m/10 min, and driving 6,000 m/15 min primary bands where available."
       ]
     },
     {

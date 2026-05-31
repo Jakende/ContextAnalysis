@@ -556,7 +556,7 @@ export const overpassModules: OverpassModule[] = [
   {
     id: "buildings",
     scale: "L",
-    radiusMeters: 500,
+    radiusMeters: 900,
     buildQuery: (params) =>
       buildQuery([
         `way["building"]${around(params)};`,
