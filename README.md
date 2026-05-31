@@ -19,12 +19,30 @@
 | Exports | JSON, CSV, GeoJSON, GPKG, SVG, PNG, Markdown, HTML, Ollama report |
 | Data strategy | Preprocessed local sources first, live Overpass/Nominatim as optional enrichment |
 
+## Current build status
+
+Last checked locally on **2026-05-31**.
+
+| Check | Status | Notes |
+| --- | --- | --- |
+| `npm run typecheck` | Passing | TypeScript compiles with `tsc --noEmit`. |
+| `npm run build` | Passing | Production Vite build completes. Vite still warns that the main JS chunk is larger than 1500 kB. |
+| `npm run validate:ui` | Failing | Current CSS guardrails reject existing `linear-gradient` usage in the workspace splitter and `box-shadow: none` in `app.css`. |
+| GPKG export | Passing in browser repro | GeoPackage export now tolerates raw OSM features with many unique tags and duplicate provenance event IDs. |
+
+Current implementation notes:
+
+- The map fullscreen control targets the whole workspace so the inspector remains available in fullscreen.
+- The workspace includes a resizable map/inspector split and an expanded fullscreen-style layout.
+- GeoPackage export preserves full raw feature properties in `properties_json`; only a bounded, prioritized subset is materialized as typed SQLite columns.
+- Ollama report export remains local-first and falls back to deterministic Markdown when Ollama is unavailable.
+
 ## What you can do
 
 - Select a point on the map or search for a place.
 - Switch between `XL`, `L`, and `M` without losing the selected location.
 - Toggle analytical layers for `3D`, `trees`, `sun`, `section`, and `green`.
-- Use guided mode for stepwise exploration or direct mode for immediate analysis.
+- Use the map-first direct workflow for immediate analysis; `GuidedExplorer` exists in the codebase but is not currently mounted in the main app shell.
 - Export the structured result, not just a screenshot.
 
 ## Run locally
@@ -40,9 +58,10 @@ Open `http://127.0.0.1:5173`.
 
 ```bash
 npm run typecheck
-npm run validate:ui
 npm run build
 ```
+
+`npm run validate:ui` is still useful as a design-system guardrail, but it currently fails on existing CSS rules in `src/styles/app.css` rather than on the export pipeline.
 
 ## Configuration
 

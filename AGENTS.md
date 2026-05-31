@@ -1,5 +1,24 @@
 # AGENTS.md — Urban Context Analysis MVP
 
+## 0. Current implementation status
+
+Last checked locally on **2026-05-31**.
+
+### Build and validation
+
+- `npm run typecheck` passes.
+- `npm run build` passes. Vite still reports a large main JavaScript chunk above 1500 kB after minification.
+- `npm run validate:ui` currently fails because `src/styles/app.css` contains existing `linear-gradient` rules for the workspace splitter and `box-shadow: none`. Treat this as known UI validation debt, not as evidence that TypeScript or the production build is broken.
+
+### Working surfaces
+
+- The main mounted experience is the map-first workspace in `src/app/App.tsx`.
+- The map and inspector use a resizable workspace split. The map fullscreen control targets the full workspace so the inspector remains available in fullscreen.
+- `GuidedExplorer` exists in the codebase, but it is not currently mounted in the main application shell.
+- Exports include JSON, CSV, GeoJSON, SVG, PNG, Markdown, HTML, Ollama report, ZIP package, Provenance JSON, and GPKG.
+- GPKG export is implemented in `src/lib/export/gpkg.ts` with `sql.js`. It preserves full raw feature properties in `properties_json`, materializes only a bounded prioritized subset of properties as typed SQLite columns, and tolerates duplicate provenance event IDs in `data_source_run`.
+- Ollama report export remains local-first and must summarize computed analysis JSON only. If Ollama is unavailable, deterministic non-LLM exports still work.
+
 ## 1. Product intent
 
 Build a lightweight, web-based urban context analysis tool.
