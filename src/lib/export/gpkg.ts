@@ -12,6 +12,36 @@ type GeometryTable = {
   styleRole?: string;
 };
 
+const MAX_TYPED_PROPERTY_COLUMNS = 120;
+
+const PRIORITY_PROPERTY_NAMES = [
+  "id",
+  "name",
+  "label",
+  "sourceId",
+  "source_id",
+  "source",
+  "class",
+  "type",
+  "category",
+  "amenity",
+  "shop",
+  "tourism",
+  "leisure",
+  "landuse",
+  "natural",
+  "highway",
+  "railway",
+  "route",
+  "operator",
+  "network",
+  "mode",
+  "value",
+  "unit",
+  "confidence",
+  "method",
+] as const;
+
 export async function analysisToGpkgBlob(
   analysis: AnalysisResult,
 ): Promise<Blob> {
@@ -260,7 +290,8 @@ export async function analysisToGpkgBlob(
   }
 
   db.run(`CREATE TABLE data_source_run (
-    id TEXT PRIMARY KEY,
+    row_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id TEXT NOT NULL,
     source_id TEXT,
     label TEXT NOT NULL,
     phase TEXT NOT NULL,
@@ -280,7 +311,24 @@ export async function analysisToGpkgBlob(
 
   for (const event of analysis.provenance.dataSourceRun) {
     db.run(
-      `INSERT INTO data_source_run VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      `INSERT INTO data_source_run (
+        id,
+        source_id,
+        label,
+        phase,
+        status,
+        requested_at,
+        finished_at,
+        elapsed_ms,
+        scale,
+        url,
+        local_path,
+        record_count,
+        feature_count,
+        detail,
+        caveats,
+        error
+      ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       [
         event.id,
         event.sourceId ?? null,
@@ -486,25 +534,51 @@ function collectPropertyColumns(
     "properties_json",
     "geom",
   ]);
+  const candidates = rankPropertyNames(collection);
   const columns: Array<{ propertyName: string; columnName: string }> = [];
   const byPropertyName = new Map<string, string>();
-  for (const feature of collection.features) {
-    for (const key of Object.keys(feature.properties ?? {})) {
-      if (byPropertyName.has(key)) continue;
-      const baseName = sanitizeColumnName(key);
-      if (!baseName) continue;
-      let columnName = baseName;
-      let suffix = 2;
-      while (used.has(columnName)) {
-        columnName = `${baseName}_${suffix}`;
-        suffix += 1;
-      }
-      used.add(columnName);
-      byPropertyName.set(key, columnName);
-      columns.push({ propertyName: key, columnName });
+  for (const key of candidates) {
+    if (columns.length >= MAX_TYPED_PROPERTY_COLUMNS) break;
+    if (byPropertyName.has(key)) continue;
+    const baseName = sanitizeColumnName(key);
+    if (!baseName) continue;
+    let columnName = baseName;
+    let suffix = 2;
+    while (used.has(columnName)) {
+      columnName = `${baseName}_${suffix}`;
+      suffix += 1;
     }
+    used.add(columnName);
+    byPropertyName.set(key, columnName);
+    columns.push({ propertyName: key, columnName });
   }
   return columns;
+}
+
+function rankPropertyNames(collection: FeatureCollection): string[] {
+  const stats = new Map<string, { count: number; firstSeen: number }>();
+  for (const feature of collection.features) {
+    for (const key of Object.keys(feature.properties ?? {})) {
+      const current = stats.get(key);
+      if (current) {
+        current.count += 1;
+      } else {
+        stats.set(key, { count: 1, firstSeen: stats.size });
+      }
+    }
+  }
+  const priority = new Map<string, number>(
+    PRIORITY_PROPERTY_NAMES.map((name, index) => [name.toLowerCase(), index]),
+  );
+  return [...stats.entries()]
+    .sort(([leftKey, left], [rightKey, right]) => {
+      const leftPriority = priority.get(leftKey.toLowerCase()) ?? Number.POSITIVE_INFINITY;
+      const rightPriority = priority.get(rightKey.toLowerCase()) ?? Number.POSITIVE_INFINITY;
+      if (leftPriority !== rightPriority) return leftPriority - rightPriority;
+      if (left.count !== right.count) return right.count - left.count;
+      return left.firstSeen - right.firstSeen;
+    })
+    .map(([key]) => key);
 }
 
 function sanitizeColumnName(key: string): string {
