@@ -19,6 +19,7 @@ import { pointCacheResultsToRunEvents } from "../lib/data/sourceRun";
 import type {
   AnalysisResult,
   AnalysisLoadStep,
+  AnalysisPhase,
   LayerId,
   LayerStyleState,
   LayerState,
@@ -57,7 +58,7 @@ const DEFAULT_LAYERS: LayerState = {
   isochroneWalking: false,
   isochroneCycling: false,
   isochroneDriving: false,
-  pois: false,
+  pois: true,
   poiEducation: false,
   poiHealth: false,
   poiCivic: false,
@@ -132,14 +133,17 @@ export function App() {
   const [sectionSvg, setSectionSvg] = useState("");
   const [status, setStatus] = useState("Map initializing.");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisPhase, setAnalysisPhase] = useState<AnalysisPhase>("idle");
   const [analysisLoadSteps, setAnalysisLoadSteps] = useState<AnalysisLoadStep[]>([]);
   const [themeInvert, setThemeInvert] = useState(false);
   const [inspectorWidth, setInspectorWidth] = useState(440);
   const [isResizingInspector, setIsResizingInspector] = useState(false);
   const [workspaceExpanded, setWorkspaceExpanded] = useState(false);
   const [inspectorExpanded, setInspectorExpanded] = useState(false);
+  const [exportDockOpen, setExportDockOpen] = useState(false);
   const workspaceRef = useRef<HTMLElement | null>(null);
   const sideStackRef = useRef<HTMLDivElement | null>(null);
+  const analysisRunIdRef = useRef(0);
 
   useEffect(() => {
     document.body.classList.toggle("theme-invert", themeInvert);
@@ -162,7 +166,10 @@ export function App() {
       setStatus("Analysis is locked. Close the current analysis before selecting a new point.");
       return;
     }
+    const runId = analysisRunIdRef.current + 1;
+    analysisRunIdRef.current = runId;
     setIsAnalyzing(true);
+    setAnalysisPhase("running");
     setAnalysisLoadSteps(createInitialLoadSteps());
     setStatus("Analysis running.");
     try {
@@ -197,13 +204,24 @@ export function App() {
         layers,
         sectionLine,
         preflightSourceRun,
-        onProgress: (step) =>
-          setLoadStep(setAnalysisLoadSteps, step.id, step.status, step.detail),
+        onProgress: (step) => {
+          if (analysisRunIdRef.current !== runId) return;
+          setLoadStep(setAnalysisLoadSteps, step.id, step.status, step.detail);
+        },
+        onPartialResult: (partialResult, partialSectionSvg) => {
+          if (analysisRunIdRef.current !== runId) return;
+          setAnalysis(partialResult);
+          setSectionSvg(partialSectionSvg);
+          setAnalysisPhase("local-ready");
+          setStatus("Local results ready. Live OSM enrichment is still running.");
+        },
         enableGeocoding: true,
         enableOverpass: true,
       });
+      if (analysisRunIdRef.current !== runId) return;
       setAnalysis(result);
       setSectionSvg(nextSectionSvg);
+      setAnalysisPhase("complete");
       setAnalysisLoadSteps((current) =>
         current.map((step) =>
           step.status === "running" || step.status === "queued"
@@ -213,6 +231,8 @@ export function App() {
       );
       setStatus("Analysis ready. XL/L/M scales and exports are available.");
     } catch (error) {
+      if (analysisRunIdRef.current !== runId) return;
+      setAnalysisPhase("failed");
       setAnalysisLoadSteps((current) =>
         current.map((step) =>
           step.status === "running"
@@ -226,16 +246,21 @@ export function App() {
       );
       setStatus(error instanceof Error ? error.message : String(error));
     } finally {
-      setIsAnalyzing(false);
+      if (analysisRunIdRef.current === runId) {
+        setIsAnalyzing(false);
+      }
     }
   }
 
   function handleAnalysisClear() {
+    analysisRunIdRef.current += 1;
     setAnalysis(null);
     setSectionLine(null);
     setSectionSvg("");
     setIsAnalyzing(false);
+    setAnalysisPhase("idle");
     setAnalysisLoadSteps([]);
+    setExportDockOpen(false);
     setStatus("Analysis closed. Search can zoom the map; click the canvas pin target for a new analysis.");
   }
 
@@ -393,6 +418,7 @@ export function App() {
           layers={layers}
           layerStyles={layerStyles}
           isAnalyzing={isAnalyzing}
+          analysisPhase={analysisPhase}
           analysisLoadSteps={analysisLoadSteps}
           analysisLocked={Boolean(analysis)}
           onPointSelected={handlePointSelected}
@@ -476,14 +502,39 @@ export function App() {
               <div dangerouslySetInnerHTML={{ __html: sectionSvg }} />
             </section>
           ) : null}
-          <FactSheetPanel analysis={analysis} activeScale={activeScale} />
-          <ExportPanel
+          <FactSheetPanel
             analysis={analysis}
-            sectionSvg={sectionSvg}
-            onStatus={setStatus}
+            activeScale={activeScale}
+            analysisPhase={analysisPhase}
+            analysisLoadSteps={analysisLoadSteps}
           />
         </div>
       </section>
+
+      {analysis ? (
+        <div className={`export-dock ${exportDockOpen ? "is-open" : ""}`}>
+          {exportDockOpen ? (
+            <div id="export-dock-panel" className="export-dock-panel">
+              <ExportPanel
+                analysis={analysis}
+                analysisPhase={analysisPhase}
+                sectionSvg={sectionSvg}
+                onStatus={setStatus}
+              />
+            </div>
+          ) : null}
+          <button
+            type="button"
+            className="export-dock-toggle"
+            aria-controls="export-dock-panel"
+            aria-expanded={exportDockOpen}
+            onClick={() => setExportDockOpen((current) => !current)}
+          >
+            <span>Exports</span>
+            <small>{exportDockOpen ? "Hide panel" : "Open panel"}</small>
+          </button>
+        </div>
+      ) : null}
 
       <footer className="app-footer">
         <div>

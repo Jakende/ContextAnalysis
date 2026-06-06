@@ -28,7 +28,7 @@ const layerControls: LayerControl[] = [
   { id: "xlGrid", label: "Zensus grid values", group: "XL context", source: "xlGrid", scale: "XL", geometry: "Polygon" },
   { id: "xlSources", label: "Source coverage", group: "XL context", source: "xlSources", scale: "XL", geometry: "Polygon" },
   { id: "urbanAtlas", label: "Urban Atlas", group: "Land", source: "urbanAtlas", scale: "L", geometry: "Polygon" },
-  { id: "lBuffer", label: "Mobility radii", group: "Land", source: "lBuffer", scale: "L", geometry: "Polygon" },
+  { id: "lBuffer", label: "L context boundary", group: "Land", source: "lBuffer", scale: "L", geometry: "Polygon" },
   { id: "green", label: "Green", group: "Land", source: "green", scale: "L", geometry: "Polygon" },
   { id: "blue", label: "Blue / water", group: "Land", source: "blue", scale: "L", geometry: "Polygon" },
   { id: "parkingAreas", label: "Parking areas", group: "Land", source: "parkingAreas", scale: "L", geometry: "Polygon" },

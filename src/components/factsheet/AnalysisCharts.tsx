@@ -30,6 +30,7 @@ export function AnalysisCharts({
 }) {
   const evidence = createEvidenceData(analysis, activeScale);
   const sources = createSourceData(analysis, activeScale, evidence);
+  const quality = createQualitySummary(analysis, activeScale, sources);
 
   if (!evidence.length && !sources.length) {
     return null;
@@ -40,6 +41,14 @@ export function AnalysisCharts({
       <div className="module-title">
         <h3>Evidence overview</h3>
         <span className="confidence">{activeScale}</span>
+      </div>
+      <div className="evidence-quality-row" aria-label="Evidence quality summary">
+        {quality.map((item) => (
+          <span className={`evidence-quality evidence-quality-${item.status}`} key={item.label}>
+            <strong>{item.value}</strong>
+            <small>{item.label}</small>
+          </span>
+        ))}
       </div>
       <div className="evidence-overview-grid">
         {evidence.length ? (
@@ -59,6 +68,46 @@ export function AnalysisCharts({
       </div>
     </section>
   );
+}
+
+function createQualitySummary(
+  analysis: AnalysisResult,
+  activeScale: Scale,
+  sources: SourceDatum[],
+): Array<{ label: string; value: string; status: string }> {
+  const indicators = analysis.indicators.filter((indicator) => indicator.scale === activeScale);
+  const caveatCount = indicators.reduce(
+    (total, indicator) => total + indicator.caveats.length,
+    0,
+  );
+  const failedSourceCount = sources.filter((source) =>
+    source.status === "failed" || source.status === "missing",
+  ).length;
+  const highConfidenceCount = indicators.filter(
+    (indicator) => indicator.confidence === "high",
+  ).length;
+  return [
+    {
+      label: "Indicators",
+      value: String(indicators.length),
+      status: "ok",
+    },
+    {
+      label: "High confidence",
+      value: String(highConfidenceCount),
+      status: highConfidenceCount ? "ok" : "missing",
+    },
+    {
+      label: "Source warnings",
+      value: String(failedSourceCount),
+      status: failedSourceCount ? "failed" : "ok",
+    },
+    {
+      label: "Caveats",
+      value: String(caveatCount),
+      status: caveatCount ? "missing" : "ok",
+    },
+  ];
 }
 
 function MetricEvidenceCards({
@@ -133,18 +182,18 @@ function createEvidenceData(analysis: AnalysisResult, activeScale: Scale): Evide
   }
   if (activeScale === "L") {
     return [
+      evidenceFromIndicator(indicators, "l.walking-reachability-score", 100),
+      evidenceFromIndicator(indicators, "l.cycling-reachability-score", 100),
+      evidenceFromIndicator(indicators, "l.transit-reachability-score", 100),
+      evidenceFromIndicator(indicators, "l.driving-reachability-score", 100),
+      evidenceFromIndicator(indicators, "l.multimodal-reachability-score", 100),
+      evidenceFromIndicator(indicators, "l.mobility-score", 100),
       evidenceFromIndicator(indicators, "l.green-percentage", 100),
       evidenceFromIndicator(indicators, "l.land-use-mix", 1),
       evidenceFromIndicator(indicators, "l.transit-stops", 30),
       evidenceFromIndicator(indicators, "l.transit-stop-density", 80),
       evidenceFromIndicator(indicators, "l.transit-lines", 20),
-      evidenceFromIndicator(indicators, "l.multimodal-reachability-score", 100),
-      evidenceFromIndicator(indicators, "l.walking-reachability-score", 100),
-      evidenceFromIndicator(indicators, "l.cycling-reachability-score", 100),
-      evidenceFromIndicator(indicators, "l.transit-reachability-score", 100),
-      evidenceFromIndicator(indicators, "l.driving-reachability-score", 100),
       evidenceFromIndicator(indicators, "l.active-poi-reachability-score", 100),
-      evidenceFromIndicator(indicators, "l.mobility-score", 100),
       evidenceFromIndicator(indicators, "l.social-civic-pois", 80),
       evidenceFromIndicator(indicators, "l.mobility-infrastructure", 80),
     ].filter((item): item is EvidenceDatum => item !== null);
@@ -280,7 +329,7 @@ function chartDescriptionForScale(activeScale: Scale): string {
     return "Nur numerische CSV-/Zensuswerte mit realem Treffer; keine generischen Vergleichsbalken.";
   }
   if (activeScale === "L") {
-    return "Flächen-, Erreichbarkeits- und POI-Werte aus Urban Atlas, GTFS und Live-OSM.";
+    return "Mode KPIs first: walking, cycling, transit, car driving; then aggregate mobility and supporting land/POI evidence.";
   }
   return "Nur gemessene oder geladene Korridorwerte aus Street, Building, Tree und Section.";
 }

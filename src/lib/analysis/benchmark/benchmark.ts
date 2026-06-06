@@ -145,19 +145,19 @@ export function createBenchmarkModule(
   const weakest = weakestRelativeRow(availableRows);
   const sourceIds = [BENCHMARK_SOURCE_ID, "destatis-genesis"];
   const caveats = [
-    "Benchmark peers are local static MVP reference values, not a live statistical benchmark.",
-    "Peer values should be replaced by preprocessed district/city benchmark tables before production use.",
+    "Peer comparison uses local static MVP reference values, not a live multi-city statistical benchmark.",
+    "Peer values should be replaced by preprocessed district/city comparison tables before production use.",
     "Ranks are descending, where rank 1 is the strongest score in the configured peer set.",
   ];
 
   const benchmarkIndicators = [
     createIndicator({
       id: "benchmark.peer-set",
-      label: "Benchmark peer set",
+      label: "Static peer set",
       scale: "XL",
-      value: "MVP mixed Munich district / Bavarian city sample",
+      value: "Static MVP district / city reference sample",
       method:
-        "Selected KPI scores are compared against a deterministic local peer table with district and city reference profiles.",
+        "Selected KPI scores are compared against a deterministic local reference table. This is a placeholder comparison until preprocessed district or city benchmark tables are available.",
       sourceIds,
       confidence: "low",
       caveats,
@@ -165,14 +165,14 @@ export function createBenchmarkModule(
     }),
     createIndicator({
       id: "benchmark.local-quality-rank",
-      label: "Local Quality benchmark rank",
+      label: "Local Quality peer rank",
       scale: "XL",
       value:
         localQuality.rank === null
           ? null
           : `${localQuality.rank} of ${localQuality.peerCount + 1}`,
       method:
-        "Ranks the selected Local Quality Score against static peer scores plus the selected location.",
+        "Ranks the selected Local Quality Score against static peer-reference scores plus the selected location.",
       sourceIds,
       confidence: localQuality.confidence,
       caveats: localQuality.caveats,
@@ -180,12 +180,12 @@ export function createBenchmarkModule(
     }),
     createIndicator({
       id: "benchmark.local-quality-percentile",
-      label: "Local Quality percentile",
+      label: "Local Quality peer percentile",
       scale: "XL",
       value: localQuality.percentile,
       unit: "%",
       method:
-        "Percentile is the share of configured peers with lower or equal Local Quality scores.",
+        "Percentile is the share of configured static peer references with lower or equal Local Quality scores.",
       sourceIds,
       confidence: localQuality.confidence,
       caveats: localQuality.caveats,
@@ -218,12 +218,12 @@ export function createBenchmarkModule(
     ...rows.map((row) =>
       createIndicator({
         id: `benchmark.${row.kpiId.replace(/^kpi\./, "").replaceAll("_", "-")}-percentile`,
-        label: `${row.label} benchmark percentile`,
+        label: `${row.label} peer percentile`,
         scale: "L",
         value: row.percentile,
         unit: "%",
         method:
-          "KPI percentile against the configured static peer set. Missing selected KPI values stay unavailable.",
+          "KPI percentile against the configured static peer-reference set. Missing selected KPI values stay unavailable.",
         sourceIds,
         confidence: row.confidence,
         caveats: row.caveats,
@@ -237,11 +237,11 @@ export function createBenchmarkModule(
     modules: [
       {
         id: "xl.benchmark-summary",
-        title: "Multi-city benchmark",
+        title: "Static peer comparison",
         scale: "XL",
         indicators: benchmarkIndicators.slice(0, 3),
         method:
-          "Compares the selected location against a static MVP peer table until preprocessed city/district benchmark tables are available.",
+          "Compares the selected location against a static MVP reference table. This is a placeholder peer comparison, not a live multi-city benchmark.",
         sourceIds,
         computedAt,
         confidence: "low",

@@ -125,6 +125,14 @@ export type AnalysisLoadStep = {
   status: "queued" | "running" | "ok" | "failed" | "skipped";
 };
 
+export type AnalysisPhase =
+  | "idle"
+  | "running"
+  | "local-ready"
+  | "enhancing"
+  | "complete"
+  | "failed";
+
 export type OverpassEndpointStatus = {
   endpoint: string;
   ok: boolean;

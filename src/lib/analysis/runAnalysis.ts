@@ -96,6 +96,7 @@ export async function runLocationAnalysis(input: {
   sectionLine?: SectionLine | null;
   preflightSourceRun?: DataSourceRunEvent[];
   onProgress?: (step: AnalysisLoadStep) => void;
+  onPartialResult?: (result: AnalysisResult, sectionSvg: string) => void;
   enableGeocoding?: boolean;
   enableOverpass?: boolean;
 }): Promise<{ result: AnalysisResult; sectionSvg: string }> {
@@ -205,6 +206,254 @@ export async function runLocationAnalysis(input: {
           ? "skipped"
           : "ok",
   });
+  const buildResult = async (
+    overpass: Awaited<ReturnType<typeof runOverpassModules>>,
+    isPartial: boolean,
+  ): Promise<{ result: AnalysisResult; sectionSvg: string }> => {
+    emitProgress(input.onProgress, {
+      id: "indicators",
+      label: "XL/L/M indicators",
+      detail: isPartial
+        ? "Computing local/preprocessed indicators before live Overpass enrichment finishes."
+        : "Computing deterministic indicators and map overlays.",
+      status: "running",
+    });
+    const analysisCollections: Record<string, FeatureCollection> = {
+      ...overpass.collections,
+      buildings: mergeCollections(
+        lod2Buildings,
+        overpass.collections.buildings ?? featureCollection(),
+      ),
+      transportStops: mergeCollections(
+        gtfsStops,
+        overpass.collections.transportStops ?? featureCollection(),
+      ),
+      urbanAtlas,
+      landUse: mergeCollections(
+        urbanAtlas,
+        overpass.collections.landUse ?? featureCollection(),
+      ),
+      greenBlue: mergeCollections(
+        urbanAtlas,
+        overpass.collections.greenBlue ?? featureCollection(),
+      ),
+      isochrones: isochrones.collection,
+    };
+    const xl = analyzeXl(selectedPoint, computedAt);
+    const l = analyzeL(selectedPoint, computedAt, 500, analysisCollections);
+    const m = analyzeM(
+      selectedPoint,
+      computedAt,
+      analysisCollections,
+      input.sectionLine,
+      terrainSamples,
+    );
+    const contourUsesFallback = contourLines.features.some(
+      (feature) => feature.properties?.sourceId === CONTOUR_FALLBACK_SOURCE_ID,
+    );
+    const contourUsesOpenTopography = contourLines.features.some(
+      (feature) => feature.properties?.sourceId === "opentopography-contours",
+    );
+    const sourceFetches = [
+      ...(await runSourceAdapters({
+        district: xl.district,
+        selectedPoint,
+        computedAt,
+        geocoding: {
+          enabled: input.enableGeocoding !== false,
+          status: geocoding.status,
+          cacheKey: geocoding.cacheKey,
+          sourceStatus: geocoding.sourceStatus,
+          error: "error" in geocoding ? geocoding.error : undefined,
+        },
+        overpassQueries: overpass.provenance,
+        overpassCollections: overpass.collections,
+        localCollections: {
+          "bkg-geobasis": bkgBoundaries,
+          "eurostat-gisco-fua": fuaGeometries,
+          "zensus-grid-2022": zensusGrid,
+          "copernicus-urban-atlas": urbanAtlas,
+          "urban-atlas-2021-catalog": urbanAtlas,
+          "gtfs-de-local-transit": gtfsStops,
+          "mobilithek-gtfs": gtfsStops,
+          ...(contourUsesOpenTopography
+            ? { "opentopography-contours": contourLines }
+            : {}),
+          ...(contourUsesFallback
+            ? { [CONTOUR_FALLBACK_SOURCE_ID]: contourLines }
+            : {}),
+        },
+      })),
+      isochrones.receipt,
+    ];
+    const xlSourceStatus = createXlSourceStatusModule(sourceFetches, computedAt);
+    const fua = createFuaContextModule(fuaGeometries, computedAt);
+    const zensus = createZensusGridModule(zensusGrid, computedAt);
+    const zensusWms = createZensusWmsModule(zensusWmsIndicators, computedAt);
+    const kpi = createKpiMatrixModule(
+      [
+        ...xl.indicators,
+        ...fua.indicators,
+        ...zensusWms.indicators,
+        ...zensus.indicators,
+        ...xlSourceStatus.indicators,
+        ...l.indicators,
+        ...m.indicators,
+      ],
+      computedAt,
+    );
+    const benchmark = createBenchmarkModule(
+      [
+        ...xl.indicators,
+        ...fua.indicators,
+        ...zensusWms.indicators,
+        ...zensus.indicators,
+        ...xlSourceStatus.indicators,
+        ...l.indicators,
+        ...kpi.indicators,
+        ...m.indicators,
+      ],
+      computedAt,
+    );
+    emitProgress(input.onProgress, {
+      id: "indicators",
+      label: "XL/L/M indicators",
+      detail: `${isPartial ? "Local-ready: " : ""}${sourceFetches.length} source receipt(s), ${xl.indicators.length + fua.indicators.length + zensusWms.indicators.length + zensus.indicators.length + xlSourceStatus.indicators.length + l.indicators.length + m.indicators.length} indicator(s).`,
+      status: "ok",
+    });
+
+    const allModules = [
+      ...xl.modules,
+      ...fua.modules,
+      ...zensusWms.modules,
+      ...zensus.modules,
+      ...xlSourceStatus.modules,
+      ...l.modules,
+      ...kpi.modules,
+      ...benchmark.modules,
+      ...m.modules,
+    ];
+    const allIndicators = [
+      ...xl.indicators,
+      ...fua.indicators,
+      ...zensusWms.indicators,
+      ...zensus.indicators,
+      ...xlSourceStatus.indicators,
+      ...l.indicators,
+      ...kpi.indicators,
+      ...benchmark.indicators,
+      ...m.indicators,
+    ];
+    const sourceIds = [
+      ...new Set([
+        ...allIndicators.flatMap((indicator) => indicator.sourceIds),
+        ...sourceFetches.map((receipt) => receipt.sourceId),
+        ...(input.preflightSourceRun ?? []).flatMap((event) =>
+          event.sourceId ? [event.sourceId] : [],
+        ),
+      ]),
+    ];
+
+    const overpassCaveats = overpass.provenance.flatMap(
+      (query) => query.caveats,
+    );
+    const rawOverpassFeatures = mergeCollections(
+      ...Object.entries(overpass.collections).map(([moduleId, collection]) =>
+        tagFeatures(collection, { overpassModuleId: moduleId }),
+      ),
+    );
+    const partialCaveats = isPartial
+      ? [
+          "Local/preprocessed analysis is available before live Overpass enrichment finishes; live OSM-derived indicators, overlays, and exports may update when Overpass resolves.",
+        ]
+      : [];
+
+    const result: AnalysisResult = {
+      app: "Urban Context Analysis",
+      analysisVersion: "0.1.0",
+      selectedPoint,
+      activeScale: input.activeScale,
+      modules: allModules,
+      indicators: allIndicators,
+      overlays: {
+        selectedPoint: geometryToFeature(pointGeometry(input.lat, input.lon), {
+          label: selectedPoint.label ?? "selected point",
+        }) as AnalysisResult["overlays"]["selectedPoint"],
+        xlContext: createXlContextOverlay(selectedPoint, bkgBoundaries),
+        xlGrid: createXlGridOverlay(selectedPoint, sourceFetches, zensusGrid),
+        xlSources: createXlSourceOverlay(selectedPoint, sourceFetches, fuaGeometries),
+        urbanAtlas,
+        lBuffer: mergeCollections(l.overlays.lBuffer),
+        mStreetSegment: mergeCollections(m.overlays.street, m.overlays.corridor),
+        green: mergeCollections(l.overlays.green),
+        blue: mergeCollections(l.overlays.blue),
+        trees: mergeCollections(l.overlays.trees, m.overlays.trees),
+        buildings: mergeCollections(
+          analysisCollections.buildings ?? featureCollection(),
+          m.overlays.buildings,
+        ),
+        pois: mergeCollections(overpass.collections.pois ?? featureCollection()),
+        gastronomy: mergeCollections(overpass.collections.gastronomy ?? featureCollection()),
+        parkingAreas: mergeCollections(overpass.collections.parkingAreas ?? featureCollection()),
+        transport: mergeCollections(
+          analysisCollections.transportStops,
+          analysisCollections.transportLines ?? featureCollection(),
+        ),
+        mobility: mergeCollections(
+          overpass.collections.mobilityInfrastructure ?? featureCollection(),
+        ),
+        isochrones: isochrones.collection,
+        barriers: mergeCollections(overpass.collections.barriers ?? featureCollection()),
+        development: mergeCollections(
+          overpass.collections.developmentHints ?? featureCollection(),
+        ),
+        sun: mergeCollections(m.overlays.sun),
+        contours: contourLines,
+        sectionLine: mergeCollections(m.overlays.sectionLine),
+        osmRaw: rawOverpassFeatures,
+      },
+      mapState: {
+        center: [input.lon, input.lat],
+        zoom: 15.2,
+        layers: input.layers ?? DEFAULT_LAYER_STATE,
+      },
+      provenance: {
+        createdAt: computedAt,
+        sourceIds,
+        sourceFetches,
+        dataSourceRun: createDataSourceRunReport({
+          createdAt: computedAt,
+          preflightEvents: input.preflightSourceRun,
+          sourceFetches,
+        }),
+        overpassQueries: overpass.provenance,
+        geocoding: {
+          enabled: input.enableGeocoding !== false,
+          sourceId: "osm-nominatim",
+          status: geocoding.status,
+          cacheKey: geocoding.cacheKey,
+          error: "error" in geocoding ? geocoding.error : undefined,
+        },
+        caveats: [
+          "Analysis is generated from structured indicators, not free-form LLM metrics.",
+          "Fresh live/API retrieval is requested for every new selected point; cached Overpass payloads may be used for the exact same query when all live endpoints fail.",
+          ...partialCaveats,
+          ...("error" in geocoding && geocoding.error
+            ? [`Reverse geocoding unavailable: ${geocoding.error}`]
+            : []),
+          ...overpassCaveats,
+          ...sourceFetches.flatMap((receipt) => receipt.caveats),
+        ],
+      },
+    };
+    return { result, sectionSvg: m.sectionSvg };
+  };
+
+  if (input.onPartialResult) {
+    const partial = await buildResult({ collections: {}, provenance: [] }, true);
+    input.onPartialResult(partial.result, partial.sectionSvg);
+  }
+
   const overpass = await overpassPromise;
   emitProgress(input.onProgress, {
     id: "overpass",
@@ -216,236 +465,7 @@ export async function runLocationAnalysis(input: {
         ? "failed"
         : "skipped",
   });
-
-  emitProgress(input.onProgress, {
-    id: "indicators",
-    label: "XL/L/M indicators",
-    detail: "Computing deterministic indicators and map overlays.",
-    status: "running",
-  });
-  const analysisCollections: Record<string, FeatureCollection> = {
-    ...overpass.collections,
-    buildings: mergeCollections(
-      lod2Buildings,
-      overpass.collections.buildings ?? featureCollection(),
-    ),
-    transportStops: mergeCollections(
-      gtfsStops,
-      overpass.collections.transportStops ?? featureCollection(),
-    ),
-    urbanAtlas,
-    landUse: mergeCollections(
-      urbanAtlas,
-      overpass.collections.landUse ?? featureCollection(),
-    ),
-    greenBlue: mergeCollections(
-      urbanAtlas,
-      overpass.collections.greenBlue ?? featureCollection(),
-    ),
-    isochrones: isochrones.collection,
-  };
-  const xl = analyzeXl(selectedPoint, computedAt);
-  const l = analyzeL(selectedPoint, computedAt, 500, analysisCollections);
-  const m = analyzeM(
-    selectedPoint,
-    computedAt,
-    analysisCollections,
-    input.sectionLine,
-    terrainSamples,
-  );
-  const contourUsesFallback = contourLines.features.some(
-    (feature) => feature.properties?.sourceId === CONTOUR_FALLBACK_SOURCE_ID,
-  );
-  const contourUsesOpenTopography = contourLines.features.some(
-    (feature) => feature.properties?.sourceId === "opentopography-contours",
-  );
-  const sourceFetches = [
-    ...(await runSourceAdapters({
-    district: xl.district,
-    selectedPoint,
-    computedAt,
-    geocoding: {
-      enabled: input.enableGeocoding !== false,
-      status: geocoding.status,
-      cacheKey: geocoding.cacheKey,
-      sourceStatus: geocoding.sourceStatus,
-      error: "error" in geocoding ? geocoding.error : undefined,
-    },
-    overpassQueries: overpass.provenance,
-    overpassCollections: overpass.collections,
-    localCollections: {
-      "bkg-geobasis": bkgBoundaries,
-      "eurostat-gisco-fua": fuaGeometries,
-      "zensus-grid-2022": zensusGrid,
-      "copernicus-urban-atlas": urbanAtlas,
-      "urban-atlas-2021-catalog": urbanAtlas,
-      "gtfs-de-local-transit": gtfsStops,
-      "mobilithek-gtfs": gtfsStops,
-      ...(contourUsesOpenTopography
-        ? { "opentopography-contours": contourLines }
-        : {}),
-      ...(contourUsesFallback
-        ? { [CONTOUR_FALLBACK_SOURCE_ID]: contourLines }
-        : {}),
-    },
-    })),
-    isochrones.receipt,
-  ];
-  const xlSourceStatus = createXlSourceStatusModule(sourceFetches, computedAt);
-  const fua = createFuaContextModule(fuaGeometries, computedAt);
-  const zensus = createZensusGridModule(zensusGrid, computedAt);
-  const zensusWms = createZensusWmsModule(zensusWmsIndicators, computedAt);
-  const kpi = createKpiMatrixModule(
-    [
-      ...xl.indicators,
-      ...fua.indicators,
-      ...zensusWms.indicators,
-      ...zensus.indicators,
-      ...xlSourceStatus.indicators,
-      ...l.indicators,
-      ...m.indicators,
-    ],
-    computedAt,
-  );
-  const benchmark = createBenchmarkModule(
-    [
-      ...xl.indicators,
-      ...fua.indicators,
-      ...zensusWms.indicators,
-      ...zensus.indicators,
-      ...xlSourceStatus.indicators,
-      ...l.indicators,
-      ...kpi.indicators,
-      ...m.indicators,
-    ],
-    computedAt,
-  );
-  emitProgress(input.onProgress, {
-    id: "indicators",
-    label: "XL/L/M indicators",
-    detail: `${sourceFetches.length} source receipt(s), ${xl.indicators.length + fua.indicators.length + zensusWms.indicators.length + zensus.indicators.length + xlSourceStatus.indicators.length + l.indicators.length + m.indicators.length} indicator(s).`,
-    status: "ok",
-  });
-
-  const allModules = [
-    ...xl.modules,
-    ...fua.modules,
-    ...zensusWms.modules,
-    ...zensus.modules,
-    ...xlSourceStatus.modules,
-    ...l.modules,
-    ...kpi.modules,
-    ...benchmark.modules,
-    ...m.modules,
-  ];
-  const allIndicators = [
-    ...xl.indicators,
-    ...fua.indicators,
-    ...zensusWms.indicators,
-    ...zensus.indicators,
-    ...xlSourceStatus.indicators,
-    ...l.indicators,
-    ...kpi.indicators,
-    ...benchmark.indicators,
-    ...m.indicators,
-  ];
-  const sourceIds = [
-    ...new Set([
-      ...allIndicators.flatMap((indicator) => indicator.sourceIds),
-      ...sourceFetches.map((receipt) => receipt.sourceId),
-      ...(input.preflightSourceRun ?? []).flatMap((event) =>
-        event.sourceId ? [event.sourceId] : [],
-      ),
-    ]),
-  ];
-
-  const overpassCaveats = overpass.provenance.flatMap(
-    (query) => query.caveats,
-  );
-  const rawOverpassFeatures = mergeCollections(
-    ...Object.entries(overpass.collections).map(([moduleId, collection]) =>
-      tagFeatures(collection, { overpassModuleId: moduleId }),
-    ),
-  );
-
-  const result: AnalysisResult = {
-    app: "Urban Context Analysis",
-    analysisVersion: "0.1.0",
-    selectedPoint,
-    activeScale: input.activeScale,
-    modules: allModules,
-    indicators: allIndicators,
-    overlays: {
-      selectedPoint: geometryToFeature(pointGeometry(input.lat, input.lon), {
-        label: selectedPoint.label ?? "selected point",
-      }) as AnalysisResult["overlays"]["selectedPoint"],
-      xlContext: createXlContextOverlay(selectedPoint, bkgBoundaries),
-      xlGrid: createXlGridOverlay(selectedPoint, sourceFetches, zensusGrid),
-      xlSources: createXlSourceOverlay(selectedPoint, sourceFetches, fuaGeometries),
-      urbanAtlas,
-      lBuffer: mergeCollections(l.overlays.lBuffer),
-      mStreetSegment: mergeCollections(m.overlays.street, m.overlays.corridor),
-      green: mergeCollections(l.overlays.green),
-      blue: mergeCollections(l.overlays.blue),
-      trees: mergeCollections(l.overlays.trees, m.overlays.trees),
-      buildings: mergeCollections(
-        analysisCollections.buildings ?? featureCollection(),
-        m.overlays.buildings,
-      ),
-      pois: mergeCollections(overpass.collections.pois ?? featureCollection()),
-      gastronomy: mergeCollections(overpass.collections.gastronomy ?? featureCollection()),
-      parkingAreas: mergeCollections(overpass.collections.parkingAreas ?? featureCollection()),
-      transport: mergeCollections(
-        analysisCollections.transportStops,
-        analysisCollections.transportLines ?? featureCollection(),
-      ),
-      mobility: mergeCollections(
-        overpass.collections.mobilityInfrastructure ?? featureCollection(),
-      ),
-      isochrones: isochrones.collection,
-      barriers: mergeCollections(overpass.collections.barriers ?? featureCollection()),
-      development: mergeCollections(
-        overpass.collections.developmentHints ?? featureCollection(),
-      ),
-      sun: mergeCollections(m.overlays.sun),
-      contours: contourLines,
-      sectionLine: mergeCollections(m.overlays.sectionLine),
-      osmRaw: rawOverpassFeatures,
-    },
-    mapState: {
-      center: [input.lon, input.lat],
-      zoom: 15.2,
-      layers: input.layers ?? DEFAULT_LAYER_STATE,
-    },
-    provenance: {
-      createdAt: computedAt,
-      sourceIds,
-      sourceFetches,
-      dataSourceRun: createDataSourceRunReport({
-        createdAt: computedAt,
-        preflightEvents: input.preflightSourceRun,
-        sourceFetches,
-      }),
-      overpassQueries: overpass.provenance,
-      geocoding: {
-        enabled: input.enableGeocoding !== false,
-        sourceId: "osm-nominatim",
-        status: geocoding.status,
-        cacheKey: geocoding.cacheKey,
-        error: "error" in geocoding ? geocoding.error : undefined,
-      },
-      caveats: [
-        "Analysis is generated from structured indicators, not free-form LLM metrics.",
-        "Fresh live/API retrieval is requested for every new selected point; cached Overpass payloads may be used for the exact same query when all live endpoints fail.",
-        ...("error" in geocoding && geocoding.error
-          ? [`Reverse geocoding unavailable: ${geocoding.error}`]
-          : []),
-        ...overpassCaveats,
-        ...sourceFetches.flatMap((receipt) => receipt.caveats),
-      ],
-    },
-  };
-  return { result, sectionSvg: m.sectionSvg };
+  return buildResult(overpass, false);
 }
 
 function mergeCollections(...collections: FeatureCollection[]): FeatureCollection {

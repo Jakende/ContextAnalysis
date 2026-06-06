@@ -33,12 +33,13 @@
         "type": "direct",
         "formula": "clamp(round(value), 0, 100)"
       },
-      "formula": "Combined public transport stop access, transit mode hierarchy/density, walking/cycling OSM infrastructure, ORS walking/cycling context, and mode-specific walking, cycling, transit, and driving reachability.",
+      "formula": "Weighted multimodal reachability score derived from explicit mode KPIs: Walking KPI 35%, Cycling KPI 25%, Transit KPI 25%, and Car-driving KPI 15%. Each mode uses routed isochrone POI reachability where available plus mode-relevant nearest-feature, infrastructure, and stop evidence.",
       "thresholds": [
-        "10 transit stops in the L radius contributes 100 to the stop-count subscore.",
-        "18 stops/km² contributes 100 to the density subscore.",
-        "Routed ORS walking/cycling context contributes up to 80 to the isochrone subscore.",
-        "Mode-specific reachability visualizes 5/10/15-minute radius bands. KPI scoring uses walking 500 m/10 min, cycling 2,500 m/10 min, transit 800 m/10 min, and driving 6,000 m/15 min primary bands where available."
+        "Walking KPI uses the 10-minute routed walking isochrone where available, nearest POI distance, stop access, and pedestrian/support infrastructure.",
+        "Cycling KPI uses the 10-minute routed cycling isochrone where available, nearest POI distance, stop access, and bike/support infrastructure.",
+        "Transit KPI uses GTFS/OSM stop availability, nearest stop distance, and pedestrian/support access evidence; routed transit catchments are not inferred.",
+        "Car-driving KPI uses the 15-minute routed driving isochrone where available, nearest POI distance, and car-support evidence.",
+        "Geometric radii are not used as reachability KPI evidence."
       ]
     },
     {

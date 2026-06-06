@@ -116,7 +116,7 @@ export const sourceRegistry = {
     scale: ["XL", "L"],
     updateMode: "manual",
     notes:
-      "Static MVP peer scores for initial multi-city and district benchmarking. Replace with preprocessed benchmark tables before production use.",
+      "Static MVP peer-reference scores for initial district/city comparison. Replace with preprocessed benchmark tables before production use.",
   },
   "zensus-grid-2022": {
     id: "zensus-grid-2022",

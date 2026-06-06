@@ -1,5 +1,7 @@
 import type {
   AnalysisResult,
+  AnalysisLoadStep,
+  AnalysisPhase,
   DataSourceRunEvent,
   FactSheetModule,
   Scale,
@@ -17,9 +19,13 @@ import {
 export function FactSheetPanel({
   analysis,
   activeScale,
+  analysisPhase,
+  analysisLoadSteps,
 }: {
   analysis: AnalysisResult | null;
   activeScale: Scale;
+  analysisPhase: AnalysisPhase;
+  analysisLoadSteps: AnalysisLoadStep[];
 }) {
   const modules = analysis?.modules.filter(
     (module) => module.scale === activeScale,
@@ -29,13 +35,18 @@ export function FactSheetPanel({
     <aside className="fact-sheet panel" aria-label="Structured fact sheet">
       <header className="fact-sheet-header">
         <span className="label">Fact sheet / {activeScale}</span>
-        <h2>
-          {activeScale === "XL"
-            ? "City & Region"
-            : activeScale === "L"
-              ? "Neighbourhood"
-              : "Streetscape"}
-        </h2>
+        <div className="fact-sheet-title-row">
+          <h2>
+            {activeScale === "XL"
+              ? "City & Region"
+              : activeScale === "L"
+                ? "Neighbourhood"
+                : "Streetscape"}
+          </h2>
+          <span className={`analysis-phase-badge analysis-phase-${analysisPhase}`}>
+            {phaseLabel(analysisPhase)}
+          </span>
+        </div>
       </header>
 
       {!analysis ? (
@@ -52,6 +63,7 @@ export function FactSheetPanel({
             </strong>
             <span>{analysis.selectedPoint.label ?? "Address not available"}</span>
           </div>
+          <DependencyStrip steps={analysisLoadSteps} phase={analysisPhase} />
           {activeScale === "L" ? <KpiWeightMatrix analysis={analysis} /> : null}
           <div className="module-list">
             {modules?.map((module) => (
@@ -65,10 +77,10 @@ export function FactSheetPanel({
               Data-source run <span>{analysis.provenance.dataSourceRun.length}</span>
             </summary>
             <div className="source-run-list-body" aria-label="Source retrieval status">
-              {analysis.provenance.dataSourceRun.map((event) => (
+              {analysis.provenance.dataSourceRun.map((event, index) => (
                 <article
                   className={`source-run-row source-run-row-${event.status}`}
-                  key={event.id}
+                  key={`${event.id}:${event.phase}:${index}`}
                 >
                   <div>
                     <span className="label">{event.status}</span>
@@ -88,6 +100,68 @@ export function FactSheetPanel({
       )}
     </aside>
   );
+}
+
+function DependencyStrip({
+  steps,
+  phase,
+}: {
+  steps: AnalysisLoadStep[];
+  phase: AnalysisPhase;
+}) {
+  const items = [
+    dependencyItem(steps, "local-data", "Local"),
+    dependencyItem(steps, "mobility-catchments", "Mobility"),
+    dependencyItem(steps, "overpass", "Overpass"),
+    dependencyItem(steps, "indicators", "Indicators"),
+  ];
+
+  return (
+    <section className="dependency-strip" aria-label="Analysis dependency status">
+      <div>
+        <span className="label">Readiness</span>
+        <strong>{dependencySummary(phase)}</strong>
+      </div>
+      <div className="dependency-pill-row">
+        {items.map((item) => (
+          <span className={`dependency-pill dependency-pill-${item.status}`} key={item.id}>
+            <i aria-hidden="true" />
+            {item.label}
+            <small>{item.status}</small>
+          </span>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function dependencyItem(
+  steps: AnalysisLoadStep[],
+  id: string,
+  label: string,
+): { id: string; label: string; status: AnalysisLoadStep["status"] } {
+  return {
+    id,
+    label,
+    status: steps.find((step) => step.id === id)?.status ?? "queued",
+  };
+}
+
+function dependencySummary(phase: AnalysisPhase): string {
+  if (phase === "local-ready") return "Local results usable; live OSM still enriching.";
+  if (phase === "complete") return "Complete result ready.";
+  if (phase === "failed") return "Partial result or failure caveats available.";
+  if (phase === "running" || phase === "enhancing") return "Analysis still updating.";
+  return "Waiting for selected point.";
+}
+
+function phaseLabel(phase: AnalysisPhase): string {
+  if (phase === "local-ready") return "Local ready";
+  if (phase === "enhancing") return "Enhancing";
+  if (phase === "complete") return "Complete";
+  if (phase === "failed") return "Partial";
+  if (phase === "running") return "Running";
+  return "Idle";
 }
 
 function KpiWeightMatrix({ analysis }: { analysis: AnalysisResult }) {
@@ -269,13 +343,13 @@ function featureGroupsForScale(
   if (activeScale === "L") {
     return [
       {
-        id: "mobility-radii",
-        title: "Mobility radii",
-        description: "Mode-specific calculation radii used for walking, cycling, transit and car reachability KPIs.",
+        id: "l-context-boundary",
+        title: "L context boundary",
+        description: "Neighbourhood analysis boundary used for land, green and source-context summaries. Mobility reachability KPIs use routed isochrones where available.",
         collection: analysis.overlays.lBuffer,
         geometry: "Polygon",
-        labelKeys: ["label", "mobilityMode", "id"],
-        summaryKeys: ["mobilityMode", "radiusBandLabel", "radiusMeters", "timeMinutes", "sourceScale", "primaryKpiRadius"],
+        labelKeys: ["label", "id"],
+        summaryKeys: ["radiusMeters", "sourceScale"],
       },
       {
         id: "osm-transport-lines",

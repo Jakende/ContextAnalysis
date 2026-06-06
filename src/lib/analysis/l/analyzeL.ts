@@ -575,8 +575,7 @@ function createLOverlays(
   const lBuffer = featureCollection([
     geometryToFeature(bufferPolygon(lat, lon, radiusMeters), {
       id: "l-buffer",
-      label: `L base ${radiusMeters} m`,
-      mobilityMode: "base",
+      label: `L context ${radiusMeters} m`,
       radiusMeters,
     }),
     ...mobilityScaleBuffers,
@@ -787,6 +786,21 @@ function calculateMobilityScore(input: {
       value: null,
       confidence: "low",
       caveats: ["No transport, mobility, or isochrone inputs were available."],
+    };
+  }
+
+  if (input.multimodalReachabilityScore !== null) {
+    return {
+      value: input.multimodalReachabilityScore,
+      confidence: availableInputs >= 3 && !hasFallbackIsochrones ? "medium" : "low",
+      caveats: [
+        "Mobility Access KPI is now the weighted multimodal reachability score, not a separate radius-based calculation.",
+        "Weights are walking 35%, cycling 25%, transit 25%, and car driving 15%; unavailable or low-evidence mode inputs lower confidence.",
+        hasFallbackIsochrones
+          ? "OpenRouteService routed isochrones were unavailable for at least one active mode; geometric fallback catchments reduce confidence."
+          : "OpenRouteService routed isochrones are used where available, but transit timetable quality and service frequency are not yet scored.",
+        `Mode-based multimodal score: ${input.multimodalReachabilityScore}. Supporting active POI score ${input.activeReachabilityScore ?? "not available"}, active isochrone context ${isochroneScore}.`,
+      ],
     };
   }
 

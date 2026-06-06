@@ -14,6 +14,7 @@ import {
 } from "../../lib/data/zensusWms";
 import type {
   AnalysisLoadStep,
+  AnalysisPhase,
   AnalysisResult,
   LayerId,
   LayerStyleState,
@@ -70,59 +71,6 @@ const MAP_LAYER_COLORS = {
   development: "#c8855b",
   sun: "#d8bc52",
 } as const;
-
-const MOBILITY_RADIUS_STYLES = {
-  "walking-5": {
-    label: "Walking 5 min / 300 m",
-    color: "#6ea877",
-  },
-  "walking-10": {
-    label: "Walking 10 min / 500 m",
-    color: "#5fa86b",
-  },
-  "walking-15": {
-    label: "Walking 15 min / 800 m",
-    color: "#3f8f58",
-  },
-  "cycling-5": {
-    label: "Bike 5 min / 1.25 km",
-    color: "#5db8c2",
-  },
-  "cycling-10": {
-    label: "Bike 10 min / 2.5 km",
-    color: "#54a9ba",
-  },
-  "cycling-15": {
-    label: "Bike 15 min / 3.75 km",
-    color: "#3b899e",
-  },
-  "transit-5": {
-    label: "Transit 5 min / 400 m",
-    color: "#d3b54d",
-  },
-  "transit-10": {
-    label: "Transit 10 min / 800 m",
-    color: "#c8a43f",
-  },
-  "transit-15": {
-    label: "Transit 15 min / 1.2 km",
-    color: "#aa8733",
-  },
-  "driving-5": {
-    label: "Car 5 min / 2 km",
-    color: "#d09a51",
-  },
-  "driving-10": {
-    label: "Car 10 min / 4 km",
-    color: "#c8855b",
-  },
-  "driving-15": {
-    label: "Car 15 min / 6 km",
-    color: "#b9654b",
-  },
-} as const;
-
-type MobilityRadiusBandId = keyof typeof MOBILITY_RADIUS_STYLES;
 
 const LOCAL_TRANSIT_MODES = ["bus", "tram", "subway", "transit"];
 const RAIL_TRANSIT_MODES = ["light_rail", "rail"];
@@ -192,6 +140,18 @@ const INTERACTIVE_ANALYSIS_LAYER_IDS = [
   "xl-context-fill",
   "xl-source-fill",
 ] as const;
+const POI_RENDER_LAYER_IDS = [
+  "poi-points",
+  "poi-education-points",
+  "poi-health-points",
+  "poi-civic-points",
+  "poi-commerce-points",
+  "poi-food-culture-points",
+  "poi-leisure-tourism-points",
+  "gastronomy-points",
+  "poi-labels",
+  "gastronomy-labels",
+] as const;
 const POPUP_ATTRIBUTE_KEYS = [
   "name",
   "label",
@@ -200,11 +160,8 @@ const POPUP_ATTRIBUTE_KEYS = [
   "transportMode",
   "mobilityMode",
   "mobilityCategory",
-  "radiusBand",
-  "radiusBandLabel",
   "timeMinutes",
   "sourceScale",
-  "primaryKpiRadius",
   "isochroneMode",
   "rangeMinutes",
   "rangeSeconds",
@@ -252,6 +209,7 @@ export function MapView({
   layers,
   layerStyles,
   isAnalyzing,
+  analysisPhase,
   analysisLoadSteps,
   analysisLocked,
   onPointSelected,
@@ -271,6 +229,7 @@ export function MapView({
   layers: LayerState;
   layerStyles: LayerStyleState;
   isAnalyzing: boolean;
+  analysisPhase: AnalysisPhase;
   analysisLoadSteps: AnalysisLoadStep[];
   analysisLocked: boolean;
   onPointSelected: (point: { lat: number; lon: number }) => void;
@@ -625,10 +584,12 @@ export function MapView({
           onReset={onLayerReset}
         />
         <div className="map-control-status panel">
-          <strong>{isAnalyzing ? "Analysis running" : analysis ? "Analysis loaded" : "Awaiting point"}</strong>
+          <strong>{mapStatusLabel(analysisPhase, isAnalyzing, Boolean(analysis))}</strong>
           <span>
-            {analysis
-              ? "Point fixed. Switch scale, toggle layers, or export."
+            {analysis && analysisPhase === "local-ready"
+              ? "Point fixed. Local results are usable; live OSM enrichment can still update overlays and exports."
+              : analysis
+                ? "Point fixed. Switch scale, toggle layers, or export."
               : "Search only zooms. Click the canvas pin target to run analysis."}
           </span>
           {analysis ? (
@@ -728,6 +689,19 @@ function BackgroundSwitcher({
       </button>
     </div>
   );
+}
+
+function mapStatusLabel(
+  phase: AnalysisPhase,
+  isAnalyzing: boolean,
+  hasAnalysis: boolean,
+): string {
+  if (phase === "local-ready") return "Local results ready";
+  if (phase === "enhancing") return "Live enrichment running";
+  if (phase === "complete") return "Analysis loaded";
+  if (phase === "failed") return hasAnalysis ? "Partial analysis loaded" : "Analysis failed";
+  if (isAnalyzing) return "Analysis running";
+  return "Awaiting point";
 }
 
 function AnalysisLoadingOverlay({ steps }: { steps: AnalysisLoadStep[] }) {
@@ -872,12 +846,10 @@ function getLegendItems(
   if (activeScale === "L") {
     if (layers.lBuffer) {
       items.push({
-        label: "Mobility radii",
+        label: "L context boundary",
         color: layerStyles.lBuffer.color,
-        count: analysis.overlays.lBuffer.features.filter((feature) => feature.properties?.radiusBand).length,
-        level: "parent",
+        count: analysis.overlays.lBuffer.features.length,
       });
-      items.push(...getMobilityRadiusLegendItems(analysis));
     }
     if (layers.urbanAtlas) items.push({ label: "Urban Atlas", color: layerStyles.urbanAtlas.color });
     if (layers.green) items.push({ label: "Green", color: layerStyles.green.color });
@@ -916,6 +888,13 @@ function getLegendItems(
     if (layers.green) items.push({ label: "L green", color: layerStyles.green.color });
     if (layers.blue) items.push({ label: "L blue / water", color: layerStyles.blue.color });
     if (layers.gastronomy) items.push({ label: "L gastronomy", color: layerStyles.gastronomy.color });
+    if (layers.pois) items.push({ label: "L POIs", color: layerStyles.pois.color });
+    if (layers.poiEducation) items.push({ label: "L POI education", color: layerStyles.poiEducation.color });
+    if (layers.poiHealth) items.push({ label: "L POI health", color: layerStyles.poiHealth.color });
+    if (layers.poiCivic) items.push({ label: "L POI civic", color: layerStyles.poiCivic.color });
+    if (layers.poiCommerce) items.push({ label: "L POI commerce", color: layerStyles.poiCommerce.color });
+    if (layers.poiFoodCulture) items.push({ label: "L POI food/culture", color: layerStyles.poiFoodCulture.color });
+    if (layers.poiLeisureTourism) items.push({ label: "L POI leisure/tourism", color: layerStyles.poiLeisureTourism.color });
     if (layers.parkingAreas) items.push({ label: "L parking areas", color: layerStyles.parkingAreas.color });
     if (layers.buildingFootprints) items.push({ label: "L OSM buildings", color: layerStyles.buildingFootprints.color });
     if (layers["3D"]) items.push({ label: "3D buildings", color: layerStyles["3D"].color });
@@ -935,29 +914,6 @@ function getLegendItems(
     if (layers.section) items.push({ label: "Section line", color: layerStyles.section.color });
   }
   return items;
-}
-
-function getMobilityRadiusLegendItems(
-  analysis: AnalysisResult,
-): Array<{ label: string; color: string; level: "child"; count?: number }> {
-  const availableBands = new Set(
-    analysis.overlays.lBuffer.features
-      .map((feature) => String(feature.properties?.radiusBand ?? ""))
-      .filter((id): id is MobilityRadiusBandId => id in MOBILITY_RADIUS_STYLES),
-  );
-  return Object.entries(MOBILITY_RADIUS_STYLES)
-    .filter(([id]) => availableBands.has(id as MobilityRadiusBandId))
-    .map(([id, style]) => {
-      const count = analysis.overlays.lBuffer.features.filter(
-        (feature) => feature.properties?.radiusBand === id,
-      ).length;
-      return {
-        label: style.label,
-        color: style.color,
-        level: "child" as const,
-        count,
-      };
-    });
 }
 
 function showAnalysisFeatureInfo(
@@ -1192,15 +1148,6 @@ function addIsochroneLayers(
   }, beforeId);
 }
 
-function mobilityRadiusColorExpression(fallbackColor: string): any {
-  return [
-    "match",
-    ["get", "radiusBand"],
-    ...Object.entries(MOBILITY_RADIUS_STYLES).flatMap(([id, style]) => [id, style.color]),
-    fallbackColor,
-  ];
-}
-
 function addAnalysisSourcesAndLayers(map: MapLibreMap): void {
   ensureOsmRasterLayer(map);
   ensureVersaTilesVectorLayer(map);
@@ -1382,35 +1329,10 @@ function addAnalysisSourcesAndLayers(map: MapLibreMap): void {
     type: "line",
     source: "l-buffer",
     paint: {
-      "line-color": mobilityRadiusColorExpression(MAP_LAYER_COLORS.buffer),
-      "line-width": [
-        "case",
-        ["==", ["get", "primaryKpiRadius"], true],
-        2.4,
-        ["==", ["get", "mobilityMode"], "base"],
-        1.3,
-        1.7,
-      ],
-      "line-dasharray": [
-        "case",
-        ["==", ["get", "mobilityMode"], "base"],
-        ["literal", [3, 3]],
-        ["==", ["get", "mobilityMode"], "walking"],
-        ["literal", [1, 0.1]],
-        ["==", ["get", "mobilityMode"], "cycling"],
-        ["literal", [5, 2]],
-        ["==", ["get", "mobilityMode"], "transit"],
-        ["literal", [4, 2]],
-        ["literal", [2, 2]],
-      ],
-      "line-opacity": [
-        "case",
-        ["==", ["get", "mobilityMode"], "base"],
-        0.72,
-        ["==", ["get", "primaryKpiRadius"], true],
-        0.92,
-        0.62,
-      ],
+      "line-color": MAP_LAYER_COLORS.buffer,
+      "line-width": 1.4,
+      "line-dasharray": [3, 3],
+      "line-opacity": 0.72,
     },
   });
   addLayerIfMissing(map, {
@@ -1576,10 +1498,10 @@ function addAnalysisSourcesAndLayers(map: MapLibreMap): void {
     source: "poi-overlay",
     filter: ["==", ["geometry-type"], "Point"],
     paint: {
-      "circle-radius": 3,
+      "circle-radius": ["interpolate", ["linear"], ["zoom"], 12, 3.5, 15, 5.5, 18, 8],
       "circle-color": MAP_LAYER_COLORS.poi,
-      "circle-stroke-color": "#000000",
-      "circle-stroke-width": 1,
+      "circle-stroke-color": "#ffffff",
+      "circle-stroke-width": 1.2,
     },
   });
   addLayerIfMissing(map, {
@@ -1588,10 +1510,10 @@ function addAnalysisSourcesAndLayers(map: MapLibreMap): void {
     source: "poi-overlay",
     filter: ["all", ["==", ["geometry-type"], "Point"], ["==", ["get", "poiCategory"], "education"]],
     paint: {
-      "circle-radius": 4.5,
+      "circle-radius": ["interpolate", ["linear"], ["zoom"], 12, 4, 15, 6.5, 18, 9],
       "circle-color": MAP_LAYER_COLORS.poiEducation,
-      "circle-stroke-color": "#000000",
-      "circle-stroke-width": 1,
+      "circle-stroke-color": "#ffffff",
+      "circle-stroke-width": 1.2,
     },
   });
   addLayerIfMissing(map, {
@@ -1600,10 +1522,10 @@ function addAnalysisSourcesAndLayers(map: MapLibreMap): void {
     source: "poi-overlay",
     filter: ["all", ["==", ["geometry-type"], "Point"], ["==", ["get", "poiCategory"], "health"]],
     paint: {
-      "circle-radius": 4.5,
+      "circle-radius": ["interpolate", ["linear"], ["zoom"], 12, 4, 15, 6.5, 18, 9],
       "circle-color": MAP_LAYER_COLORS.poiHealth,
-      "circle-stroke-color": "#000000",
-      "circle-stroke-width": 1,
+      "circle-stroke-color": "#ffffff",
+      "circle-stroke-width": 1.2,
     },
   });
   addLayerIfMissing(map, {
@@ -1612,10 +1534,10 @@ function addAnalysisSourcesAndLayers(map: MapLibreMap): void {
     source: "poi-overlay",
     filter: ["all", ["==", ["geometry-type"], "Point"], ["==", ["get", "poiCategory"], "civic"]],
     paint: {
-      "circle-radius": 4.5,
+      "circle-radius": ["interpolate", ["linear"], ["zoom"], 12, 4, 15, 6.5, 18, 9],
       "circle-color": MAP_LAYER_COLORS.poiCivic,
-      "circle-stroke-color": "#000000",
-      "circle-stroke-width": 1,
+      "circle-stroke-color": "#ffffff",
+      "circle-stroke-width": 1.2,
     },
   });
   addLayerIfMissing(map, {
@@ -1624,10 +1546,10 @@ function addAnalysisSourcesAndLayers(map: MapLibreMap): void {
     source: "poi-overlay",
     filter: ["all", ["==", ["geometry-type"], "Point"], ["==", ["get", "poiCategory"], "commerce"]],
     paint: {
-      "circle-radius": 3.8,
+      "circle-radius": ["interpolate", ["linear"], ["zoom"], 12, 3.6, 15, 5.8, 18, 8.2],
       "circle-color": MAP_LAYER_COLORS.poiCommerce,
-      "circle-stroke-color": "#000000",
-      "circle-stroke-width": 0.8,
+      "circle-stroke-color": "#ffffff",
+      "circle-stroke-width": 1,
     },
   });
   addLayerIfMissing(map, {
@@ -1636,10 +1558,10 @@ function addAnalysisSourcesAndLayers(map: MapLibreMap): void {
     source: "poi-overlay",
     filter: ["all", ["==", ["geometry-type"], "Point"], ["==", ["get", "poiCategory"], "food_culture"]],
     paint: {
-      "circle-radius": 3.8,
+      "circle-radius": ["interpolate", ["linear"], ["zoom"], 12, 3.6, 15, 5.8, 18, 8.2],
       "circle-color": MAP_LAYER_COLORS.poiFoodCulture,
-      "circle-stroke-color": "#000000",
-      "circle-stroke-width": 0.8,
+      "circle-stroke-color": "#ffffff",
+      "circle-stroke-width": 1,
     },
   });
   addLayerIfMissing(map, {
@@ -1648,10 +1570,10 @@ function addAnalysisSourcesAndLayers(map: MapLibreMap): void {
     source: "poi-overlay",
     filter: ["all", ["==", ["geometry-type"], "Point"], ["==", ["get", "poiCategory"], "leisure_tourism"]],
     paint: {
-      "circle-radius": 4,
+      "circle-radius": ["interpolate", ["linear"], ["zoom"], 12, 3.8, 15, 6, 18, 8.5],
       "circle-color": MAP_LAYER_COLORS.poiLeisureTourism,
-      "circle-stroke-color": "#000000",
-      "circle-stroke-width": 0.8,
+      "circle-stroke-color": "#ffffff",
+      "circle-stroke-width": 1,
     },
   });
   addLayerIfMissing(map, {
@@ -1660,10 +1582,54 @@ function addAnalysisSourcesAndLayers(map: MapLibreMap): void {
     source: "gastronomy-overlay",
     filter: ["==", ["geometry-type"], "Point"],
     paint: {
-      "circle-radius": 4.4,
+      "circle-radius": ["interpolate", ["linear"], ["zoom"], 12, 4, 15, 6.6, 18, 9],
       "circle-color": MAP_LAYER_COLORS.gastronomy,
-      "circle-stroke-color": "#000000",
-      "circle-stroke-width": 1,
+      "circle-stroke-color": "#ffffff",
+      "circle-stroke-width": 1.2,
+    },
+  });
+  addLayerIfMissing(map, {
+    id: "poi-labels",
+    type: "symbol",
+    source: "poi-overlay",
+    filter: ["==", ["geometry-type"], "Point"],
+    minzoom: 15,
+    layout: {
+      "text-field": ["coalesce", ["get", "name"], ["get", "amenity"], ["get", "shop"], ["get", "poiCategory"], ""],
+      "text-font": ["Noto Sans Regular"],
+      "text-size": ["interpolate", ["linear"], ["zoom"], 15, 10, 18, 12],
+      "text-offset": [0, 1.15],
+      "text-anchor": "top",
+      "text-optional": true,
+      "text-allow-overlap": false,
+    },
+    paint: {
+      "text-color": MAP_LAYER_COLORS.poi,
+      "text-halo-color": "#000000",
+      "text-halo-width": 1.3,
+      "text-halo-blur": 0.3,
+    },
+  });
+  addLayerIfMissing(map, {
+    id: "gastronomy-labels",
+    type: "symbol",
+    source: "gastronomy-overlay",
+    filter: ["==", ["geometry-type"], "Point"],
+    minzoom: 15,
+    layout: {
+      "text-field": ["coalesce", ["get", "name"], ["get", "amenity"], "Gastronomy"],
+      "text-font": ["Noto Sans Regular"],
+      "text-size": ["interpolate", ["linear"], ["zoom"], 15, 10, 18, 12],
+      "text-offset": [0, 1.15],
+      "text-anchor": "top",
+      "text-optional": true,
+      "text-allow-overlap": false,
+    },
+    paint: {
+      "text-color": MAP_LAYER_COLORS.gastronomy,
+      "text-halo-color": "#000000",
+      "text-halo-width": 1.3,
+      "text-halo-blur": 0.3,
     },
   });
   addLayerIfMissing(map, {
@@ -2285,6 +2251,19 @@ function addAnalysisSourcesAndLayers(map: MapLibreMap): void {
       "circle-stroke-width": 2,
     },
   });
+  movePoiLayersAboveBuildings(map);
+}
+
+function movePoiLayersAboveBuildings(map: MapLibreMap): void {
+  const beforeId = map.getLayer("selected-point-circle") ? "selected-point-circle" : undefined;
+  for (const id of POI_RENDER_LAYER_IDS) {
+    if (!map.getLayer(id)) continue;
+    try {
+      map.moveLayer(id, beforeId);
+    } catch {
+      // Layer order is a rendering preference; keep map setup resilient.
+    }
+  }
 }
 
 function updateZensusWmsLayer(map: MapLibreMap, layer: string): void {
@@ -2678,6 +2657,19 @@ function applyLayerVisibility(
   setLayerVisibility(map, "poi-food-culture-points", showLContext && layers.poiFoodCulture);
   setLayerVisibility(map, "poi-leisure-tourism-points", showLContext && layers.poiLeisureTourism);
   setLayerVisibility(map, "gastronomy-points", showLContext && layers.gastronomy);
+  setLayerVisibility(
+    map,
+    "poi-labels",
+    showLContext &&
+      (layers.pois ||
+        layers.poiEducation ||
+        layers.poiHealth ||
+        layers.poiCivic ||
+        layers.poiCommerce ||
+        layers.poiFoodCulture ||
+        layers.poiLeisureTourism),
+  );
+  setLayerVisibility(map, "gastronomy-labels", showLContext && layers.gastronomy);
   setLayerVisibility(map, "parking-area-fill", showLContext && layers.parkingAreas);
   setLayerVisibility(map, "parking-area-outline", showLContext && layers.parkingAreas);
   setLayerVisibility(map, "transport-lines-debug", showLContext && layers.transportAll);
@@ -2751,6 +2743,8 @@ function hideAnalysisLayers(map: MapLibreMap): void {
     "poi-food-culture-points",
     "poi-leisure-tourism-points",
     "gastronomy-points",
+    "poi-labels",
+    "gastronomy-labels",
     "parking-area-fill",
     "parking-area-outline",
     "transport-lines-debug",
@@ -2844,15 +2838,10 @@ function applyLayerStyles(map: MapLibreMap, styles: LayerStyleState): void {
   setLineStyle(map, "xl-source-line", styles.xlSources);
   setFillStyle(map, "urban-atlas-fill", styles.urbanAtlas, 0.18);
   setLineStyle(map, "urban-atlas-line", styles.urbanAtlas);
-  setPaint(map, "l-buffer-line", "line-color", mobilityRadiusColorExpression(styles.lBuffer.color));
-  setPaint(map, "l-buffer-line", "line-width", [
-    "case",
-    ["==", ["get", "primaryKpiRadius"], true],
-    styles.lBuffer.width + 0.6,
-    ["==", ["get", "mobilityMode"], "base"],
-    Math.max(1, styles.lBuffer.width - 0.4),
-    styles.lBuffer.width,
-  ]);
+  setPaint(map, "l-buffer-line", "line-color", styles.lBuffer.color);
+  setPaint(map, "l-buffer-line", "line-width", Math.max(1, styles.lBuffer.width));
+  setPaint(map, "l-buffer-line", "line-dasharray", [3, 3]);
+  setPaint(map, "l-buffer-line", "line-opacity", 0.72);
   setPaint(map, "l-buffer-labels", "text-color", styles.lBuffer.color);
   setFillStyle(map, "green-fill", styles.green, 0.25);
   setLineStyle(map, "green-outline", styles.green);
@@ -2906,6 +2895,8 @@ function applyLayerStyles(map: MapLibreMap, styles: LayerStyleState): void {
   setCircleStyle(map, "poi-food-culture-points", styles.poiFoodCulture);
   setCircleStyle(map, "poi-leisure-tourism-points", styles.poiLeisureTourism);
   setCircleStyle(map, "gastronomy-points", styles.gastronomy);
+  setPaint(map, "poi-labels", "text-color", styles.pois.color);
+  setPaint(map, "gastronomy-labels", "text-color", styles.gastronomy.color);
 
   setPaint(map, "building-extrusion", "fill-extrusion-color", styles["3D"].color);
   setPaint(map, "ofm-building-extrusion", "fill-extrusion-color", styles["3D"].color);

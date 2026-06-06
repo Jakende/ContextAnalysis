@@ -11,14 +11,16 @@ import {
 import { analysisToSvg, svgToPngBlob } from "../../lib/export/svg";
 import { createZipBlob } from "../../lib/export/zip";
 import { generateOllamaReport } from "../../lib/ollama/client";
-import type { AnalysisResult } from "../../lib/types";
+import type { AnalysisPhase, AnalysisResult } from "../../lib/types";
 
 export function ExportPanel({
   analysis,
+  analysisPhase,
   sectionSvg,
   onStatus,
   }: {
   analysis: AnalysisResult | null;
+  analysisPhase: AnalysisPhase;
   sectionSvg: string;
   onStatus: (status: string) => void;
 }) {
@@ -119,24 +121,73 @@ export function ExportPanel({
     ["html", "HTML"],
     ...(sectionSvg ? ([["section-svg", "SVG section"]] as const) : []),
   ] as const;
+  const exportGroups: Array<{
+    title: string;
+    description: string;
+    items: ReadonlyArray<readonly [string, string]>;
+  }> = [
+    {
+      title: "Core data",
+      description: "Structured values and geometries for downstream analysis.",
+      items: [
+        ["json", "JSON"],
+        ["csv", "CSV"],
+        ["geojson", "GeoJSON"],
+        ["provenance", "Provenance JSON"],
+      ],
+    },
+    {
+      title: "Visuals",
+      description: "Editable or quick-share graphics from the current analysis.",
+      items: [
+        ["svg", "SVG map"],
+        ["png", "PNG"],
+        ...(sectionSvg ? ([["section-svg", "SVG section"]] as const) : []),
+      ],
+    },
+    {
+      title: "Package / report",
+      description: "Bundled geodata, reproducible reports, and local LLM narration.",
+      items: [
+        ["zip", "ZIP package"],
+        ["gpkg", "GPKG"],
+        ["markdown", "Markdown"],
+        ["html", "HTML"],
+        ["ollama", "Ollama report"],
+      ],
+    },
+  ];
 
   return (
     <section className="export-panel panel" aria-label="Exports">
       <div className="panel-heading">
-        <span className="label">Exports</span>
-        <span className="export-status">Ready</span>
+        <div>
+          <span className="label">Exports</span>
+          <strong>Analysis package</strong>
+        </div>
+        <span className="export-status">{exportStatusLabel(analysisPhase)}</span>
       </div>
-      <div className="export-primary-row">
-        {primaryExports.map(([kind, label]) => (
-          <button type="button" key={kind} onClick={() => void runExport(kind)}>
-            {label}
-          </button>
+      <div className="export-group-list">
+        {exportGroups.map((group) => (
+          <section className="export-group" key={group.title}>
+            <div>
+              <strong>{group.title}</strong>
+              <span>{group.description}</span>
+            </div>
+            <div className="export-grid">
+              {group.items.map(([kind, label]) => (
+                <button type="button" key={kind} onClick={() => void runExport(kind)}>
+                  {label}
+                </button>
+              ))}
+            </div>
+          </section>
         ))}
       </div>
       <details className="export-secondary">
-        <summary>More exports</summary>
+        <summary>Flat format list</summary>
         <div className="export-grid">
-          {secondaryExports.map(([kind, label]) => (
+          {[...primaryExports, ...secondaryExports].map(([kind, label]) => (
             <button type="button" key={kind} onClick={() => void runExport(kind)}>
               {label}
             </button>
@@ -145,4 +196,11 @@ export function ExportPanel({
       </details>
     </section>
   );
+}
+
+function exportStatusLabel(phase: AnalysisPhase): string {
+  if (phase === "complete") return "Complete";
+  if (phase === "local-ready" || phase === "enhancing") return "Partial / enriching";
+  if (phase === "failed") return "Partial";
+  return "Ready";
 }
