@@ -4,6 +4,10 @@ The app runtime intentionally reads small local GeoJSON files from
 `public/data/processed/`. Heavy public services are not queried directly during
 map-click analysis.
 
+Canonical preprocessing outputs have a separate immutable deployment contract.
+See [data-release.md](data-release.md) for manifest generation, coverage states,
+checksums, cache headers, and UI builds that exclude bundled geodata.
+
 ## Outputs
 
 | Runtime file | Producer | Notes |

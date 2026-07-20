@@ -6,19 +6,21 @@ At the beginning of each session, read this file and then read `plans.md` before
 
 ## 0. Current implementation status
 
-Last checked locally on **2026-05-31**.
+Last checked locally on **2026-07-20**.
 
 ### Build and validation
 
 - `npm run typecheck` passes.
-- `npm run build` passes. Vite still reports a large main JavaScript chunk above 1500 kB after minification.
-- `npm run validate:ui` currently fails because `src/styles/app.css` contains existing `linear-gradient` rules for the workspace splitter and `box-shadow: none`. Treat this as known UI validation debt, not as evidence that TypeScript or the production build is broken.
+- `npm run build` passes. The slim build separates MapLibre, React, GeoPackage, and application chunks; no chunk currently exceeds 1,500 kB after minification.
+- `npm run validate:ui` passes.
 
 ### Working surfaces
 
 - The main mounted experience is the map-first workspace in `src/app/App.tsx`.
 - The map and inspector use a resizable workspace split. The map fullscreen control targets the full workspace so the inspector remains available in fullscreen.
 - The current product direction is direct and map-first; do not add a guided workflow unless explicitly requested again.
+- Users can upload a WGS84 polygon/multipolygon or draw a polygon/rectangle project area. The dissolved boundary becomes the deterministic L-scale observation context and export geometry.
+- User proposals are a separate scenario layer. Drawing and scenario export are implemented; KPI-impact modelling is intentionally still unavailable and must not be inferred.
 - Exports include JSON, CSV, GeoJSON, SVG, PNG, Markdown, HTML, Ollama report, ZIP package, Provenance JSON, and GPKG.
 - GPKG export is implemented in `src/lib/export/gpkg.ts` with `sql.js`. It preserves full raw feature properties in `properties_json`, materializes only a bounded prioritized subset of properties as typed SQLite columns, and tolerates duplicate provenance event IDs in `data_source_run`.
 - Ollama report export remains local-first and must summarize computed analysis JSON only. If Ollama is unavailable, deterministic non-LLM exports still work.

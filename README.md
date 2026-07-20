@@ -26,10 +26,11 @@ Last checked locally on **2026-07-20**.
 | Check | Status | Notes |
 | --- | --- | --- |
 | `npm run typecheck` | Passing | TypeScript compiles with `tsc --noEmit`. |
-| `npm run build` | Passing | Production Vite build completes. Vite still warns that the main JS chunk is larger than 1500 kB. |
+| `npm run build` | Passing | Vite 8.1.5 production build passes; the heavy MapLibre and on-demand GPKG paths remain split from the app chunk. |
 | `npm run validate:ui` | Passing | Current CSS satisfies the repository UI guardrails. |
 | KPI contract | Passing | Schema `0.4.0` keeps one analysis context, excludes fallback buffers and driving from the composite, and serializes the active scenario. |
 | GPKG / ZIP export | Passing | GeoPackage is loaded on demand; ZIP includes a standalone manifest, CSV, HTML, provenance, and editable graphics. |
+| Dependency audit | Passing | `npm audit --omit=dev` reports zero vulnerabilities. |
 
 Current implementation notes:
 
@@ -63,6 +64,10 @@ Open `http://127.0.0.1:5173`.
 ```bash
 npm run typecheck
 npm run build
+npm run test:project-area
+npm run test:spatial-area
+npm run test:benchmark
+npm run test:data-release
 ```
 
 `npm run validate:ui` enforces the current design-system guardrails and is expected to pass.
@@ -108,11 +113,14 @@ Key characteristics:
 - Nominatim geocoding is optional and failure never blocks coordinate-based analysis;
 - analysis reads bounded preprocessed coverage and does not download or rewrite large point caches during a click;
 - production builds omit generated point-cache and duplicate cache-manifest paths while retaining the canonical sharded datasets required at runtime;
+- production may set `UCA_INCLUDE_GEODATA=false` and `VITE_GEODATA_BASE_URL` so the approximately 5.4 MB UI and immutable geodata release deploy independently;
 - the fact sheet is built from structured JSON, not free-form generated text;
 - confidence and caveat fields are always exposed;
 - KPI schema version, active strategy, weights, score, classification, and evidence availability are serializable through analysis results and export manifests.
 
-The current boundary workflow filters point/line evidence to one context and uses the project area as the denominator. Exact clipping of intersecting land-use and green polygons to irregular project boundaries remains open; until implemented, those area-based indicators retain explicit caveats.
+The boundary workflow dissolves uploaded overlaps, filters evidence to one context, and uses the dissolved project area as the denominator. Land-use and green polygons are clipped and dissolved exactly in the browser-scale context. Urban Atlas owns baseline coverage; OSM contributes only in uncovered areas, with deterministic family precedence removing double counting.
+
+Scenario drawing supports proposed transit stops, bike-share stations, streets, green edges, and public spaces. These features remain a separate user-proposal layer and export; the application does not infer KPI impact until a documented scenario-effect model is implemented.
 
 Local CSVs in `src/lib/data/csv/` are schema-compatible MVP samples. Replace them with authoritative preprocessing outputs when you move beyond the prototype stage.
 
@@ -132,6 +140,8 @@ Local CSVs in `src/lib/data/csv/` are schema-compatible MVP samples. Replace the
 - [Data sources](docs/data-sources.md)
 - [Methods](docs/methods.md)
 - [Indicators](docs/indicators.md)
+- [Geodata release contract](docs/data-release.md)
+- [Data coverage audit](docs/data-quality/coverage-audit.html)
 - [Product plan](plans.md)
 
 ## Status

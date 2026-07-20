@@ -338,6 +338,9 @@ export async function runLocationAnalysis(input: {
         ...m.indicators,
       ],
       computedAt,
+      projectArea
+        ? { type: "project-area", areaSqm: projectArea.areaSqm }
+        : { type: "radius", radiusMeters: 500, areaSqm: Math.PI * 500 * 500 },
     );
     emitProgress(input.onProgress, {
       id: "indicators",

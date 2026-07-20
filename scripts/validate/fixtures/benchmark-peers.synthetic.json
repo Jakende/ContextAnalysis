@@ -1,0 +1,57 @@
+{
+  "metadata": {
+    "datasetId": "synthetic-benchmark-ingestion-test",
+    "datasetVersion": "synthetic-1",
+    "status": "curated",
+    "label": "SYNTHETIC benchmark ingestion validation fixture",
+    "preprocessedAt": "2026-02-01T00:00:00.000Z",
+    "confidence": "low",
+    "caveats": [
+      "Synthetic validation fixture only; values are not observed urban statistics and must never be used for decisions."
+    ]
+  },
+  "peers": [
+    {
+      "id": "synthetic-peer-b",
+      "label": "SYNTHETIC peer B",
+      "geographyType": "district",
+      "context": {
+        "type": "radius",
+        "radiusMeters": 500,
+        "areaSqm": 785398.16
+      },
+      "observedAt": "2026-01-15T00:00:00.000Z",
+      "sourceIds": ["uca-benchmark-peers"],
+      "sourceVersions": {
+        "uca-benchmark-peers": "synthetic-test-1"
+      },
+      "confidence": "low",
+      "caveats": ["Synthetic fixture row; no observed place is represented."],
+      "scores": {
+        "kpi.local-quality-score": 40,
+        "kpi.mobility_access": 35
+      }
+    },
+    {
+      "id": "synthetic-peer-a",
+      "label": "SYNTHETIC peer A",
+      "geographyType": "district",
+      "context": {
+        "type": "radius",
+        "radiusMeters": 500,
+        "areaSqm": 785398.16
+      },
+      "observedAt": "2026-01-15T00:00:00.000Z",
+      "sourceIds": ["uca-benchmark-peers"],
+      "sourceVersions": {
+        "uca-benchmark-peers": "synthetic-test-1"
+      },
+      "confidence": "low",
+      "caveats": ["Synthetic fixture row; no observed place is represented."],
+      "scores": {
+        "kpi.local-quality-score": 60,
+        "kpi.mobility_access": 65
+      }
+    }
+  ]
+}

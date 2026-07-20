@@ -9,6 +9,7 @@ import type {
 import { getCsvSourceSummary } from "./csvLoader";
 import { inspectPointSourceCoverage } from "./localSpatial";
 import { sourceRegistry } from "./sourceRegistry";
+import { dataAssetUrl } from "./dataAssetUrl";
 import { ZENSUS_WMS_CAPABILITIES_URL } from "./zensusWms";
 
 type GeocodingReceipt = {
@@ -40,29 +41,29 @@ type SourceProbeResponse = {
 };
 
 const PREPROCESSED_ASSET_CHECKS: Record<string, string> = {
-  "zensus-grid-2022": "/data/processed/zensus-grid.geojson",
-  "lod2-bayern": "/data/processed/lod2-buildings.geojson",
-  "lod2-deutschland-bkg": "/data/processed/lod2-deutschland/index.json",
-  "lod2-federal-states": "/data/processed/lod2-federal-states/index.json",
-  "global-building-atlas": "/data/processed/global-building-atlas.geojson",
-  "global-building-atlas-odbl-polygons": "/data/processed/global-building-atlas.geojson",
-  "overture-buildings": "/data/processed/overture-buildings/index.json",
-  "overture-building-parts": "/data/processed/overture-building-parts/index.json",
-  "opentopography-dem": "/data/processed/opentopography-dem/samples.geojson",
-  "opentopography-contours": "/data/processed/opentopography-contours/contours.geojson",
-  "eurostat-gisco-fua": "/data/processed/eurostat-gisco-fua.geojson",
-  "copernicus-urban-atlas": "/data/processed/copernicus-urban-atlas/index.json",
-  "urban-atlas-2021-catalog": "/data/processed/copernicus-urban-atlas/index.json",
-  "ghsl-jrc": "/data/processed/ghsl.geojson",
-  "ghsl-direct-download": "/data/processed/ghsl.geojson",
-  "bkg-geobasis": "/data/processed/bkg-boundaries.geojson",
-  "dwd-cdc": "/data/processed/dwd-climate.geojson",
-  "dwd-cdc-grids-germany": "/data/processed/dwd-climate.geojson",
-  "mobilithek-gtfs": "/data/processed/gtfs-stops/index.json",
-  "gtfs-de-local-transit": "/data/processed/gtfs-stops/index.json",
-  "gtfs-de-full": "/data/processed/gtfs-full-stops/index.json",
-  "gtfs-de-regional-rail": "/data/processed/gtfs-regional-rail-stops/index.json",
-  "gtfs-de-long-distance-rail": "/data/processed/gtfs-long-distance-rail-stops/index.json",
+  "zensus-grid-2022": dataAssetUrl("processed/zensus-grid.geojson"),
+  "lod2-bayern": dataAssetUrl("processed/lod2-buildings.geojson"),
+  "lod2-deutschland-bkg": dataAssetUrl("processed/lod2-deutschland/index.json"),
+  "lod2-federal-states": dataAssetUrl("processed/lod2-federal-states/index.json"),
+  "global-building-atlas": dataAssetUrl("processed/global-building-atlas.geojson"),
+  "global-building-atlas-odbl-polygons": dataAssetUrl("processed/global-building-atlas.geojson"),
+  "overture-buildings": dataAssetUrl("processed/overture-buildings/index.json"),
+  "overture-building-parts": dataAssetUrl("processed/overture-building-parts/index.json"),
+  "opentopography-dem": dataAssetUrl("processed/opentopography-dem/samples.geojson"),
+  "opentopography-contours": dataAssetUrl("processed/opentopography-contours/contours.geojson"),
+  "eurostat-gisco-fua": dataAssetUrl("processed/eurostat-gisco-fua.geojson"),
+  "copernicus-urban-atlas": dataAssetUrl("processed/copernicus-urban-atlas/index.json"),
+  "urban-atlas-2021-catalog": dataAssetUrl("processed/copernicus-urban-atlas/index.json"),
+  "ghsl-jrc": dataAssetUrl("processed/ghsl.geojson"),
+  "ghsl-direct-download": dataAssetUrl("processed/ghsl.geojson"),
+  "bkg-geobasis": dataAssetUrl("processed/bkg-boundaries.geojson"),
+  "dwd-cdc": dataAssetUrl("processed/dwd-climate.geojson"),
+  "dwd-cdc-grids-germany": dataAssetUrl("processed/dwd-climate.geojson"),
+  "mobilithek-gtfs": dataAssetUrl("processed/gtfs-stops/index.json"),
+  "gtfs-de-local-transit": dataAssetUrl("processed/gtfs-stops/index.json"),
+  "gtfs-de-full": dataAssetUrl("processed/gtfs-full-stops/index.json"),
+  "gtfs-de-regional-rail": dataAssetUrl("processed/gtfs-regional-rail-stops/index.json"),
+  "gtfs-de-long-distance-rail": dataAssetUrl("processed/gtfs-long-distance-rail-stops/index.json"),
   "natural-earth-openfreemap":
     "https://tiles.openfreemap.org/natural_earth/ne2sr/0/0/0.png",
 };
@@ -542,6 +543,10 @@ async function probeRemoteSource(url: string): Promise<SourceProbeResponse> {
 
 function publicUrlFromLocalPath(localPath?: string): string | undefined {
   if (!localPath) return undefined;
+  if (localPath.startsWith("public/data/")) {
+    return dataAssetUrl(localPath.slice("public/data/".length));
+  }
+  if (localPath.startsWith("/data/")) return dataAssetUrl(localPath);
   if (localPath.startsWith("public/")) return `/${localPath.slice("public/".length)}`;
   if (localPath.startsWith("/")) return localPath;
   return undefined;

@@ -7,6 +7,14 @@ import {
 } from "../geometry";
 import { createIndicator } from "../indicators/createIndicator";
 import { analyzeMobilityScales } from "../mobility/mobilityScales";
+import {
+  clipAndDissolveGeometries,
+  differenceGeometry,
+  dissolveGeometries,
+  geometryAreaSqm,
+  isPolygonalGeometry,
+  resolveExclusiveCategoryGeometries,
+} from "../spatialArea";
 
 export function analyzeL(
   selectedPoint: SelectedPoint,
@@ -24,9 +32,14 @@ export function analyzeL(
   const liveDevelopment = liveCollections.developmentHints;
   const liveLandUse = liveCollections.landUse;
   const liveTrees = liveCollections.trees;
-  const contextAreaSqm = contextGeometry
-    ? geometryAreaSqm(contextGeometry)
-    : circleAreaSqm(radiusMeters);
+  const rawAreaContextGeometry = contextGeometry ?? bufferPolygon(
+    selectedPoint.lat,
+    selectedPoint.lon,
+    radiusMeters,
+  );
+  const areaContextGeometry = dissolveGeometries([rawAreaContextGeometry]) ??
+    rawAreaContextGeometry;
+  const contextAreaSqm = geometryAreaSqm(areaContextGeometry);
   const contextDescription = contextGeometry
     ? "uploaded or drawn project boundary"
     : `${radiusMeters} m radius`;
@@ -106,9 +119,18 @@ export function analyzeL(
       )
     : undefined;
   const hasLiveGreenResponse = liveGreenBlue !== undefined;
-  const measuredGreenArea = greenBlueRadius ? collectionAreaSqm(greenBlueRadius, isGreenFeature) : 0;
+  const exactOverlayFailures: string[] = [];
+  let measuredGreenArea: number | null = null;
+  try {
+    measuredGreenArea = calculatePrecedenceGreenArea(
+      greenBlueRadius,
+      areaContextGeometry,
+    );
+  } catch (error) {
+    exactOverlayFailures.push(formatExactOverlayFailure("green area", error));
+  }
   const greenPercent =
-    hasLiveGreenResponse && measuredGreenArea > 0
+    hasLiveGreenResponse && measuredGreenArea !== null && measuredGreenArea > 0
       ? Math.min(100, Math.round((measuredGreenArea / Math.max(1, contextAreaSqm)) * 10_000) / 100)
       : null;
   const exactTransitStops = transportStopsRadius?.features.length;
@@ -118,7 +140,16 @@ export function analyzeL(
   const exactMobilityFeatures = mobilityRadius?.features.length;
   const exactPois = poisRadius?.features.length;
   const exactLandUseFeatures = landUseRadius?.features.length;
-  const landUseSummary = summarizeLandUse(landUseRadius, contextAreaSqm);
+  let landUseSummary: LandUseSummary | null = null;
+  try {
+    landUseSummary = summarizeLandUse(
+      landUseRadius,
+      areaContextGeometry,
+      contextAreaSqm,
+    );
+  } catch (error) {
+    exactOverlayFailures.push(formatExactOverlayFailure("land-use shares", error));
+  }
   const transitSummary = summarizeTransitStops(transportStopsRadius, contextAreaSqm);
   const transitLineSummary = summarizeTransitLines(transportLinesRadius);
   const poiSummary = summarizeFeatureCategories(poisRadius, "poiCategory");
@@ -167,8 +198,13 @@ export function analyzeL(
   const caveat = hasLiveGreenResponse ? liveCaveat : fallbackCaveat;
   const urbanAtlasCaveat =
     urbanAtlasFeatures > 0
-      ? "Preprocessed Copernicus Urban Atlas polygons were loaded for this point and used before OSM-only fallback classes."
+      ? "Preprocessed Copernicus Urban Atlas is the baseline; OSM polygons contribute only where Urban Atlas has no polygon coverage."
       : "No local Copernicus Urban Atlas polygon was available for this point.";
+  const exactAreaCaveat =
+    "Polygon evidence and overlapping multipart context components are dissolved, then evidence is clipped to the analysis geometry; deterministic family precedence removes overlap before area shares are calculated.";
+  const exactOverlayFailureCaveat = exactOverlayFailures.length
+    ? `Exact polygon overlay could not be completed safely for ${exactOverlayFailures.join(" and ")}; affected area KPIs are withheld instead of using an approximate value.`
+    : null;
 
   const indicators = [
     createIndicator({
@@ -201,8 +237,10 @@ export function analyzeL(
           ?.geometry ?? overlays.green.features[0]?.geometry,
       method:
         greenPercent !== null
-          ? `Computed from loaded Urban Atlas and/or live Overpass green/blue polygon area intersecting the ${contextDescription}.`
-          : "Live green/blue source did not return a usable response and no local preprocessed polygons are loaded.",
+          ? `Computed from green polygons exactly clipped and dissolved inside the ${contextDescription}; Urban Atlas coverage takes precedence over OSM detail.`
+          : exactOverlayFailureCaveat
+            ? "Exact green-area overlay was unavailable; no approximate percentage was emitted."
+            : "Live green/blue source did not return a usable response and no local preprocessed polygons are loaded.",
       sourceIds: ["osm-core", "osm-overpass", "copernicus-urban-atlas", "urban-atlas-2021-catalog"],
       confidence: hasLiveGreenResponse ? "medium" : "low",
       caveats: [
@@ -211,10 +249,9 @@ export function analyzeL(
           ? urbanAtlasCaveat
           : "No synthetic green percentage is emitted without real polygon area.",
         ...(greenPercent !== null
-          ? [
-              "Polygon areas are approximated from intersecting source polygons and capped at 100%; exact clipping to the circular buffer or project boundary remains a geometry-processing refinement.",
-            ]
+          ? [exactAreaCaveat]
           : []),
+        ...(exactOverlayFailureCaveat ? [exactOverlayFailureCaveat] : []),
       ],
       computedAt,
     }),
@@ -255,13 +292,15 @@ export function analyzeL(
       unit: landUseSummary ? `${landUseSummary.dominantSharePercent}%` : undefined,
       method:
         landUseSummary !== null
-          ? "Grouped loaded Urban Atlas and OSM polygon classes into analytical land-use families and ranked them by approximate polygon area inside the L-scale context."
+          ? "Grouped Urban Atlas and OSM polygon classes into mutually exclusive analytical families after exact clipping, dissolution, and source precedence."
           : "No polygonal land-use source returned usable classes for this point.",
       sourceIds: ["osm-core", "osm-overpass", "copernicus-urban-atlas", "urban-atlas-2021-catalog"],
       confidence: urbanAtlasFeatures > 0 || exactLandUseFeatures !== undefined ? "medium" : "low",
       caveats: [
         landUseSummary !== null ? urbanAtlasCaveat : fallbackCaveat,
         "Families are analytical classes derived from source labels/codes, not official zoning categories.",
+        ...(landUseSummary !== null ? [exactAreaCaveat] : []),
+        ...(exactOverlayFailureCaveat ? [exactOverlayFailureCaveat] : []),
       ],
       computedAt,
     }),
@@ -273,13 +312,14 @@ export function analyzeL(
       unit: "%",
       method:
         landUseSummary !== null
-          ? "Computed approximate area shares for built, green/blue, transport, industrial, social/open, and underused land-use families."
+          ? "Computed exact clipped and dissolved area shares for built, green/blue, transport, industrial, social/open, and underused land-use families."
           : "No polygonal land-use source returned usable classes for this point.",
       sourceIds: ["osm-core", "osm-overpass", "copernicus-urban-atlas", "urban-atlas-2021-catalog"],
       confidence: urbanAtlasFeatures > 0 || exactLandUseFeatures !== undefined ? "medium" : "low",
       caveats: [
         landUseSummary !== null ? urbanAtlasCaveat : fallbackCaveat,
-        "Shares are approximate because MVP geometry uses intersecting polygons, not exact clipped overlay areas.",
+        ...(landUseSummary !== null ? [exactAreaCaveat] : []),
+        ...(exactOverlayFailureCaveat ? [exactOverlayFailureCaveat] : []),
       ],
       computedAt,
     }),
@@ -1168,42 +1208,6 @@ function circleAreaSqm(radiusMeters: number): number {
   return Math.PI * radiusMeters * radiusMeters;
 }
 
-function collectionAreaSqm(
-  collection: FeatureCollection,
-  filterFeature: (feature: Feature) => boolean = () => true,
-): number {
-  return collection.features.reduce(
-    (total, feature) => total + (filterFeature(feature) ? featureAreaSqm(feature) : 0),
-    0,
-  );
-}
-
-function featureAreaSqm(feature: Feature): number {
-  if (feature.geometry.type === "Polygon") {
-    return polygonAreaSqm(feature.geometry);
-  }
-  if (feature.geometry.type === "MultiPolygon") {
-    return multiPolygonAreaSqm(feature.geometry);
-  }
-  return 0;
-}
-
-function multiPolygonAreaSqm(geometry: MultiPolygon): number {
-  return geometry.coordinates.reduce(
-    (total, polygonCoordinates) =>
-      total + polygonAreaSqm({ type: "Polygon", coordinates: polygonCoordinates }),
-    0,
-  );
-}
-
-function polygonAreaSqm(geometry: Polygon): number {
-  const outerArea = ringAreaSqm(geometry.coordinates[0] ?? []);
-  const holesArea = geometry.coordinates
-    .slice(1)
-    .reduce((total, ring) => total + ringAreaSqm(ring), 0);
-  return Math.max(0, outerArea - holesArea);
-}
-
 function uniqueLandUseClasses(collection: FeatureCollection): string[] {
   const classes = collection.features
     .map((feature) => readClassValue(feature))
@@ -1228,17 +1232,91 @@ type TransitLineSummary = {
   modeCounts: Array<{ mode: string; count: number }>;
 };
 
+function formatExactOverlayFailure(scope: string, error: unknown): string {
+  const detail = error instanceof Error && /queue size|infinite loop/i.test(error.message)
+    ? "geometry complexity limit"
+    : "invalid or unsupported polygon geometry";
+  return `${scope} (${detail})`;
+}
+
+// Specific analytical classes win before broad/background classes within a
+// single source. Source precedence is applied separately: Urban Atlas is the
+// baseline and OSM is allowed to fill uncovered space only.
+const LAND_USE_FAMILY_PRECEDENCE = [
+  "transport",
+  "industrial/service",
+  "underused",
+  "social/open",
+  "built/residential",
+  "green/blue",
+  "other",
+];
+
+function calculatePrecedenceGreenArea(
+  collection: FeatureCollection | undefined,
+  contextGeometry: Polygon | MultiPolygon,
+): number {
+  if (!collection?.features.length) return 0;
+  const polygonFeatures = collection.features.filter((feature) =>
+    isPolygonalGeometry(feature.geometry),
+  );
+  const baselineFeatures = polygonFeatures.filter(isUrbanAtlasFeature);
+  const detailFeatures = polygonFeatures.filter((feature) => !isUrbanAtlasFeature(feature));
+  const baselineCoverage = clipAndDissolveGeometries(
+    baselineFeatures.map((feature) => feature.geometry as Polygon | MultiPolygon),
+    contextGeometry,
+  );
+  const baselineGreen = clipAndDissolveGeometries(
+    baselineFeatures
+      .filter((feature) => isGreenFeature(feature) && !isBlueFeature(feature))
+      .map((feature) => feature.geometry as Polygon | MultiPolygon),
+    contextGeometry,
+  );
+  const detailGreen = clipAndDissolveGeometries(
+    detailFeatures
+      .filter((feature) => isGreenFeature(feature) && !isBlueFeature(feature))
+      .map((feature) => feature.geometry as Polygon | MultiPolygon),
+    contextGeometry,
+  );
+  const uncoveredDetailGreen = differenceGeometry(detailGreen, [baselineCoverage]);
+  const combinedGreen = dissolveGeometries([baselineGreen, uncoveredDetailGreen]);
+  return combinedGreen ? geometryAreaSqm(combinedGreen) : 0;
+}
+
 function summarizeLandUse(
   collection: FeatureCollection | undefined,
+  contextGeometry: Polygon | MultiPolygon,
   contextAreaSqm: number,
 ): LandUseSummary | null {
   if (!collection?.features.length) return null;
+  const polygonFeatures = collection.features.filter((feature) =>
+    isPolygonalGeometry(feature.geometry),
+  );
+  const baselineFeatures = polygonFeatures.filter(isUrbanAtlasFeature);
+  const detailFeatures = polygonFeatures.filter((feature) => !isUrbanAtlasFeature(feature));
+  const baselineCoverage = clipAndDissolveGeometries(
+    baselineFeatures.map((feature) => feature.geometry as Polygon | MultiPolygon),
+    contextGeometry,
+  );
+  const baselineFamilies = resolveExclusiveCategoryGeometries({
+    features: baselineFeatures,
+    context: contextGeometry,
+    categoryForFeature: classifyLandUseFamily,
+    categoryPriority: LAND_USE_FAMILY_PRECEDENCE,
+  });
+  const detailFamilies = resolveExclusiveCategoryGeometries({
+    features: detailFeatures,
+    context: contextGeometry,
+    categoryForFeature: classifyLandUseFamily,
+    categoryPriority: LAND_USE_FAMILY_PRECEDENCE,
+    exclusionGeometry: baselineCoverage,
+  });
   const areaByFamily = new Map<string, number>();
-  for (const feature of collection.features) {
-    const area = featureAreaSqm(feature);
-    if (area <= 0) continue;
-    const family = classifyLandUseFamily(feature);
-    areaByFamily.set(family, (areaByFamily.get(family) ?? 0) + area);
+  for (const family of [...baselineFamilies, ...detailFamilies]) {
+    areaByFamily.set(
+      family.category,
+      (areaByFamily.get(family.category) ?? 0) + family.areaSqm,
+    );
   }
   const totalArea = [...areaByFamily.values()].reduce((total, area) => total + area, 0);
   if (totalArea <= 0) return null;
@@ -1465,6 +1543,11 @@ function normalizeTransitMode(feature: Feature): string {
   return "transit";
 }
 
+function isUrbanAtlasFeature(feature: Feature): boolean {
+  return feature.properties?.sourceId === "copernicus-urban-atlas" ||
+    feature.properties?.sourceFamily === "urban-atlas-2021-catalog";
+}
+
 function isGreenFeature(feature: Feature): boolean {
   const sourceId = String(feature.properties?.sourceId ?? "");
   const classValue = readClassValue(feature) ?? "";
@@ -1680,12 +1763,6 @@ function segmentsIntersect(
   return Math.abs(fourth) <= Number.EPSILON && onSegment(rightStart, leftEnd, rightEnd);
 }
 
-function geometryAreaSqm(geometry: Polygon | MultiPolygon): number {
-  return geometry.type === "Polygon"
-    ? polygonAreaSqm(geometry)
-    : multiPolygonAreaSqm(geometry);
-}
-
 function collectGeometryCoordinates(
   geometry: Feature["geometry"],
   coords: number[][],
@@ -1754,20 +1831,6 @@ function distanceBetweenCoordinates(left: number[], right: number[]): number {
   const leftMeters = projectMeters(left, referenceLat);
   const rightMeters = projectMeters(right, referenceLat);
   return Math.hypot(leftMeters.x - rightMeters.x, leftMeters.y - rightMeters.y);
-}
-
-function ringAreaSqm(ring: number[][]): number {
-  if (ring.length < 4) return 0;
-  const referenceLat =
-    ring.reduce((total, coordinate) => total + coordinate[1], 0) / ring.length;
-  const projected = ring.map((coordinate) => projectMeters(coordinate, referenceLat));
-  let area = 0;
-  for (let index = 0; index < projected.length - 1; index += 1) {
-    area +=
-      projected[index].x * projected[index + 1].y -
-      projected[index + 1].x * projected[index].y;
-  }
-  return Math.abs(area) / 2;
 }
 
 function projectMeters(coordinate: number[], referenceLat: number) {

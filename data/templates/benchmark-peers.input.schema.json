@@ -1,0 +1,124 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://urban-context-analysis.local/schemas/benchmark-peers-input-v1.json",
+  "title": "Urban Context Analysis curated benchmark peer input",
+  "type": "object",
+  "required": ["metadata", "peers"],
+  "properties": {
+    "metadata": {
+      "type": "object",
+      "required": ["datasetId", "datasetVersion", "label", "preprocessedAt", "caveats"],
+      "properties": {
+        "datasetId": { "type": "string", "minLength": 1 },
+        "datasetVersion": { "type": "string", "minLength": 1 },
+        "status": { "const": "curated" },
+        "label": { "type": "string", "minLength": 1 },
+        "preprocessedAt": { "type": "string", "format": "date-time" },
+        "confidence": { "enum": ["high", "medium", "low"] },
+        "caveats": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        }
+      },
+      "additionalProperties": false
+    },
+    "peers": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/peer" }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "peer": {
+      "type": "object",
+      "required": [
+        "id",
+        "label",
+        "geographyType",
+        "context",
+        "observedAt",
+        "sourceIds",
+        "sourceVersions",
+        "confidence",
+        "caveats",
+        "scores"
+      ],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "label": { "type": "string", "minLength": 1 },
+        "geographyType": { "enum": ["district", "city", "municipality", "fua"] },
+        "context": { "$ref": "#/$defs/context" },
+        "observedAt": { "type": "string", "format": "date-time" },
+        "sourceIds": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "sourceVersions": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": { "type": "string", "minLength": 1 }
+        },
+        "confidence": { "enum": ["high", "medium", "low"] },
+        "caveats": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "scores": {
+          "type": "object",
+          "minProperties": 1,
+          "propertyNames": {
+            "enum": [
+              "kpi.local-quality-score",
+              "kpi.mobility_access",
+              "kpi.green_blue_access",
+              "kpi.urban_mix",
+              "kpi.social_infrastructure",
+              "kpi.tree_canopy",
+              "kpi.station_axis"
+            ]
+          },
+          "additionalProperties": { "type": "number", "minimum": 0, "maximum": 100 }
+        }
+      },
+      "additionalProperties": false
+    },
+    "context": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["type", "radiusMeters"],
+          "properties": {
+            "type": { "const": "radius" },
+            "radiusMeters": { "type": "number", "exclusiveMinimum": 0 },
+            "areaSqm": { "type": "number", "exclusiveMinimum": 0 }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "areaSqm"],
+          "properties": {
+            "type": { "const": "project-area" },
+            "areaSqm": { "type": "number", "exclusiveMinimum": 0 }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "geographyType"],
+          "properties": {
+            "type": { "const": "administrative-area" },
+            "geographyType": { "enum": ["district", "city", "municipality", "fua"] },
+            "areaSqm": { "type": "number", "exclusiveMinimum": 0 }
+          },
+          "additionalProperties": false
+        }
+      ]
+    }
+  }
+}

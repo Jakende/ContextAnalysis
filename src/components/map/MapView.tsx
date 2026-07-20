@@ -15,6 +15,14 @@ import type {
   ProjectAreaCoordinate,
   ProjectAreaDrawingMode,
 } from "../../lib/projectArea/types";
+import {
+  createScenarioFeature,
+  scenarioFeatureDefinition,
+  type ScenarioCoordinate,
+  type ScenarioFeature,
+  type ScenarioFeatureType,
+  type ScenarioLayer,
+} from "../../lib/scenario";
 import { openFreeMapStyle } from "../../lib/tiles/openFreeMapStyle";
 import {
   ZENSUS_WMS_DISPLAY_LAYER,
@@ -33,6 +41,7 @@ import type {
 } from "../../lib/types";
 import { LayerTogglePanel } from "./LayerTogglePanel";
 import { ProjectAreaPanel } from "./ProjectAreaPanel";
+import { ScenarioPanel } from "./ScenarioPanel";
 import { ScaleSwitcher } from "./ScaleSwitcher";
 import type { Scale } from "../../lib/types";
 
@@ -80,6 +89,7 @@ const MAP_LAYER_COLORS = {
   barrier: "#c76b62",
   development: "#c8855b",
   sun: "#d8bc52",
+  scenario: "#d66ac2",
 } as const;
 
 const LOCAL_TRANSIT_MODES = ["bus", "tram", "subway", "transit"];
@@ -87,6 +97,9 @@ const RAIL_TRANSIT_MODES = ["light_rail", "rail"];
 const FEATURE_QUERY_RADIUS_PX = 6;
 const INTERACTIVE_ANALYSIS_LAYER_IDS = [
   "selected-point-circle",
+  "scenario-points",
+  "scenario-lines",
+  "scenario-fill",
   "poi-education-points",
   "poi-health-points",
   "poi-civic-points",
@@ -211,11 +224,17 @@ const POPUP_ATTRIBUTE_KEYS = [
   "populationIndex",
   "radiusMeters",
   "caveat",
+  "featureType",
+  "status",
+  "authorship",
+  "creationMethod",
+  "kpiImpactStatus",
 ] as const;
 
 export function MapView({
   analysis,
   projectArea,
+  scenario,
   activeScale,
   layers,
   layerStyles,
@@ -226,6 +245,9 @@ export function MapView({
   onPointSelected,
   onProjectAreaChange,
   onProjectAreaClear,
+  onScenarioFeatureAdd,
+  onScenarioFeatureRemove,
+  onScenarioClear,
   onAnalysisClear,
   onSectionLineSelected,
   onScaleChange,
@@ -239,6 +261,7 @@ export function MapView({
 }: {
   analysis: AnalysisResult | null;
   projectArea: ProjectArea | null;
+  scenario: ScenarioLayer;
   activeScale: Scale;
   layers: LayerState;
   layerStyles: LayerStyleState;
@@ -249,6 +272,9 @@ export function MapView({
   onPointSelected: (point: { lat: number; lon: number }) => void;
   onProjectAreaChange: (projectArea: ProjectArea) => void;
   onProjectAreaClear: () => void;
+  onScenarioFeatureAdd: (feature: ScenarioFeature) => void;
+  onScenarioFeatureRemove: (featureId: string) => void;
+  onScenarioClear: () => void;
   onAnalysisClear: () => void;
   onSectionLineSelected: (sectionLine: SectionLine) => void;
   onScaleChange: (scale: Scale) => void;
@@ -268,9 +294,11 @@ export function MapView({
   const searchMarkerRef = useRef<maplibregl.Marker | null>(null);
   const onPointSelectedRef = useRef(onPointSelected);
   const onProjectAreaChangeRef = useRef(onProjectAreaChange);
+  const onScenarioFeatureAddRef = useRef(onScenarioFeatureAdd);
   const onSectionLineSelectedRef = useRef(onSectionLineSelected);
   const onStatusRef = useRef(onStatus);
   const analysisRef = useRef(analysis);
+  const scenarioRef = useRef(scenario);
   const activeScaleRef = useRef(activeScale);
   const layersRef = useRef(layers);
   const themeInvertRef = useRef(themeInvert);
@@ -279,6 +307,8 @@ export function MapView({
   const sectionDraftStartRef = useRef<SectionLine["start"] | null>(null);
   const projectDrawModeRef = useRef<ProjectAreaDrawingMode>(null);
   const projectDraftVerticesRef = useRef<ProjectAreaCoordinate[]>([]);
+  const scenarioDrawTypeRef = useRef<ScenarioFeatureType | null>(null);
+  const scenarioDraftVerticesRef = useRef<ScenarioCoordinate[]>([]);
   const [query, setQuery] = useState("");
   const [searchResults, setSearchResults] = useState<
     Array<{ lat: number; lon: number; label?: string }>
@@ -288,6 +318,8 @@ export function MapView({
   const [sectionDraftStart, setSectionDraftStart] = useState<SectionLine["start"] | null>(null);
   const [projectDrawMode, setProjectDrawMode] = useState<ProjectAreaDrawingMode>(null);
   const [projectDraftVertices, setProjectDraftVertices] = useState<ProjectAreaCoordinate[]>([]);
+  const [scenarioDrawType, setScenarioDrawType] = useState<ScenarioFeatureType | null>(null);
+  const [scenarioDraftVertices, setScenarioDraftVertices] = useState<ScenarioCoordinate[]>([]);
   const [zensusLayer, setZensusLayer] = useState(ZENSUS_WMS_DISPLAY_LAYER);
   const [backgroundMode, setBackgroundMode] = useState<BackgroundMode>("osmRaster");
 
@@ -298,9 +330,11 @@ export function MapView({
   useEffect(() => {
     onPointSelectedRef.current = onPointSelected;
     onProjectAreaChangeRef.current = onProjectAreaChange;
+    onScenarioFeatureAddRef.current = onScenarioFeatureAdd;
     onSectionLineSelectedRef.current = onSectionLineSelected;
     onStatusRef.current = onStatus;
     analysisRef.current = analysis;
+    scenarioRef.current = scenario;
     activeScaleRef.current = activeScale;
     layersRef.current = layers;
     themeInvertRef.current = themeInvert;
@@ -308,9 +342,11 @@ export function MapView({
   }, [
     onPointSelected,
     onProjectAreaChange,
+    onScenarioFeatureAdd,
     onSectionLineSelected,
     onStatus,
     analysis,
+    scenario,
     activeScale,
     layers,
     themeInvert,
@@ -326,6 +362,11 @@ export function MapView({
     projectDrawModeRef.current = projectDrawMode;
     projectDraftVerticesRef.current = projectDraftVertices;
   }, [projectDrawMode, projectDraftVertices]);
+
+  useEffect(() => {
+    scenarioDrawTypeRef.current = scenarioDrawType;
+    scenarioDraftVerticesRef.current = scenarioDraftVertices;
+  }, [scenarioDrawType, scenarioDraftVertices]);
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
@@ -388,6 +429,35 @@ export function MapView({
         completeProjectAreaDrawing("rectangle", [vertices[0], vertex]);
         return;
       }
+      const scenarioType = scenarioDrawTypeRef.current;
+      if (scenarioType) {
+        const vertex: ScenarioCoordinate = [event.lngLat.lng, event.lngLat.lat];
+        const definition = scenarioFeatureDefinition(scenarioType);
+        if (definition.geometryKind === "point") {
+          onScenarioFeatureAddRef.current(createScenarioFeature(scenarioType, [vertex]));
+          resetScenarioDrawing();
+          return;
+        }
+        const vertices = scenarioDraftVerticesRef.current;
+        if (definition.geometryKind === "polygon") {
+          const firstPoint = vertices[0] ? map.project(vertices[0]) : null;
+          const closesPolygon =
+            vertices.length >= 3 &&
+            firstPoint !== null &&
+            Math.hypot(event.point.x - firstPoint.x, event.point.y - firstPoint.y) <= 18;
+          if (closesPolygon) {
+            completeScenarioDrawing(scenarioType, vertices);
+            return;
+          }
+        }
+        const nextVertices = [...vertices, vertex];
+        scenarioDraftVerticesRef.current = nextVertices;
+        setScenarioDraftVertices(nextVertices);
+        onStatusRef.current(
+          `${definition.label}: ${nextVertices.length} point(s). Use Finish when ready.`,
+        );
+        return;
+      }
       if (sectionDrawModeRef.current) {
         const point = { lat: event.lngLat.lat, lon: event.lngLat.lng };
         if (!sectionDraftStartRef.current) {
@@ -432,6 +502,7 @@ export function MapView({
         layersRef.current,
         markerRef,
       );
+      syncScenarioToMap(map, scenarioRef.current, null, []);
       onStatusRef.current("Map ready. Select a point to run analysis.");
     });
 
@@ -457,9 +528,10 @@ export function MapView({
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
-    const anyDrawMode = sectionDrawMode || projectDrawMode !== null;
+    const anyDrawMode =
+      sectionDrawMode || projectDrawMode !== null || scenarioDrawType !== null;
     setMapCursor(map, (analysisLocked || isAnalyzing) && !anyDrawMode, anyDrawMode);
-  }, [analysisLocked, isAnalyzing, sectionDrawMode, projectDrawMode]);
+  }, [analysisLocked, isAnalyzing, sectionDrawMode, projectDrawMode, scenarioDrawType]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -473,6 +545,19 @@ export function MapView({
     }
     syncProjectArea();
   }, [projectArea, projectDrawMode, projectDraftVertices]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const syncScenario = () => {
+      syncScenarioToMap(map, scenario, scenarioDrawType, scenarioDraftVertices);
+    };
+    if (!map.getSource("scenario-overlay")) {
+      map.once("load", syncScenario);
+      return;
+    }
+    syncScenario();
+  }, [scenario, scenarioDrawType, scenarioDraftVertices]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -560,6 +645,7 @@ export function MapView({
     sectionDraftStartRef.current = null;
     searchMarkerRef.current?.remove();
     searchMarkerRef.current = null;
+    resetScenarioDrawing();
     onAnalysisClear();
   }
 
@@ -568,6 +654,43 @@ export function MapView({
     projectDraftVerticesRef.current = [];
     setProjectDrawMode(null);
     setProjectDraftVertices([]);
+  }
+
+  function resetScenarioDrawing() {
+    scenarioDrawTypeRef.current = null;
+    scenarioDraftVerticesRef.current = [];
+    setScenarioDrawType(null);
+    setScenarioDraftVertices([]);
+  }
+
+  function completeScenarioDrawing(
+    type = scenarioDrawTypeRef.current,
+    vertices = scenarioDraftVerticesRef.current,
+  ) {
+    if (!type) return;
+    try {
+      onScenarioFeatureAddRef.current(createScenarioFeature(type, vertices));
+      resetScenarioDrawing();
+    } catch (error) {
+      onStatusRef.current(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  function startScenarioDrawing(type: ScenarioFeatureType) {
+    resetProjectDrawing();
+    setSectionDrawMode(false);
+    setSectionDraftStart(null);
+    sectionDraftStartRef.current = null;
+    scenarioDrawTypeRef.current = type;
+    scenarioDraftVerticesRef.current = [];
+    setScenarioDrawType(type);
+    setScenarioDraftVertices([]);
+    const definition = scenarioFeatureDefinition(type);
+    onStatus(
+      definition.geometryKind === "point"
+        ? `${definition.label} proposal active. Click its location on the map.`
+        : `${definition.label} proposal active. Click vertices, then use Finish.`,
+    );
   }
 
   function completeProjectAreaDrawing(
@@ -587,6 +710,7 @@ export function MapView({
   }
 
   function startProjectDrawing(mode: Exclude<ProjectAreaDrawingMode, null>) {
+    resetScenarioDrawing();
     setSectionDrawMode(false);
     setSectionDraftStart(null);
     sectionDraftStartRef.current = null;
@@ -671,6 +795,23 @@ export function MapView({
           }}
           onClear={onProjectAreaClear}
         />
+        <ScenarioPanel
+          scenario={scenario}
+          drawingType={scenarioDrawType}
+          draftVertexCount={scenarioDraftVertices.length}
+          disabled={!analysis || isAnalyzing}
+          onStartDrawing={startScenarioDrawing}
+          onFinishDrawing={completeScenarioDrawing}
+          onCancelDrawing={() => {
+            resetScenarioDrawing();
+            onStatus("Scenario drawing cancelled.");
+          }}
+          onRemoveFeature={onScenarioFeatureRemove}
+          onClear={() => {
+            resetScenarioDrawing();
+            onScenarioClear();
+          }}
+        />
         <LayerTogglePanel
           layers={layers}
           layerStyles={layerStyles}
@@ -699,6 +840,7 @@ export function MapView({
               type="button"
               className="ghost-button"
               onClick={() => {
+                resetScenarioDrawing();
                 setSectionDrawMode((current) => {
                   const next = !current;
                   if (!next) {
@@ -1254,6 +1396,8 @@ function addAnalysisSourcesAndLayers(map: MapLibreMap): void {
   for (const id of [
     "project-area-overlay",
     "project-area-draft",
+    "scenario-overlay",
+    "scenario-draft",
     "selected-point",
     "xl-context",
     "xl-grid",
@@ -1325,6 +1469,69 @@ function addAnalysisSourcesAndLayers(map: MapLibreMap): void {
       "circle-radius": 5,
       "circle-color": "#f3d35c",
       "circle-stroke-color": "#151817",
+      "circle-stroke-width": 1.5,
+    },
+  });
+  addLayerIfMissing(map, {
+    id: "scenario-fill",
+    type: "fill",
+    source: "scenario-overlay",
+    filter: ["==", ["geometry-type"], "Polygon"],
+    paint: {
+      "fill-color": MAP_LAYER_COLORS.scenario,
+      "fill-opacity": 0.22,
+    },
+  });
+  addLayerIfMissing(map, {
+    id: "scenario-lines",
+    type: "line",
+    source: "scenario-overlay",
+    filter: ["==", ["geometry-type"], "LineString"],
+    paint: {
+      "line-color": MAP_LAYER_COLORS.scenario,
+      "line-width": 4,
+      "line-dasharray": [2, 1],
+    },
+  });
+  addLayerIfMissing(map, {
+    id: "scenario-points",
+    type: "circle",
+    source: "scenario-overlay",
+    filter: ["==", ["geometry-type"], "Point"],
+    paint: {
+      "circle-radius": 8,
+      "circle-color": [
+        "match",
+        ["get", "featureType"],
+        "transit_stop",
+        MAP_LAYER_COLORS.transportTram,
+        "bike_share_station",
+        MAP_LAYER_COLORS.mobilityBike,
+        MAP_LAYER_COLORS.scenario,
+      ],
+      "circle-stroke-color": "#ffffff",
+      "circle-stroke-width": 2,
+    },
+  });
+  addLayerIfMissing(map, {
+    id: "scenario-draft-line",
+    type: "line",
+    source: "scenario-draft",
+    paint: {
+      "line-color": MAP_LAYER_COLORS.scenario,
+      "line-width": 3,
+      "line-dasharray": [1, 1],
+    },
+  });
+  addLayerIfMissing(map, {
+    id: "scenario-draft-points",
+    type: "circle",
+    source: "scenario-draft",
+    filter: ["==", ["geometry-type"], "Point"],
+    paint: {
+      "circle-radius": 5,
+      "circle-color": MAP_LAYER_COLORS.scenario,
+      "circle-stroke-color": "#ffffff",
       "circle-stroke-width": 1.5,
     },
   });
@@ -2398,6 +2605,11 @@ function addAnalysisSourcesAndLayers(map: MapLibreMap): void {
     "project-area-line",
     "project-area-draft-line",
     "project-area-draft-points",
+    "scenario-fill",
+    "scenario-lines",
+    "scenario-points",
+    "scenario-draft-line",
+    "scenario-draft-points",
   ]) {
     if (map.getLayer(id)) map.moveLayer(id, "selected-point-circle");
   }
@@ -2685,6 +2897,37 @@ function syncProjectAreaToMap(
     });
   }
   setSourceData(map, "project-area-draft", {
+    type: "FeatureCollection",
+    features: draftFeatures,
+  });
+}
+
+function syncScenarioToMap(
+  map: MapLibreMap,
+  scenario: ScenarioLayer,
+  drawingType: ScenarioFeatureType | null,
+  vertices: ScenarioCoordinate[],
+): void {
+  setSourceData(map, "scenario-overlay", scenario.features);
+
+  const draftFeatures: GeoJSON.Feature[] = vertices.map((coordinates, index) => ({
+    type: "Feature",
+    geometry: { type: "Point", coordinates },
+    properties: { index: index + 1, featureType: drawingType, status: "draft" },
+  }));
+  if (vertices.length >= 2) {
+    const definition = drawingType ? scenarioFeatureDefinition(drawingType) : null;
+    const lineCoordinates =
+      definition?.geometryKind === "polygon" && vertices.length >= 3
+        ? [...vertices, vertices[0]]
+        : vertices;
+    draftFeatures.unshift({
+      type: "Feature",
+      geometry: { type: "LineString", coordinates: lineCoordinates },
+      properties: { featureType: drawingType, status: "draft" },
+    });
+  }
+  setSourceData(map, "scenario-draft", {
     type: "FeatureCollection",
     features: draftFeatures,
   });

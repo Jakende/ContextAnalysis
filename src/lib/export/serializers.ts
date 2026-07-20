@@ -2,6 +2,7 @@ import type { Feature, FeatureCollection } from "geojson";
 import { kpiFormulaLines } from "../analysis/kpi/kpiMatrix";
 import { getSources } from "../data/sourceRegistry";
 import { projectAreaToFeature } from "../projectArea/geometry";
+import type { ScenarioLayer } from "../scenario";
 import type { AnalysisResult } from "../types";
 import { createExportManifest } from "./manifest";
 
@@ -127,7 +128,10 @@ export function analysisToGeoJson(analysis: AnalysisResult): string {
   );
 }
 
-export function analysisToMarkdown(analysis: AnalysisResult): string {
+export function analysisToMarkdown(
+  analysis: AnalysisResult,
+  scenario?: ScenarioLayer,
+): string {
   const lines = [
     "# Urban Context Analysis",
     "",
@@ -223,6 +227,7 @@ export function analysisToMarkdown(analysis: AnalysisResult): string {
     );
   }
   appendBenchmarkSection(lines, analysis);
+  appendScenarioSection(lines, scenario);
   appendFeatureInventory(lines, analysis);
 
   lines.push("", "## Data Sources");
@@ -275,6 +280,26 @@ export function analysisToMarkdown(analysis: AnalysisResult): string {
   }
 
   return lines.join("\n");
+}
+
+function appendScenarioSection(lines: string[], scenario?: ScenarioLayer): void {
+  if (!scenario?.features.features.length) return;
+  lines.push(
+    "",
+    "## User-Created Scenario (Proposed)",
+    `- Scenario: ${scenario.name}`,
+    `- Proposed features: ${scenario.features.features.length}`,
+    "- Existing-condition indicators above are unchanged; proposal geometry is a separate layer.",
+    "- KPI impact: not modeled",
+  );
+  for (const metric of scenario.comparison.metrics) {
+    lines.push(
+      `- ${metric.label}: current ${metric.current}, proposed ${metric.proposed}, delta +${metric.delta} ${metric.unit}`,
+    );
+  }
+  for (const caveat of scenario.comparison.caveats) {
+    lines.push(`- Caveat: ${caveat}`);
+  }
 }
 
 function appendKpiFormulaSection(lines: string[]): void {
@@ -431,8 +456,11 @@ function splitProperty(value: unknown): string[] {
     .filter(Boolean);
 }
 
-export function analysisToHtml(analysis: AnalysisResult): string {
-  const markdown = analysisToMarkdown(analysis);
+export function analysisToHtml(
+  analysis: AnalysisResult,
+  scenario?: ScenarioLayer,
+): string {
+  const markdown = analysisToMarkdown(analysis, scenario);
   const body = markdownToHtml(markdown);
 
   return `<!doctype html>

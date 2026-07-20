@@ -12,6 +12,10 @@ import {
   type ProjectAreaGeometry,
   type ProjectAreaSource,
 } from "./types";
+import {
+  dissolveGeometries,
+  geometryAreaSqm as calculateGeometryAreaSqm,
+} from "../analysis/spatialArea";
 
 const EARTH_RADIUS_METERS = 6_371_008.8;
 const COORDINATE_EPSILON = 1e-12;
@@ -111,7 +115,7 @@ export function parseProjectAreaGeoJson(
   const caveats =
     importedFeatureCount > 1
       ? [
-          `${importedFeatureCount} uploaded polygon features are preserved as one multipart project area; overlaps are not dissolved.`,
+          `${importedFeatureCount} uploaded polygon features are combined as one project area and overlapping components are dissolved.`,
         ]
       : [];
 
@@ -244,7 +248,11 @@ function buildProjectArea(
   options: ProjectAreaCreationOptions,
   caveats: string[] = [],
 ): ProjectArea {
-  const geometry = normalizeProjectAreaGeometry(rawGeometry);
+  const normalizedGeometry = normalizeProjectAreaGeometry(rawGeometry);
+  const dissolvedGeometry = dissolveGeometries([normalizedGeometry]);
+  const geometry = dissolvedGeometry
+    ? normalizeProjectAreaGeometry(dissolvedGeometry)
+    : normalizedGeometry;
   const bbox = geometryBbox(geometry);
   const diagonalMeters = projectAreaDiagonalMeters({ bbox });
   if (diagonalMeters > PROJECT_AREA_MAX_DIAGONAL_METERS) {
@@ -254,7 +262,7 @@ function buildProjectArea(
     );
   }
 
-  const areaSqm = geometryAreaSquareMeters(geometry);
+  const areaSqm = calculateGeometryAreaSqm(geometry);
   if (!Number.isFinite(areaSqm) || areaSqm < 1) {
     throw new ProjectAreaValidationError(
       "area-too-small",
@@ -281,7 +289,7 @@ function buildProjectArea(
     areaSqm,
     createdAt,
     caveats: [
-      "Area is approximate and calculated from WGS84 coordinates on a spherical Earth model.",
+      "Area is approximate and calculated after dissolving overlaps in a local metre projection from WGS84 coordinates.",
       ...caveats,
     ],
   };
@@ -444,32 +452,6 @@ function geometryBbox(geometry: ProjectAreaGeometry): ProjectAreaBbox {
     );
   }
   return [west, south, east, north];
-}
-
-function geometryAreaSquareMeters(geometry: ProjectAreaGeometry): number {
-  const polygons = geometry.type === "Polygon" ? [geometry.coordinates] : geometry.coordinates;
-  return polygons.reduce((total, polygon) => {
-    const exteriorArea = Math.abs(sphericalRingArea(polygon[0]));
-    const holesArea = polygon
-      .slice(1)
-      .reduce((sum, ring) => sum + Math.abs(sphericalRingArea(ring)), 0);
-    return total + Math.max(0, exteriorArea - holesArea);
-  }, 0);
-}
-
-function sphericalRingArea(ring: ReadonlyArray<Position>): number {
-  let sum = 0;
-  for (let index = 0; index < ring.length - 1; index += 1) {
-    const [lon1, lat1] = ring[index];
-    const [lon2, lat2] = ring[index + 1];
-    let longitudeDelta = degreesToRadians(lon2 - lon1);
-    if (longitudeDelta > Math.PI) longitudeDelta -= 2 * Math.PI;
-    if (longitudeDelta < -Math.PI) longitudeDelta += 2 * Math.PI;
-    sum +=
-      longitudeDelta *
-      (2 + Math.sin(degreesToRadians(lat1)) + Math.sin(degreesToRadians(lat2)));
-  }
-  return (sum * EARTH_RADIUS_METERS * EARTH_RADIUS_METERS) / 2;
 }
 
 function geometryCentroid(

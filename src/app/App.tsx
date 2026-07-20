@@ -15,6 +15,12 @@ import { MapView } from "../components/map/MapView";
 import { recomputeMSectionFromAnalysis } from "../lib/analysis/m/analyzeM";
 import { runLocationAnalysis } from "../lib/analysis/runAnalysis";
 import { projectAreaContainsCoordinate } from "../lib/projectArea/geometry";
+import {
+  addScenarioFeature,
+  createEmptyScenarioLayer,
+  removeScenarioFeature,
+  type ScenarioFeature,
+} from "../lib/scenario";
 import { loadLod2BuildingsForPoint, loadTerrainSamplesForSection } from "../lib/data/localSpatial";
 import type {
   AnalysisResult,
@@ -132,6 +138,7 @@ export function App() {
   const [layerStyles, setLayerStyles] = useState<LayerStyleState>(DEFAULT_LAYER_STYLES);
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
   const [projectArea, setProjectArea] = useState<ProjectArea | null>(null);
+  const [scenario, setScenario] = useState(createEmptyScenarioLayer);
   const [kpiScenario, setKpiScenario] = useState<KpiScenario | null>(null);
   const [sectionLine, setSectionLine] = useState<SectionLine | null>(null);
   const [sectionSvg, setSectionSvg] = useState("");
@@ -267,11 +274,27 @@ export function App() {
     setAnalysisPhase("idle");
     setAnalysisLoadSteps([]);
     setExportDockOpen(false);
+    setScenario(createEmptyScenarioLayer());
     setStatus(
       projectArea
         ? "Analysis closed. The project boundary remains active; clear it or run a new analysis inside it."
         : "Analysis closed. Search can zoom the map; click the canvas pin target for a new analysis.",
     );
+  }
+
+  function handleScenarioFeatureAdd(feature: ScenarioFeature) {
+    setScenario((current) => addScenarioFeature(current, feature));
+    setStatus(`${feature.properties.label} added to the separate proposal layer.`);
+  }
+
+  function handleScenarioFeatureRemove(featureId: string) {
+    setScenario((current) => removeScenarioFeature(current, featureId));
+    setStatus("Proposal removed. Observed analysis remains unchanged.");
+  }
+
+  function handleScenarioClear() {
+    setScenario(createEmptyScenarioLayer());
+    setStatus("Scenario cleared. Observed analysis remains unchanged.");
   }
 
   function handleProjectAreaChange(nextProjectArea: ProjectArea) {
@@ -445,6 +468,7 @@ export function App() {
         <MapView
           analysis={analysis}
           projectArea={projectArea}
+          scenario={scenario}
           activeScale={activeScale}
           layers={layers}
           layerStyles={layerStyles}
@@ -455,6 +479,9 @@ export function App() {
           onPointSelected={handlePointSelected}
           onProjectAreaChange={handleProjectAreaChange}
           onProjectAreaClear={handleProjectAreaClear}
+          onScenarioFeatureAdd={handleScenarioFeatureAdd}
+          onScenarioFeatureRemove={handleScenarioFeatureRemove}
+          onScenarioClear={handleScenarioClear}
           onAnalysisClear={handleAnalysisClear}
           onSectionLineSelected={handleSectionLineSelected}
           onScaleChange={handleScaleChange}
@@ -552,6 +579,7 @@ export function App() {
               <ExportPanel
                 analysis={presentationAnalysis ?? analysis}
                 analysisPhase={analysisPhase}
+                scenario={scenario}
                 sectionSvg={sectionSvg}
                 onStatus={setStatus}
               />

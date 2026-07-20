@@ -1,0 +1,211 @@
+{
+  "surface": "report",
+  "manifest": {
+    "version": 1,
+    "surface": "report",
+    "title": "Urban Context Data Coverage Audit",
+    "description": "Technical audit of canonical deployment-data coverage at the Munich, Frankfurt, and Rosenheim regression points.",
+    "generatedAt": "2026-07-20T20:48:21.554Z",
+    "cards": [
+      {
+        "id": "munich_coverage",
+        "description": "Canonical release sources available at the Munich regression point.",
+        "dataset": "coverage_summary",
+        "sourceId": "release_manifest",
+        "metrics": [
+          { "label": "Munich source coverage", "field": "munichCoverage", "format": "percent" },
+          { "label": "Available sources", "field": "munichAvailable", "format": "number", "unit": "of 6" }
+        ]
+      },
+      {
+        "id": "frankfurt_coverage",
+        "description": "Canonical release sources available at the Frankfurt regression point.",
+        "dataset": "coverage_summary",
+        "sourceId": "release_manifest",
+        "metrics": [
+          { "label": "Frankfurt source coverage", "field": "frankfurtCoverage", "format": "percent" },
+          { "label": "Available sources", "field": "frankfurtAvailable", "format": "number", "unit": "of 6" }
+        ]
+      },
+      {
+        "id": "release_size",
+        "description": "Logical size of the immutable canonical geodata release, excluding generated point caches.",
+        "dataset": "coverage_summary",
+        "sourceId": "release_manifest",
+        "metrics": [
+          { "label": "Canonical geodata release", "field": "releaseSizeGb", "format": "number", "unit": "GB" },
+          { "label": "Canonical assets", "field": "assetCount", "format": "number" }
+        ]
+      }
+    ],
+    "charts": [
+      {
+        "id": "city_coverage",
+        "title": "Available canonical sources by regression city",
+        "subtitle": "Available sources out of six release-managed sources at each fixed 1,000 m regression point.",
+        "type": "bar",
+        "dataset": "city_coverage",
+        "sourceId": "release_manifest",
+        "encodings": {
+          "x": { "field": "city", "type": "nominal", "label": "Regression city" },
+          "y": { "field": "available", "type": "quantitative", "label": "Available sources" },
+          "tooltip": [
+            { "field": "coveragePercent", "type": "quantitative", "label": "Coverage", "format": "percent" },
+            { "field": "empty", "type": "quantitative", "label": "Empty sources" }
+          ]
+        },
+        "yAxisTitle": "Available sources (of 6)",
+        "valueFormat": "number",
+        "layout": "full"
+      }
+    ],
+    "tables": [
+      {
+        "id": "coverage_detail",
+        "title": "Canonical source coverage by regression city",
+        "subtitle": "Point-based release gate on 20 July 2026; empty means the source index exists but has no intersecting shard or feature.",
+        "dataset": "coverage_detail",
+        "sourceId": "release_manifest",
+        "defaultSort": { "field": "city", "direction": "asc" },
+        "columns": [
+          { "field": "city", "label": "Regression city", "type": "text" },
+          { "field": "source", "label": "Canonical source", "type": "text" },
+          { "field": "version", "label": "Source version", "type": "text" },
+          { "field": "status", "label": "Coverage state", "type": "text" },
+          { "field": "features", "label": "Intersecting features", "format": "number" },
+          { "field": "severity", "label": "Release risk", "type": "text" }
+        ]
+      }
+    ],
+    "sources": [
+      {
+        "id": "release_manifest",
+        "label": "Urban Context Analysis immutable data-release manifest",
+        "path": "docs/data-quality/coverage-audit.sql"
+      }
+    ],
+    "blocks": [
+      {
+        "id": "title",
+        "type": "markdown",
+        "body": "# Urban Context Data Coverage Audit"
+      },
+      {
+        "id": "technical_summary",
+        "type": "markdown",
+        "sourceId": "release_manifest",
+        "body": "## The release contract is sound, but national analytical coverage is not yet claimable\n\nMunich has **6 of 6** canonical deployment sources at the regression point. Frankfurt and Rosenheim each have **4 of 6**: their Urban Atlas and Overture entries are `empty`, not missing or failed. The new immutable release contains **9,363 assets / 2.21 GB** and can now deploy separately from the 5.4 MB UI artifact. The current release is trustworthy for its declared Munich coverage and for explicit partial-result behavior elsewhere; it is not evidence of Germany-wide Urban Atlas or building coverage."
+      },
+      {
+        "id": "headline_metrics",
+        "type": "metric-strip",
+        "cardIds": ["munich_coverage", "frankfurt_coverage", "release_size"]
+      },
+      {
+        "id": "coverage_finding",
+        "type": "markdown",
+        "sourceId": "release_manifest",
+        "body": "## Two source gaps are localized and decision-relevant\n\nBKG boundaries, GISCO FUA, GTFS stops, and GTFS lines are available at all three regression points. Urban Atlas and Overture building shards cover Munich but return zero intersecting assets for Frankfurt and Rosenheim. This is a **high-severity coverage limitation** for land-use shares, green-area evidence, building massing, and any KPI depending on those geometries outside Munich. The correct behavior is partial analysis with visible caveats; substituting a weaker source without relabeling would make the KPI evidence misleading."
+      },
+      {
+        "id": "coverage_chart",
+        "type": "chart",
+        "chartId": "city_coverage",
+        "layout": "full"
+      },
+      {
+        "id": "coverage_table",
+        "type": "table",
+        "tableId": "coverage_detail",
+        "layout": "full"
+      },
+      {
+        "id": "definitions",
+        "type": "markdown",
+        "body": "## Scope and metric definitions\n\nThe unit of analysis is one configured regression point with a 1,000 m inspection envelope. `available` means at least one intersecting feature or populated shard is present. `empty` means the canonical dataset/index exists but has no data at the point. `missing` means the index or every referenced intersecting asset is absent or invalid. Coverage rate is available canonical sources divided by six release-managed sources; it does not include live APIs or visual tile services."
+      },
+      {
+        "id": "methodology",
+        "type": "markdown",
+        "sourceId": "release_manifest",
+        "body": "## The audit is deterministic and release-bound\n\nThe release generator sorts canonical assets, excludes generated point caches, records byte size and SHA-256, derives the release ID from the complete asset table, and evaluates each indexed source against fixed Munich, Frankfurt, and Rosenheim coordinates. The validator rechecks paths, hashes, release digest, exclusions, and the `available` / `empty` / `missing` domain. A separate live regression confirmed the official Zensus WMS returned HTTP 200 with 42 grid layers at all three points; that service is intentionally outside the immutable asset denominator."
+      },
+      {
+        "id": "limitations",
+        "type": "markdown",
+        "body": "## Compact footprints are inventory evidence, not completeness certificates\n\nThe schema-1.1 manifest now records a WGS84 bbox and compact polygonal footprint for every canonical source, and separates point-probe status from footprint containment. Those footprints describe indexed asset extent; they do not prove continuous municipal, regional, or national coverage. Feature counts and footprint containment do not establish semantic completeness, fine-grained gaps, geometry validity, attribute completeness, freshness, or licensing fitness. Release readiness still needs municipality/FUA coverage percentages and source-specific quality thresholds."
+      },
+      {
+        "id": "next_steps",
+        "type": "markdown",
+        "body": "## Recommended next release gates\n\n1. Expand and version Urban Atlas and Overture preprocessing for Frankfurt and Rosenheim before any Germany-wide coverage claim.\n2. Add municipality/FUA intersection percentages and explicit required-source thresholds on top of the compact source footprints.\n3. Fail production promotion when a required city/source pair changes from `available` to `empty` or `missing`; allow documented optional-source gaps.\n4. Add geometry validity, required-property completeness, feature-density plausibility, and freshness checks per source.\n5. Serve every immutable release with long-lived cache headers and keep the UI artifact pinned to one release ID."
+      },
+      {
+        "id": "questions",
+        "type": "markdown",
+        "body": "## Further questions\n\nWhich cities form the first supported release cohort? Which sources are required versus optional for each KPI? What minimum municipality/FUA coverage percentage is acceptable? Should a deployment block on stale-but-present data, and what freshness threshold applies per source?"
+      }
+    ]
+  },
+  "snapshot": {
+    "version": 1,
+    "generatedAt": "2026-07-20T20:48:21.554Z",
+    "status": "partial",
+    "datasets": {
+      "coverage_summary": [
+        {
+          "munichCoverage": 1,
+          "munichAvailable": 6,
+          "frankfurtCoverage": 0.6666666667,
+          "frankfurtAvailable": 4,
+          "releaseSizeGb": 2.209,
+          "assetCount": 9363
+        }
+      ],
+      "city_coverage": [
+        { "city": "Munich", "available": 6, "empty": 0, "coveragePercent": 1 },
+        { "city": "Frankfurt", "available": 4, "empty": 2, "coveragePercent": 0.6666666667 },
+        { "city": "Rosenheim", "available": 4, "empty": 2, "coveragePercent": 0.6666666667 }
+      ],
+      "coverage_detail": [
+        { "city": "Munich", "source": "BKG boundaries", "version": "2026-05-10", "status": "available", "features": 2, "severity": "none" },
+        { "city": "Munich", "source": "GISCO FUA", "version": "GISCO Urban Audit 2024", "status": "available", "features": 1, "severity": "none" },
+        { "city": "Munich", "source": "GTFS stops", "version": "2026-05-12", "status": "available", "features": 4454, "severity": "none" },
+        { "city": "Munich", "source": "GTFS lines", "version": "2026-05-20", "status": "available", "features": 329, "severity": "none" },
+        { "city": "Munich", "source": "Urban Atlas", "version": "2021", "status": "available", "features": 1053, "severity": "none" },
+        { "city": "Munich", "source": "Overture buildings", "version": "2026-05-17-munich", "status": "available", "features": 11312, "severity": "none" },
+        { "city": "Frankfurt", "source": "BKG boundaries", "version": "2026-05-10", "status": "available", "features": 2, "severity": "none" },
+        { "city": "Frankfurt", "source": "GISCO FUA", "version": "GISCO Urban Audit 2024", "status": "available", "features": 1, "severity": "none" },
+        { "city": "Frankfurt", "source": "GTFS stops", "version": "2026-05-12", "status": "available", "features": 3336, "severity": "none" },
+        { "city": "Frankfurt", "source": "GTFS lines", "version": "2026-05-20", "status": "available", "features": 357, "severity": "none" },
+        { "city": "Frankfurt", "source": "Urban Atlas", "version": "2021", "status": "empty", "features": 0, "severity": "high" },
+        { "city": "Frankfurt", "source": "Overture buildings", "version": "2026-05-17-munich", "status": "empty", "features": 0, "severity": "high" },
+        { "city": "Rosenheim", "source": "BKG boundaries", "version": "2026-05-10", "status": "available", "features": 2, "severity": "none" },
+        { "city": "Rosenheim", "source": "GISCO FUA", "version": "GISCO Urban Audit 2024", "status": "available", "features": 1, "severity": "none" },
+        { "city": "Rosenheim", "source": "GTFS stops", "version": "2026-05-12", "status": "available", "features": 1385, "severity": "none" },
+        { "city": "Rosenheim", "source": "GTFS lines", "version": "2026-05-20", "status": "available", "features": 146, "severity": "none" },
+        { "city": "Rosenheim", "source": "Urban Atlas", "version": "2021", "status": "empty", "features": 0, "severity": "high" },
+        { "city": "Rosenheim", "source": "Overture buildings", "version": "2026-05-17-munich", "status": "empty", "features": 0, "severity": "high" }
+      ]
+    },
+    "accessIssues": [
+      {
+        "id": "urban_atlas_overture_gap",
+        "dataset": "coverage_detail",
+        "message": "Urban Atlas and Overture canonical coverage is empty at the Frankfurt and Rosenheim regression points."
+      }
+    ]
+  },
+  "sources": [
+    {
+      "id": "release_manifest",
+      "label": "Urban Context Analysis immutable data-release manifest",
+      "path": "docs/data-quality/coverage-audit.sql"
+    }
+  ],
+  "package_info": {
+    "root": "docs/data-quality",
+    "manifestPath": "coverage-audit.artifact.json",
+    "snapshotPath": "coverage-audit.artifact.json"
+  }
+}

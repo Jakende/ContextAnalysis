@@ -60,10 +60,17 @@ const SOURCE_PROBE_ALLOWED_HOSTS = new Set([
 export default defineConfig(({ command, mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
   process.env = { ...env, ...process.env };
+  const includeGeodata = env.UCA_INCLUDE_GEODATA !== "false";
+  const outputDirectory = env.UCA_OUT_DIR?.trim() || "dist";
   return {
-    plugins: [react(), localApiPlugin(), curatedPublicAssetsPlugin()],
+    plugins: [
+      react(),
+      localApiPlugin(),
+      curatedPublicAssetsPlugin(includeGeodata, outputDirectory),
+    ],
     publicDir: command === "build" ? false : "public",
     build: {
+      outDir: outputDirectory,
       chunkSizeWarningLimit: 1500,
       rolldownOptions: {
         output: {
@@ -93,18 +100,24 @@ export default defineConfig(({ command, mode }) => {
   };
 });
 
-function curatedPublicAssetsPlugin(): Plugin {
+function curatedPublicAssetsPlugin(
+  includeGeodata: boolean,
+  outputDirectory: string,
+): Plugin {
   return {
     name: "uca-curated-public-assets",
     apply: "build",
     async closeBundle() {
       const publicRoot = resolve(process.cwd(), "public");
-      const outputRoot = resolve(process.cwd(), "dist");
+      const outputRoot = resolve(process.cwd(), outputDirectory);
       await cp(publicRoot, outputRoot, {
         recursive: true,
         filter(source) {
           const normalized = relative(publicRoot, source).split(sep).join("/");
           return (
+            (includeGeodata ||
+              (normalized !== "data/processed" &&
+                !normalized.startsWith("data/processed/"))) &&
             normalized !== "data/processed/cache" &&
             !normalized.startsWith("data/processed/cache/") &&
             normalized !== "data/processed/cache-manifest.json" &&

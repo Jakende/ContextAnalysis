@@ -1,0 +1,134 @@
+{
+  "schemaVersion": "1.0.0",
+  "datasetId": "uca-benchmark-peers-illustrative-v1",
+  "datasetVersion": "illustrative-1",
+  "status": "illustrative",
+  "label": "Illustrative 500 m neighbourhood peer sample",
+  "preprocessedAt": "2026-05-31T00:00:00.000Z",
+  "sourceIds": ["uca-benchmark-peers"],
+  "sourceVersions": {
+    "uca-benchmark-peers": "illustrative-1"
+  },
+  "confidence": "low",
+  "caveats": [
+    "All values are illustrative product fixtures, not observed or authoritative city statistics.",
+    "Use this dataset only to exercise benchmark presentation, serialization, and comparability safeguards.",
+    "Replace the complete dataset with curated, reproducible peer tables before using ranks for decisions."
+  ],
+  "peers": [
+    {
+      "id": "munich-maxvorstadt",
+      "label": "Munich / Maxvorstadt illustrative reference",
+      "geographyType": "district",
+      "context": { "type": "radius", "radiusMeters": 500, "areaSqm": 785398.16 },
+      "sourceIds": ["uca-benchmark-peers"],
+      "sourceVersions": { "uca-benchmark-peers": "illustrative-1" },
+      "confidence": "low",
+      "caveats": ["Illustrative fixture; not calculated from Maxvorstadt source data."],
+      "scores": {
+        "kpi.local-quality-score": 82,
+        "kpi.mobility_access": 88,
+        "kpi.green_blue_access": 42,
+        "kpi.urban_mix": 86,
+        "kpi.social_infrastructure": 92,
+        "kpi.tree_canopy": 48,
+        "kpi.station_axis": 90
+      }
+    },
+    {
+      "id": "munich-schwabing",
+      "label": "Munich / Schwabing illustrative reference",
+      "geographyType": "district",
+      "context": { "type": "radius", "radiusMeters": 500, "areaSqm": 785398.16 },
+      "sourceIds": ["uca-benchmark-peers"],
+      "sourceVersions": { "uca-benchmark-peers": "illustrative-1" },
+      "confidence": "low",
+      "caveats": ["Illustrative fixture; not calculated from Schwabing source data."],
+      "scores": {
+        "kpi.local-quality-score": 78,
+        "kpi.mobility_access": 78,
+        "kpi.green_blue_access": 64,
+        "kpi.urban_mix": 72,
+        "kpi.social_infrastructure": 80,
+        "kpi.tree_canopy": 66,
+        "kpi.station_axis": 76
+      }
+    },
+    {
+      "id": "munich-altstadt-lehel",
+      "label": "Munich / Altstadt-Lehel illustrative reference",
+      "geographyType": "district",
+      "context": { "type": "radius", "radiusMeters": 500, "areaSqm": 785398.16 },
+      "sourceIds": ["uca-benchmark-peers"],
+      "sourceVersions": { "uca-benchmark-peers": "illustrative-1" },
+      "confidence": "low",
+      "caveats": ["Illustrative fixture; not calculated from Altstadt-Lehel source data."],
+      "scores": {
+        "kpi.local-quality-score": 84,
+        "kpi.mobility_access": 92,
+        "kpi.green_blue_access": 52,
+        "kpi.urban_mix": 90,
+        "kpi.social_infrastructure": 88,
+        "kpi.tree_canopy": 54,
+        "kpi.station_axis": 94
+      }
+    },
+    {
+      "id": "augsburg-inner-city",
+      "label": "Augsburg / inner-city illustrative reference",
+      "geographyType": "city",
+      "context": { "type": "radius", "radiusMeters": 500, "areaSqm": 785398.16 },
+      "sourceIds": ["uca-benchmark-peers"],
+      "sourceVersions": { "uca-benchmark-peers": "illustrative-1" },
+      "confidence": "low",
+      "caveats": ["Illustrative fixture; not calculated from Augsburg source data."],
+      "scores": {
+        "kpi.local-quality-score": 70,
+        "kpi.mobility_access": 70,
+        "kpi.green_blue_access": 58,
+        "kpi.urban_mix": 68,
+        "kpi.social_infrastructure": 72,
+        "kpi.tree_canopy": 56,
+        "kpi.station_axis": 68
+      }
+    },
+    {
+      "id": "rosenheim-center",
+      "label": "Rosenheim / centre illustrative reference",
+      "geographyType": "city",
+      "context": { "type": "radius", "radiusMeters": 500, "areaSqm": 785398.16 },
+      "sourceIds": ["uca-benchmark-peers"],
+      "sourceVersions": { "uca-benchmark-peers": "illustrative-1" },
+      "confidence": "low",
+      "caveats": ["Illustrative fixture; not calculated from Rosenheim source data."],
+      "scores": {
+        "kpi.local-quality-score": 62,
+        "kpi.mobility_access": 58,
+        "kpi.green_blue_access": 66,
+        "kpi.urban_mix": 58,
+        "kpi.social_infrastructure": 64,
+        "kpi.tree_canopy": 62,
+        "kpi.station_axis": 54
+      }
+    },
+    {
+      "id": "small-town-reference",
+      "label": "Small-town illustrative reference",
+      "geographyType": "city",
+      "context": { "type": "radius", "radiusMeters": 500, "areaSqm": 785398.16 },
+      "sourceIds": ["uca-benchmark-peers"],
+      "sourceVersions": { "uca-benchmark-peers": "illustrative-1" },
+      "confidence": "low",
+      "caveats": ["Illustrative fixture; not calculated from an identified municipality."],
+      "scores": {
+        "kpi.local-quality-score": 46,
+        "kpi.mobility_access": 38,
+        "kpi.green_blue_access": 72,
+        "kpi.urban_mix": 42,
+        "kpi.social_infrastructure": 46,
+        "kpi.tree_canopy": 70,
+        "kpi.station_axis": 32
+      }
+    }
+  ]
+}

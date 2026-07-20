@@ -109,14 +109,14 @@ export const sourceRegistry = {
   },
   "uca-benchmark-peers": {
     id: "uca-benchmark-peers",
-    label: "Urban Context Analysis benchmark peer table",
+    label: "Urban Context Analysis illustrative benchmark peer dataset",
     type: "local-file",
-    localPath: "src/lib/analysis/benchmark/benchmark.ts",
-    attribution: "Urban Context Analysis MVP reference table",
+    localPath: "src/lib/data/benchmark/peers.v1.json",
+    attribution: "Urban Context Analysis illustrative product fixtures",
     scale: ["XL", "L"],
     updateMode: "manual",
     notes:
-      "Static MVP peer-reference scores for initial district/city comparison. Replace with preprocessed benchmark tables before production use.",
+      "Schema-versioned illustrative 500 m peer scores for testing benchmark presentation and context-comparability safeguards. Values are not observed city statistics and must be replaced with curated preprocessed tables before decision use.",
   },
   "zensus-grid-2022": {
     id: "zensus-grid-2022",

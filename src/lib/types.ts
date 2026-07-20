@@ -1,5 +1,6 @@
 import type { Feature, FeatureCollection, Geometry, Point } from "geojson";
 import type { ProjectArea } from "./projectArea/types";
+import type { ScenarioExportSummary } from "./scenario/types";
 
 export type { ProjectArea } from "./projectArea/types";
 
@@ -316,6 +317,8 @@ export type ExportManifest = {
   };
   projectArea?: ProjectArea;
   kpiScenario?: KpiScenario;
+  /** Summary of a separately exported user-authored proposal layer. */
+  scenario?: ScenarioExportSummary;
   createdAt: string;
   scales: Scale[];
   sources: DataSource[];

@@ -11,16 +11,19 @@ import { analysisToSvg, svgToPngBlob } from "../../lib/export/svg";
 import { createExportManifest } from "../../lib/export/manifest";
 import { createZipBlob } from "../../lib/export/zip";
 import { generateOllamaReport } from "../../lib/ollama/client";
+import { scenarioToGeoJson, type ScenarioLayer } from "../../lib/scenario";
 import type { AnalysisPhase, AnalysisResult } from "../../lib/types";
 
 export function ExportPanel({
   analysis,
   analysisPhase,
+  scenario,
   sectionSvg,
   onStatus,
-  }: {
+}: {
   analysis: AnalysisResult | null;
   analysisPhase: AnalysisPhase;
+  scenario: ScenarioLayer;
   sectionSvg: string;
   onStatus: (status: string) => void;
 }) {
@@ -54,6 +57,13 @@ export function ExportPanel({
       if (kind === "geojson") {
         downloadText(analysisToGeoJson(analysis), `${baseName}.geojson`, "application/geo+json");
       }
+      if (kind === "scenario-geojson") {
+        downloadText(
+          scenarioToGeoJson(scenario),
+          `${baseName}-scenario.geojson`,
+          "application/geo+json",
+        );
+      }
       if (kind === "svg") {
         downloadText(analysisToSvg(analysis, sectionSvg), `${baseName}.svg`, "image/svg+xml");
       }
@@ -68,10 +78,24 @@ export function ExportPanel({
         downloadBlob(await analysisToGpkgBlob(analysis), `${baseName}.gpkg`);
       }
       if (kind === "markdown") {
-        downloadText(analysisToMarkdown(analysis), `${baseName}.md`, "text/markdown");
+        downloadText(
+          analysisToMarkdown(
+            analysis,
+            scenario.features.features.length ? scenario : undefined,
+          ),
+          `${baseName}.md`,
+          "text/markdown",
+        );
       }
       if (kind === "html") {
-        downloadText(analysisToHtml(analysis), `${baseName}.html`, "text/html");
+        downloadText(
+          analysisToHtml(
+            analysis,
+            scenario.features.features.length ? scenario : undefined,
+          ),
+          `${baseName}.html`,
+          "text/html",
+        );
       }
       if (kind === "zip") {
         const svg = analysisToSvg(analysis, sectionSvg);
@@ -85,11 +109,22 @@ export function ExportPanel({
           { name: "report.md", mediaType: "text/markdown", role: "deterministic report" },
           { name: "report.html", mediaType: "text/html", role: "printable deterministic report" },
           { name: "provenance.json", mediaType: "application/json", role: "data-source run provenance" },
+          ...(scenario.features.features.length
+            ? [{
+                name: "scenario.geojson",
+                mediaType: "application/geo+json",
+                role: "separate user-created proposed scenario geometry",
+              }]
+            : []),
           ...(sectionSvg
             ? [{ name: "cross-section.svg", mediaType: "image/svg+xml", role: "editable cross-section" }]
             : []),
         ];
-        const manifest = createExportManifest(analysis, packageFiles);
+        const manifest = createExportManifest(
+          analysis,
+          packageFiles,
+          scenario.features.features.length ? scenario : undefined,
+        );
         downloadBlob(
           await createZipBlob([
             { name: "manifest.json", content: JSON.stringify(manifest, null, 2), mediaType: "application/json" },
@@ -98,9 +133,26 @@ export function ExportPanel({
             { name: "analysis.geojson", content: analysisToGeoJson(analysis), mediaType: "application/geo+json" },
             { name: "analysis.svg", content: svg, mediaType: "image/svg+xml" },
             { name: "analysis.png", content: await svgToPngBlob(svg), mediaType: "image/png" },
-            { name: "report.md", content: analysisToMarkdown(analysis), mediaType: "text/markdown" },
-            { name: "report.html", content: analysisToHtml(analysis), mediaType: "text/html" },
+            {
+              name: "report.md",
+              content: analysisToMarkdown(
+                analysis,
+                scenario.features.features.length ? scenario : undefined,
+              ),
+              mediaType: "text/markdown",
+            },
+            {
+              name: "report.html",
+              content: analysisToHtml(
+                analysis,
+                scenario.features.features.length ? scenario : undefined,
+              ),
+              mediaType: "text/html",
+            },
             { name: "provenance.json", content: analysisToProvenanceJson(analysis), mediaType: "application/json" },
+            ...(scenario.features.features.length
+              ? [{ name: "scenario.geojson", content: scenarioToGeoJson(scenario), mediaType: "application/geo+json" }]
+              : []),
             ...(sectionSvg
               ? [{ name: "cross-section.svg", content: sectionSvg, mediaType: "image/svg+xml" }]
               : []),
@@ -137,6 +189,9 @@ export function ExportPanel({
     ["csv", "CSV"],
     ["provenance", "Provenance JSON"],
     ["geojson", "GeoJSON"],
+    ...(scenario.features.features.length
+      ? ([["scenario-geojson", "Scenario GeoJSON"]] as const)
+      : []),
     ["zip", "ZIP package"],
     ["gpkg", "GPKG"],
     ["markdown", "Markdown"],
@@ -155,6 +210,9 @@ export function ExportPanel({
         ["json", "JSON"],
         ["csv", "CSV"],
         ["geojson", "GeoJSON"],
+        ...(scenario.features.features.length
+          ? ([["scenario-geojson", "Scenario GeoJSON"]] as const)
+          : []),
         ["provenance", "Provenance JSON"],
       ],
     },

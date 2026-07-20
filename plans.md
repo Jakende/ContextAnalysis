@@ -29,6 +29,15 @@ Completed in the 2026-07-20 implementation pass:
 - GPKG loading is deferred; ZIP packages contain a standalone manifest plus CSV, HTML, provenance, and graphics.
 - UI validation passes.
 
+Completed in the continued 2026-07-20 hardening pass:
+
+- Project-area polygons are now dissolved, exactly clipped, and made mutually exclusive before green/blue and land-use area aggregation.
+- Copernicus Urban Atlas owns baseline land-use coverage; OSM contributes detail only outside that coverage, with deterministic family precedence inside each source.
+- Benchmark peers now live in a schema-versioned dataset with explicit source versions, timestamps, confidence, caveats, and spatial-context comparability. Project-area and mismatched-radius ranks are suppressed.
+- The UI can deploy independently as an approximately 5.4 MB slim artifact through `UCA_INCLUDE_GEODATA=false` and `VITE_GEODATA_BASE_URL`.
+- Canonical assets have a deterministic SHA-256 release manifest and `available` / `empty` / `missing` regression coverage gate. The current schema-1.1 release is `uca-data-edde681ba2da0b93` with 9,363 assets and 2.21 GB logical data.
+- A browser-verified technical coverage audit is available under `docs/data-quality/coverage-audit.html`.
+
 ### Durable KPI contract
 
 The KPI model is a versioned interpretation layer over immutable structured indicators:
@@ -86,6 +95,8 @@ Initial implementation shape:
 - [x] Start with a local static MVP peer table before adding live queries.
 - [x] Add compact benchmark modules under XL and L.
 - [x] Export benchmark results through structured JSON/CSV/GPKG indicator exports and Markdown/HTML report sections.
+- [x] Version and validate peer schema, provenance, source versions, timestamps, confidence, and context comparability.
+- [x] Suppress rank/percentile output when the selected radius or project area is not comparable to available peers.
 - [ ] Replace static MVP peer values with curated preprocessed Munich district, Bavarian city, German city, and European FUA benchmark tables.
 
 Acceptance target:
@@ -95,7 +106,7 @@ Acceptance target:
 
 Current status:
 
-- Initial benchmark indicators are available from a static MVP peer table. Replace with preprocessed benchmark tables for production.
+- Benchmark indicators load from `src/lib/data/benchmark/peers.v1.json`. Its scores remain explicitly illustrative, low-confidence product fixtures; replace the dataset with reproducible observed peer tables before decision use.
 - `uca-benchmark-peers` is registered in `src/lib/data/sourceRegistry.ts`.
 
 ### 3. Tree Canopy KPI — Done / Better Canopy Data Open
@@ -157,8 +168,9 @@ Let a user define the analysis site without turning boundary creation into a gui
 - [x] Use the boundary for L-scale feature filtering and area-normalized KPI denominators.
 - [x] Use its bounding box for deterministic Overpass queries and bounded local retrieval.
 - [x] Preserve the full boundary and creation source in structured analysis and exports.
-- [ ] Clip intersecting Urban Atlas, OSM land-use, and green/blue polygons exactly to the irregular boundary before area aggregation.
-- [ ] Dissolve overlapping polygons and apply an explicit source precedence model before calculating mutually exclusive land-use shares.
+- [x] Clip intersecting Urban Atlas, OSM land-use, and green/blue polygons exactly to the irregular boundary before area aggregation.
+- [x] Dissolve overlapping uploaded components and source polygons before calculating area.
+- [x] Apply explicit source and family precedence before calculating mutually exclusive land-use shares.
 
 Acceptance target:
 
@@ -167,12 +179,15 @@ Acceptance target:
 - L-scale counts and density denominators refer to the same boundary.
 - Until exact polygon clipping is implemented, area indicators expose the approximation caveat and are not promoted to high confidence.
 
-Open questions to resolve before production area scoring:
+Resolved area-scoring decisions:
 
-- Which source-precedence rules make Urban Atlas and OSM land-use classes mutually exclusive without discarding useful OSM detail?
-- Should overlapping components in an uploaded multipart layer be dissolved automatically, or rejected until the user supplies a clean project geometry?
+- Urban Atlas owns baseline coverage; OSM fills uncovered areas only. Within a source, precedence is transport, industrial/service, underused, social/open, built/residential, green/blue, then other.
+- Overlapping uploaded multipart components are dissolved automatically and the serialized project area carries the dissolved geometry and denominator.
+
+Open questions that remain:
+
 - Should the 5 km browser-analysis limit remain a product constraint after indexed server-side spatial queries are available?
-- How should peer benchmarking distinguish fixed-radius neighbourhood scores from differently sized project-area scores?
+- Which curated project-area peer cohorts and area tolerances are valid enough to enable project-area benchmarking? Until then, those ranks stay suppressed.
 
 ### 6. Data Coverage And Deployment Storage — Partial / Open
 
@@ -184,9 +199,13 @@ Current verified state on 2026-07-20:
 - [x] Production builds omit the generated `public/data/processed/cache/` tree and duplicate cache manifest.
 - [x] JavaScript is split into app, React, MapLibre, and on-demand GPKG chunks.
 - [x] BKG, FUA, GTFS, canonical Overture, canonical Urban Atlas, and Zensus WMS checks pass for Munich.
+- [x] Add a configurable immutable geodata base URL and a slim UI build that excludes canonical geodata.
+- [x] Add checksums, source versions where available, immutable cache guidance, per-city coverage states, and a deterministic data-release manifest.
+- [x] Add a browser-verified technical coverage audit with severity and release-gate recommendations.
 - [ ] Canonical Urban Atlas and Overture coverage is empty at the Frankfurt and Rosenheim regression points; expand/version those preprocessing outputs before claiming national coverage.
-- [ ] Move canonical geodata out of the client artifact into a versioned static-data deployment or object store. The cache-clean production artifact is still approximately 2.4 GB because it intentionally retains canonical shards.
-- [ ] Add checksums, source versions, immutable cache headers, coverage footprints, and a release manifest so app releases do not recopy unchanged geodata.
+- [ ] Deploy the generated immutable geodata release to the chosen static host/object store and pin the production UI to its release URL.
+- [x] Add compact WGS84 source footprints and distinguish point-probe status from footprint containment.
+- [ ] Add municipality/FUA coverage percentages and semantic quality thresholds; compact source footprints alone do not certify continuous or complete coverage.
 - [ ] Convert the largest browser-delivered GeoJSON shards to range-friendly GeoPackage/PMTiles/MBTiles or an indexed spatial API after measuring query and hosting constraints.
 
 Acceptance target:
@@ -195,7 +214,7 @@ Acceptance target:
 - A coverage regression distinguishes `available`, `empty`, and `missing` for every supported city before release.
 - Selecting one project area transfers only intersecting shards, with no overlapping point-cache duplication.
 
-### 7. In-App Scenario Editing — Open
+### 7. In-App Scenario Editing — Initial Slice Done / KPI Impact Open
 
 Keep in-app editing as a useful later expert workflow, not a core MVP blocker.
 
@@ -203,10 +222,10 @@ Project-boundary drawing defines the observation context and is already implemen
 
 Possible scope:
 
-- [ ] Let users sketch scenario features such as a new street, bike-sharing station, transit stop, green edge, or public-space intervention.
-- [ ] Keep scenario edits separate from source data.
+- [x] Let users sketch scenario features such as a new street, bike-sharing station, transit stop, green edge, or public-space intervention.
+- [x] Keep scenario edits separate from source data.
 - [ ] Recompute affected KPIs as a scenario comparison: current state vs proposed state.
-- [ ] Export scenario features separately with clear provenance.
+- [x] Export scenario features separately with clear provenance.
 
 Acceptance target:
 

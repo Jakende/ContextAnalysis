@@ -18,6 +18,7 @@ try {
   const { overpassModules } = await server.ssrLoadModule("/src/lib/overpass/modules.ts");
 
   validateGeoJsonParsing(projectArea);
+  validateUploadedOverlapDissolve(projectArea);
   validateDrawingFactories(projectArea);
   validateCanonicalIds(projectArea);
   validateRejections(projectArea);
@@ -27,6 +28,32 @@ try {
   console.log("Project-area contract validation passed");
 } finally {
   await server.close();
+}
+
+function validateUploadedOverlapDissolve({ parseProjectAreaGeoJson }) {
+  const dissolved = parseProjectAreaGeoJson({
+    type: "FeatureCollection",
+    features: [
+      {
+        type: "Feature",
+        properties: {},
+        geometry: { type: "Polygon", coordinates: [rectangleRing(11, 48, 11.002, 48.002)] },
+      },
+      {
+        type: "Feature",
+        properties: {},
+        geometry: { type: "Polygon", coordinates: [rectangleRing(11.001, 48, 11.003, 48.002)] },
+      },
+    ],
+  });
+  const expected = parseProjectAreaGeoJson({
+    type: "Feature",
+    properties: {},
+    geometry: { type: "Polygon", coordinates: [rectangleRing(11, 48, 11.003, 48.002)] },
+  });
+  const relativeAreaError = Math.abs(dissolved.areaSqm - expected.areaSqm) / expected.areaSqm;
+  assert.ok(relativeAreaError < 1e-8, `overlapping upload area was not dissolved: ${relativeAreaError}`);
+  assert.match(dissolved.caveats.join(" "), /overlapping components are dissolved/i);
 }
 
 function validateGeoJsonParsing({ parseProjectAreaGeoJson }) {
@@ -160,11 +187,15 @@ function validateOverpassBboxQueries(overpassModules) {
 }
 
 function squareRing(west, south, size) {
+  return rectangleRing(west, south, west + size, south + size);
+}
+
+function rectangleRing(west, south, east, north) {
   return [
     [west, south],
-    [west + size, south],
-    [west + size, south + size],
-    [west, south + size],
+    [east, south],
+    [east, north],
+    [west, north],
     [west, south],
   ];
 }

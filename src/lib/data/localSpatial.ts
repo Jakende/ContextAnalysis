@@ -13,26 +13,27 @@ import {
   metersToLatitudeDegrees,
   metersToLongitudeDegrees,
 } from "../analysis/geometry";
+import { dataAssetUrl } from "./dataAssetUrl";
 
-const ZENSUS_GRID_URL = "/data/processed/zensus-grid.geojson";
-const DEM_SAMPLES_URL = "/data/processed/opentopography-dem/samples.geojson";
-const CONTOUR_LINES_URL = "/data/processed/opentopography-contours/contours.geojson";
+const ZENSUS_GRID_URL = dataAssetUrl("processed/zensus-grid.geojson");
+const DEM_SAMPLES_URL = dataAssetUrl("processed/opentopography-dem/samples.geojson");
+const CONTOUR_LINES_URL = dataAssetUrl("processed/opentopography-contours/contours.geojson");
 export const CONTOUR_FALLBACK_SOURCE_ID = "uca-contour-fallback";
-const LOD2_BUILDINGS_URL = "/data/processed/lod2-buildings.geojson";
-const LOD2_DEUTSCHLAND_INDEX_URL = "/data/processed/lod2-deutschland/index.json";
-const LOD2_FEDERAL_STATES_INDEX_URL = "/data/processed/lod2-federal-states/index.json";
-const OVERTURE_BUILDINGS_URL = "/data/processed/overture-buildings.geojson";
-const OVERTURE_BUILDINGS_INDEX_URL = "/data/processed/overture-buildings/index.json";
-const GLOBAL_BUILDING_ATLAS_URL = "/data/processed/global-building-atlas.geojson";
-const BKG_BOUNDARIES_URL = "/data/processed/bkg-boundaries.geojson";
-const EUROSTAT_FUA_URL = "/data/processed/eurostat-gisco-fua.geojson";
-const GTFS_STOPS_URL = "/data/processed/gtfs-stops.geojson";
-const GTFS_STOPS_INDEX_URL = "/data/processed/gtfs-stops/index.json";
-const GTFS_LINES_URL = "/data/processed/gtfs-lines.geojson";
-const GTFS_LINES_INDEX_URL = "/data/processed/gtfs-lines/index.json";
-const URBAN_ATLAS_URL = "/data/processed/copernicus-urban-atlas.geojson";
-const URBAN_ATLAS_INDEX_URL = "/data/processed/copernicus-urban-atlas/index.json";
-const CACHE_MANIFEST_URL = "/data/processed/cache-manifest.json";
+const LOD2_BUILDINGS_URL = dataAssetUrl("processed/lod2-buildings.geojson");
+const LOD2_DEUTSCHLAND_INDEX_URL = dataAssetUrl("processed/lod2-deutschland/index.json");
+const LOD2_FEDERAL_STATES_INDEX_URL = dataAssetUrl("processed/lod2-federal-states/index.json");
+const OVERTURE_BUILDINGS_URL = dataAssetUrl("processed/overture-buildings.geojson");
+const OVERTURE_BUILDINGS_INDEX_URL = dataAssetUrl("processed/overture-buildings/index.json");
+const GLOBAL_BUILDING_ATLAS_URL = dataAssetUrl("processed/global-building-atlas.geojson");
+const BKG_BOUNDARIES_URL = dataAssetUrl("processed/bkg-boundaries.geojson");
+const EUROSTAT_FUA_URL = dataAssetUrl("processed/eurostat-gisco-fua.geojson");
+const GTFS_STOPS_URL = dataAssetUrl("processed/gtfs-stops.geojson");
+const GTFS_STOPS_INDEX_URL = dataAssetUrl("processed/gtfs-stops/index.json");
+const GTFS_LINES_URL = dataAssetUrl("processed/gtfs-lines.geojson");
+const GTFS_LINES_INDEX_URL = dataAssetUrl("processed/gtfs-lines/index.json");
+const URBAN_ATLAS_URL = dataAssetUrl("processed/copernicus-urban-atlas.geojson");
+const URBAN_ATLAS_INDEX_URL = dataAssetUrl("processed/copernicus-urban-atlas/index.json");
+const CACHE_MANIFEST_URL = dataAssetUrl("processed/cache-manifest.json");
 
 const jsonRequestCache = new Map<string, Promise<unknown | null>>();
 const featureCollectionRequestCache = new Map<
@@ -704,7 +705,7 @@ async function fetchFeatureShardsForBboxWithStatus(
       };
     }
     const collections = await Promise.all(
-      shards.map((shard) => fetchFeatureCollection(shard.url)),
+      shards.map((shard) => fetchFeatureCollection(dataAssetUrl(shard.url))),
     );
     const features = deduplicateFeatures(
       collections.flatMap((collection) => collection?.features ?? []),

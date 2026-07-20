@@ -10,7 +10,7 @@ Local CSV files are schema-compatible MVP samples and are explicitly labelled as
 
 A project boundary is user-supplied analysis context, not authoritative source data. It is stored separately from the source registry as a versioned `ProjectArea` and carried through structured analysis and exports.
 
-Accepted inputs are WGS84 GeoJSON Features or FeatureCollections containing only `Polygon` / `MultiPolygon` geometry, plus polygons and axis-aligned rectangles drawn on the map. The canonical record includes the geometry, source (`upload`, `draw-polygon`, or `draw-rectangle`), original filename where applicable, bounding box, centroid, representative interior point, approximate area, timestamp, and validation caveats. The current maximum diagonal is 5 km.
+Accepted inputs are WGS84 GeoJSON Features or FeatureCollections containing only `Polygon` / `MultiPolygon` geometry, plus polygons and axis-aligned rectangles drawn on the map. Uploaded overlaps are dissolved before the canonical record stores geometry, source (`upload`, `draw-polygon`, or `draw-rectangle`), original filename where applicable, bounding box, centroid, representative interior point, approximate locally projected area, timestamp, and validation caveats. The current maximum diagonal is 5 km.
 
 The representative point anchors reverse geocoding, XL administrative context, and M street analysis. The full boundary replaces the default 500 m L-scale filter and area denominator. Its bounding box constrains Overpass and local retrieval; the exact boundary filters point/line evidence and selects intersecting polygon evidence.
 
