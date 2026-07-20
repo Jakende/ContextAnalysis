@@ -68,7 +68,7 @@ export const sourceRegistry = {
     scale: ["XL", "L", "M"],
     updateMode: "live",
     notes:
-      "Optional reverse geocoding. Point analysis requests fresh live results and does not use cache fallback.",
+      "Optional explicit search and reverse geocoding. Responses use a short local cache; public Nominatim is not used for autocomplete.",
   },
   "osm-overpass": {
     id: "osm-overpass",
@@ -432,7 +432,7 @@ export const sourceRegistry = {
     scale: ["L"],
     updateMode: "live",
     notes:
-      "Optional routed walking, cycling, and driving isochrones. Requires VITE_OPENROUTESERVICE_API_KEY; runtime falls back to clearly labelled geometric buffers when unavailable.",
+      "Optional routed walking, cycling, and driving isochrones. Uses the server-only OPENROUTESERVICE_API_KEY through the local proxy; runtime falls back to clearly labelled geometric buffers when unavailable.",
   },
   "natural-earth-openfreemap": {
     id: "natural-earth-openfreemap",

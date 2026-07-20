@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
+import { createServer } from "vite";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const schemaPath = resolve(__dirname, "../../src/lib/analysis/kpi/kpiSchema.json");
@@ -58,7 +59,200 @@ assert.equal(classifyContext(75), "Large city context");
 assert.equal(classifyContext(58), "Regional city context");
 assert.equal(classifyContext(35), "Small city / town context");
 
+await validateProductionSpatialContract();
+
 console.log("KPI rule validation passed");
+
+async function validateProductionSpatialContract() {
+  const projectRoot = resolve(__dirname, "../..");
+  const server = await createServer({
+    root: projectRoot,
+    configFile: false,
+    appType: "custom",
+    logLevel: "silent",
+    server: { middlewareMode: true },
+  });
+  try {
+    const { analyzeL } = await server.ssrLoadModule("/src/lib/analysis/l/analyzeL.ts");
+    const { analyzeMobilityScales } = await server.ssrLoadModule(
+      "/src/lib/analysis/mobility/mobilityScales.ts",
+    );
+    const { createKpiScenario, kpiStrategies } = await server.ssrLoadModule(
+      "/src/lib/analysis/kpi/kpiMatrix.ts",
+    );
+    const selectedPoint = { lat: 48, lon: 11 };
+    const computedAt = "2026-07-20T00:00:00.000Z";
+    const inside = [11.001, 48];
+    const outside = [11.01, 48];
+    const result = analyzeL(selectedPoint, computedAt, 500, {
+      transportStops: collection([
+        point(inside, { name: "Inside stop", transportMode: "tram" }),
+        point(outside, { name: "Outside stop", transportMode: "bus" }),
+      ]),
+      pois: collection([
+        point(inside, { name: "Inside clinic", poiCategory: "health" }),
+        point(outside, { name: "Outside school", poiCategory: "education" }),
+      ]),
+      mobilityInfrastructure: collection([
+        point(inside, { mobilityMode: "bike" }),
+        point(outside, { mobilityMode: "support" }),
+      ]),
+      developmentHints: collection([
+        point(inside, { landuse: "brownfield" }),
+        point(outside, { landuse: "construction" }),
+      ]),
+    });
+    const indicators = Object.fromEntries(
+      result.indicators.map((indicator) => [indicator.id, indicator]),
+    );
+    assert.equal(indicators["l.transit-stops"].value, 1, "L stop count must respect 500 m context");
+    assert.equal(indicators["l.transit-stop-density"].value, 1.3, "L stop density must use the same 500 m context");
+    assert.equal(indicators["l.social-civic-pois"].value, 1, "L POI count must respect 500 m context");
+    assert.equal(indicators["l.mobility-infrastructure"].value, 1, "L mobility evidence must respect 500 m context");
+    assert.match(
+      String(indicators["l.development-potential"].value),
+      /^1 live OSM potential hint/,
+      "L development evidence must respect 500 m context",
+    );
+    const mobilityStrategy = kpiStrategies.find((strategy) => strategy.id === "mobility");
+    const scenario = createKpiScenario(
+      result.indicators,
+      mobilityStrategy,
+      mobilityStrategy.weights,
+      computedAt,
+    );
+    assert.equal(scenario.schemaVersion, "0.4.0");
+    assert.equal(scenario.strategyId, "mobility");
+    assert.deepEqual(scenario.weights, mobilityStrategy.weights);
+    assert.equal(scenario.computedAt, computedAt);
+    assert.ok(Array.isArray(scenario.availableKpiIds));
+
+    const projectBoundary = {
+      type: "Polygon",
+      coordinates: [[
+        [10.999, 47.999],
+        [11.009, 47.999],
+        [11.009, 48.001],
+        [10.999, 48.001],
+        [10.999, 47.999],
+      ]],
+    };
+    const projectResult = analyzeL(
+      selectedPoint,
+      computedAt,
+      500,
+      {
+        transportStops: collection([
+          point([11.008, 48], { name: "Inside project, outside radius" }),
+          point([11.012, 48], { name: "Outside project" }),
+        ]),
+      },
+      projectBoundary,
+    );
+    const projectIndicators = Object.fromEntries(
+      projectResult.indicators.map((indicator) => [indicator.id, indicator]),
+    );
+    assert.equal(projectIndicators["l.transit-stops"].value, 1, "project geometry must override radius inclusion");
+    assert.equal(projectIndicators["l.radius"].label, "Project analysis area");
+    assert.deepEqual(projectResult.overlays.lBuffer.features[0].geometry, projectBoundary);
+
+    const poiCollection = collection([
+      point([11, 48], { name: "Central POI", poiCategory: "health" }),
+    ]);
+    const fallbackWalking = polygonAround(selectedPoint, {
+      isochroneMode: "walking",
+      rangeSeconds: 600,
+      retrievalStatus: "fallback",
+    });
+    const fallbackResult = analyzeMobilityScales({
+      selectedPoint,
+      computedAt,
+      evidenceRadiusMeters: 500,
+      pois: poiCollection,
+      isochrones: collection([fallbackWalking]),
+    });
+    const fallbackWalkingSummary = fallbackResult.summaries.find(
+      (summary) => summary.config.mode === "walking",
+    );
+    assert.equal(
+      fallbackWalkingSummary.isochronePoiCount,
+      null,
+      "geometric fallback must not count as routed POI reachability",
+    );
+
+    const activeIsochrones = collection([
+      polygonAround(selectedPoint, {
+        isochroneMode: "walking",
+        rangeSeconds: 600,
+        retrievalStatus: "live",
+      }),
+      polygonAround(selectedPoint, {
+        isochroneMode: "cycling",
+        rangeSeconds: 600,
+        retrievalStatus: "cached",
+      }),
+    ]);
+    const withoutDriving = analyzeMobilityScales({
+      selectedPoint,
+      computedAt,
+      evidenceRadiusMeters: 500,
+      pois: poiCollection,
+      isochrones: activeIsochrones,
+    });
+    const withDriving = analyzeMobilityScales({
+      selectedPoint,
+      computedAt,
+      evidenceRadiusMeters: 500,
+      pois: poiCollection,
+      isochrones: collection([
+        ...activeIsochrones.features,
+        polygonAround(selectedPoint, {
+          isochroneMode: "driving",
+          rangeSeconds: 900,
+          retrievalStatus: "live",
+        }),
+      ]),
+    });
+    assert.equal(
+      withDriving.combinedScore,
+      withoutDriving.combinedScore,
+      "driving context must not change multimodal urban-quality score",
+    );
+    const drivingSummary = withDriving.summaries.find(
+      (summary) => summary.config.mode === "driving",
+    );
+    assert.equal(drivingSummary.config.aggregateWeight, 0);
+    assert.notEqual(drivingSummary.score, null, "driving context indicator should remain visible");
+  } finally {
+    await server.close();
+  }
+}
+
+function collection(features) {
+  return { type: "FeatureCollection", features };
+}
+
+function point(coordinates, properties = {}) {
+  return { type: "Feature", geometry: { type: "Point", coordinates }, properties };
+}
+
+function polygonAround(selectedPoint, properties) {
+  const delta = 0.02;
+  return {
+    type: "Feature",
+    geometry: {
+      type: "Polygon",
+      coordinates: [[
+        [selectedPoint.lon - delta, selectedPoint.lat - delta],
+        [selectedPoint.lon + delta, selectedPoint.lat - delta],
+        [selectedPoint.lon + delta, selectedPoint.lat + delta],
+        [selectedPoint.lon - delta, selectedPoint.lat + delta],
+        [selectedPoint.lon - delta, selectedPoint.lat - delta],
+      ]],
+    },
+    properties,
+  };
+}
 
 function normalize(definition, value) {
   if (value === null || value === undefined || value === "") return null;

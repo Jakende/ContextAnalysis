@@ -12,6 +12,8 @@ export function createExportManifest(
       lat: analysis.selectedPoint.lat,
       lon: analysis.selectedPoint.lon,
     },
+    ...(analysis.projectArea ? { projectArea: analysis.projectArea } : {}),
+    ...(analysis.kpiScenario ? { kpiScenario: analysis.kpiScenario } : {}),
     createdAt: new Date().toISOString(),
     scales: ["XL", "L", "M"],
     sources: getSources(analysis.provenance.sourceIds),

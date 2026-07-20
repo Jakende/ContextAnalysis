@@ -1,6 +1,5 @@
 import type { FeatureCollection } from "geojson";
 import { fetchWithTimeout, getCached, setCached } from "../api/cache";
-import { bboxAroundPoint } from "../analysis/geometry";
 import type { OverpassModule, OverpassProvenance, QueryParams } from "../types";
 import { overpassModules } from "./modules";
 
@@ -38,6 +37,7 @@ async function sha256(text: string): Promise<string> {
 export async function runOverpassModules(input: {
   lat: number;
   lon: number;
+  bbox?: QueryParams["bbox"];
   enabled: boolean;
   allowCache?: boolean;
 }): Promise<{
@@ -61,7 +61,13 @@ export async function runOverpassModules(input: {
 
 async function runOneModule(
   module: OverpassModule,
-  input: { lat: number; lon: number; enabled: boolean; allowCache?: boolean },
+  input: {
+    lat: number;
+    lon: number;
+    bbox?: QueryParams["bbox"];
+    enabled: boolean;
+    allowCache?: boolean;
+  },
 ): Promise<{
   id: string;
   collection: FeatureCollection | null;
@@ -72,7 +78,7 @@ async function runOneModule(
     lat: input.lat,
     lon: input.lon,
     radiusMeters,
-    bbox: bboxAroundPoint(input.lat, input.lon, radiusMeters),
+    ...(input.bbox ? { bbox: input.bbox } : {}),
   };
   const query = module.buildQuery(params);
   const hash = await sha256(query);

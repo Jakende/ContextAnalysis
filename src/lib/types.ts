@@ -1,4 +1,7 @@
 import type { Feature, FeatureCollection, Geometry, Point } from "geojson";
+import type { ProjectArea } from "./projectArea/types";
+
+export type { ProjectArea } from "./projectArea/types";
 
 export type Scale = "XL" | "L" | "M";
 
@@ -35,6 +38,19 @@ export type Indicator = {
   computedAt: string;
   confidence: Confidence;
   caveats: string[];
+};
+
+/** Serializable KPI configuration and result used by UI, reports, and exports. */
+export type KpiScenario = {
+  schemaVersion: string;
+  strategyId: string;
+  strategyName: string;
+  weights: Record<string, number>;
+  composite: number | null;
+  classification: string;
+  confidence: Confidence;
+  availableKpiIds: string[];
+  computedAt: string;
 };
 
 export type FactSheetModule = {
@@ -259,6 +275,9 @@ export type AnalysisResult = {
   app: "Urban Context Analysis";
   analysisVersion: string;
   selectedPoint: SelectedPoint;
+  /** Optional user-defined boundary that replaces the default L-scale radius. */
+  projectArea?: ProjectArea;
+  kpiScenario?: KpiScenario;
   activeScale: Scale;
   modules: FactSheetModule[];
   indicators: Indicator[];
@@ -295,6 +314,8 @@ export type ExportManifest = {
     lat: number;
     lon: number;
   };
+  projectArea?: ProjectArea;
+  kpiScenario?: KpiScenario;
   createdAt: string;
   scales: Scale[];
   sources: DataSource[];

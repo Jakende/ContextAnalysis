@@ -5,7 +5,16 @@ import maplibregl, {
 import type { MutableRefObject } from "react";
 import { useEffect, useRef, useState } from "react";
 import { searchPlaces } from "../../lib/api/geocoding";
-import { googleSatelliteTileUrl } from "../../lib/data/publicGeoServices";
+import {
+  createPolygonProjectArea,
+  createRectangleProjectArea,
+  projectAreaToFeatureCollection,
+} from "../../lib/projectArea/geometry";
+import type {
+  ProjectArea,
+  ProjectAreaCoordinate,
+  ProjectAreaDrawingMode,
+} from "../../lib/projectArea/types";
 import { openFreeMapStyle } from "../../lib/tiles/openFreeMapStyle";
 import {
   ZENSUS_WMS_DISPLAY_LAYER,
@@ -23,12 +32,13 @@ import type {
   SectionLine,
 } from "../../lib/types";
 import { LayerTogglePanel } from "./LayerTogglePanel";
+import { ProjectAreaPanel } from "./ProjectAreaPanel";
 import { ScaleSwitcher } from "./ScaleSwitcher";
 import type { Scale } from "../../lib/types";
 
 const DEFAULT_CENTER: [number, number] = [11.5755, 48.1397];
 const DEFAULT_ZOOM = 12;
-type BackgroundMode = "osmRaster" | "vector" | "googleSatellite";
+type BackgroundMode = "osmRaster" | "vector" | "satellite";
 
 const MAP_LAYER_COLORS = {
   xl: "#7aa0c4",
@@ -205,6 +215,7 @@ const POPUP_ATTRIBUTE_KEYS = [
 
 export function MapView({
   analysis,
+  projectArea,
   activeScale,
   layers,
   layerStyles,
@@ -213,6 +224,8 @@ export function MapView({
   analysisLoadSteps,
   analysisLocked,
   onPointSelected,
+  onProjectAreaChange,
+  onProjectAreaClear,
   onAnalysisClear,
   onSectionLineSelected,
   onScaleChange,
@@ -225,6 +238,7 @@ export function MapView({
   onWorkspaceExpandedToggle,
 }: {
   analysis: AnalysisResult | null;
+  projectArea: ProjectArea | null;
   activeScale: Scale;
   layers: LayerState;
   layerStyles: LayerStyleState;
@@ -233,6 +247,8 @@ export function MapView({
   analysisLoadSteps: AnalysisLoadStep[];
   analysisLocked: boolean;
   onPointSelected: (point: { lat: number; lon: number }) => void;
+  onProjectAreaChange: (projectArea: ProjectArea) => void;
+  onProjectAreaClear: () => void;
   onAnalysisClear: () => void;
   onSectionLineSelected: (sectionLine: SectionLine) => void;
   onScaleChange: (scale: Scale) => void;
@@ -251,6 +267,7 @@ export function MapView({
   const markerRef = useRef<maplibregl.Marker | null>(null);
   const searchMarkerRef = useRef<maplibregl.Marker | null>(null);
   const onPointSelectedRef = useRef(onPointSelected);
+  const onProjectAreaChangeRef = useRef(onProjectAreaChange);
   const onSectionLineSelectedRef = useRef(onSectionLineSelected);
   const onStatusRef = useRef(onStatus);
   const analysisRef = useRef(analysis);
@@ -260,6 +277,8 @@ export function MapView({
   const isAnalyzingRef = useRef(isAnalyzing);
   const sectionDrawModeRef = useRef(false);
   const sectionDraftStartRef = useRef<SectionLine["start"] | null>(null);
+  const projectDrawModeRef = useRef<ProjectAreaDrawingMode>(null);
+  const projectDraftVerticesRef = useRef<ProjectAreaCoordinate[]>([]);
   const [query, setQuery] = useState("");
   const [searchResults, setSearchResults] = useState<
     Array<{ lat: number; lon: number; label?: string }>
@@ -267,6 +286,8 @@ export function MapView({
   const [searchOpen, setSearchOpen] = useState(false);
   const [sectionDrawMode, setSectionDrawMode] = useState(false);
   const [sectionDraftStart, setSectionDraftStart] = useState<SectionLine["start"] | null>(null);
+  const [projectDrawMode, setProjectDrawMode] = useState<ProjectAreaDrawingMode>(null);
+  const [projectDraftVertices, setProjectDraftVertices] = useState<ProjectAreaCoordinate[]>([]);
   const [zensusLayer, setZensusLayer] = useState(ZENSUS_WMS_DISPLAY_LAYER);
   const [backgroundMode, setBackgroundMode] = useState<BackgroundMode>("osmRaster");
 
@@ -276,6 +297,7 @@ export function MapView({
 
   useEffect(() => {
     onPointSelectedRef.current = onPointSelected;
+    onProjectAreaChangeRef.current = onProjectAreaChange;
     onSectionLineSelectedRef.current = onSectionLineSelected;
     onStatusRef.current = onStatus;
     analysisRef.current = analysis;
@@ -285,6 +307,7 @@ export function MapView({
     isAnalyzingRef.current = isAnalyzing;
   }, [
     onPointSelected,
+    onProjectAreaChange,
     onSectionLineSelected,
     onStatus,
     analysis,
@@ -298,6 +321,11 @@ export function MapView({
     sectionDrawModeRef.current = sectionDrawMode;
     sectionDraftStartRef.current = sectionDraftStart;
   }, [sectionDrawMode, sectionDraftStart]);
+
+  useEffect(() => {
+    projectDrawModeRef.current = projectDrawMode;
+    projectDraftVerticesRef.current = projectDraftVertices;
+  }, [projectDrawMode, projectDraftVertices]);
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
@@ -326,6 +354,40 @@ export function MapView({
     });
 
     map.on("click", (event) => {
+      const projectMode = projectDrawModeRef.current;
+      if (projectMode) {
+        const vertex: ProjectAreaCoordinate = [event.lngLat.lng, event.lngLat.lat];
+        const vertices = projectDraftVerticesRef.current;
+        if (projectMode === "polygon") {
+          const firstPoint = vertices[0] ? map.project(vertices[0]) : null;
+          const closesPolygon =
+            vertices.length >= 3 &&
+            firstPoint !== null &&
+            Math.hypot(event.point.x - firstPoint.x, event.point.y - firstPoint.y) <= 18;
+          if (closesPolygon) {
+            completeProjectAreaDrawing("polygon", vertices);
+            return;
+          }
+          const nextVertices = [...vertices, vertex];
+          projectDraftVerticesRef.current = nextVertices;
+          setProjectDraftVertices(nextVertices);
+          onStatusRef.current(
+            nextVertices.length < 3
+              ? `Project polygon: ${nextVertices.length} point(s) set.`
+              : "Project polygon ready. Click the first point again or use Finish polygon.",
+          );
+          return;
+        }
+
+        if (vertices.length === 0) {
+          projectDraftVerticesRef.current = [vertex];
+          setProjectDraftVertices([vertex]);
+          onStatusRef.current("Rectangle corner set. Click the opposite corner.");
+          return;
+        }
+        completeProjectAreaDrawing("rectangle", [vertices[0], vertex]);
+        return;
+      }
       if (sectionDrawModeRef.current) {
         const point = { lat: event.lngLat.lat, lon: event.lngLat.lng };
         if (!sectionDraftStartRef.current) {
@@ -376,13 +438,6 @@ export function MapView({
     mapRef.current = map;
     const resizeObserver = new ResizeObserver(() => {
       map.resize();
-      syncAnalysisToMap(
-        map,
-        analysisRef.current,
-        activeScaleRef.current,
-        layersRef.current,
-        markerRef,
-      );
     });
     resizeObserver.observe(container);
 
@@ -402,48 +457,34 @@ export function MapView({
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
-    setMapCursor(map, (analysisLocked || isAnalyzing) && !sectionDrawMode, sectionDrawMode);
-  }, [analysisLocked, isAnalyzing, sectionDrawMode]);
+    const anyDrawMode = sectionDrawMode || projectDrawMode !== null;
+    setMapCursor(map, (analysisLocked || isAnalyzing) && !anyDrawMode, anyDrawMode);
+  }, [analysisLocked, isAnalyzing, sectionDrawMode, projectDrawMode]);
 
   useEffect(() => {
-    const normalized = query.trim();
-    if (normalized.length < 3) {
-      setSearchResults([]);
-      setSearchOpen(false);
+    const map = mapRef.current;
+    if (!map) return;
+    const syncProjectArea = () => {
+      syncProjectAreaToMap(map, projectArea, projectDrawMode, projectDraftVertices);
+    };
+    if (!map.getSource("project-area-overlay")) {
+      map.once("load", syncProjectArea);
       return;
     }
-
-    let isActive = true;
-    const timeout = window.setTimeout(() => {
-      void searchPlaces(normalized, 5).then((result) => {
-        if (!isActive) return;
-        if (result.status === "ok") {
-          setSearchResults(result.results);
-          setSearchOpen(result.results.length > 0);
-        } else {
-          setSearchResults([]);
-          setSearchOpen(false);
-        }
-      });
-    }, 260);
-
-    return () => {
-      isActive = false;
-      window.clearTimeout(timeout);
-    };
-  }, [query]);
+    syncProjectArea();
+  }, [projectArea, projectDrawMode, projectDraftVertices]);
 
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
     if (!map.getSource("selected-point")) {
       map.once("load", () =>
-        syncAnalysisToMap(map, analysis, activeScale, layers, markerRef),
+        syncAnalysisToMap(map, analysis, activeScale, layersRef.current, markerRef),
       );
       return;
     }
-    syncAnalysisToMap(map, analysis, activeScale, layers, markerRef);
-  }, [analysis, activeScale, layers]);
+    syncAnalysisToMap(map, analysis, activeScale, layersRef.current, markerRef);
+  }, [analysis, activeScale]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -451,12 +492,6 @@ export function MapView({
     applyBaseMapTheme(map, themeInvert);
     applyBackgroundMode(map, backgroundMode);
   }, [themeInvert, backgroundMode]);
-
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map || !map.getLayer("background")) return;
-    applyBackgroundMode(map, backgroundMode);
-  }, [backgroundMode]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -491,7 +526,7 @@ export function MapView({
       return;
     }
 
-    const result = await searchPlaces(query, 5);
+    const result = await searchPlaces(query, 5, { allowCache: true });
     if (result.status === "ok" && result.results[0]) {
       setSearchResults(result.results);
       zoomToSearchResult(result.results[0]);
@@ -526,6 +561,44 @@ export function MapView({
     searchMarkerRef.current?.remove();
     searchMarkerRef.current = null;
     onAnalysisClear();
+  }
+
+  function resetProjectDrawing() {
+    projectDrawModeRef.current = null;
+    projectDraftVerticesRef.current = [];
+    setProjectDrawMode(null);
+    setProjectDraftVertices([]);
+  }
+
+  function completeProjectAreaDrawing(
+    mode: Exclude<ProjectAreaDrawingMode, null>,
+    vertices = projectDraftVerticesRef.current,
+  ) {
+    try {
+      const nextProjectArea =
+        mode === "polygon"
+          ? createPolygonProjectArea(vertices)
+          : createRectangleProjectArea(vertices[0], vertices[1]);
+      resetProjectDrawing();
+      onProjectAreaChangeRef.current(nextProjectArea);
+    } catch (error) {
+      onStatusRef.current(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  function startProjectDrawing(mode: Exclude<ProjectAreaDrawingMode, null>) {
+    setSectionDrawMode(false);
+    setSectionDraftStart(null);
+    sectionDraftStartRef.current = null;
+    projectDrawModeRef.current = mode;
+    projectDraftVerticesRef.current = [];
+    setProjectDrawMode(mode);
+    setProjectDraftVertices([]);
+    onStatus(
+      mode === "polygon"
+        ? "Project polygon active. Click at least three vertices; close it by clicking the first vertex or Finish polygon."
+        : "Project rectangle active. Click two opposite corners.",
+    );
   }
 
   return (
@@ -574,6 +647,30 @@ export function MapView({
         </div>
       </div>
       <div className="map-left">
+        <ProjectAreaPanel
+          projectArea={projectArea}
+          drawingMode={projectDrawMode}
+          draftVertexCount={projectDraftVertices.length}
+          canFinishDrawing={
+            projectDrawMode === "polygon"
+              ? projectDraftVertices.length >= 3
+              : projectDraftVertices.length >= 2
+          }
+          disabled={analysisLocked || isAnalyzing}
+          onProjectAreaChange={(nextProjectArea) => {
+            resetProjectDrawing();
+            onProjectAreaChange(nextProjectArea);
+          }}
+          onStartDrawing={startProjectDrawing}
+          onFinishDrawing={() => {
+            if (projectDrawMode) completeProjectAreaDrawing(projectDrawMode);
+          }}
+          onCancelDrawing={() => {
+            resetProjectDrawing();
+            onStatus("Project-area drawing cancelled.");
+          }}
+          onClear={onProjectAreaClear}
+        />
         <LayerTogglePanel
           layers={layers}
           layerStyles={layerStyles}
@@ -682,8 +779,8 @@ function BackgroundSwitcher({
       </button>
       <button
         type="button"
-        aria-pressed={value === "googleSatellite"}
-        onClick={() => onChange("googleSatellite")}
+        aria-pressed={value === "satellite"}
+        onClick={() => onChange("satellite")}
       >
         Sat
       </button>
@@ -1152,10 +1249,11 @@ function addAnalysisSourcesAndLayers(map: MapLibreMap): void {
   ensureOsmRasterLayer(map);
   ensureVersaTilesVectorLayer(map);
   ensureSatelliteRasterLayer(map);
-  ensureGoogleSatelliteLayer(map);
   ensureZensusWmsLayer(map, ZENSUS_WMS_DISPLAY_LAYER);
 
   for (const id of [
+    "project-area-overlay",
+    "project-area-draft",
     "selected-point",
     "xl-context",
     "xl-grid",
@@ -1187,6 +1285,49 @@ function addAnalysisSourcesAndLayers(map: MapLibreMap): void {
     }
   }
 
+  addLayerIfMissing(map, {
+    id: "project-area-fill",
+    type: "fill",
+    source: "project-area-overlay",
+    filter: ["==", ["geometry-type"], "Polygon"],
+    paint: {
+      "fill-color": "#d8bc52",
+      "fill-opacity": 0.09,
+    },
+  });
+  addLayerIfMissing(map, {
+    id: "project-area-line",
+    type: "line",
+    source: "project-area-overlay",
+    paint: {
+      "line-color": "#f3d35c",
+      "line-width": 2.4,
+      "line-dasharray": [3, 1.5],
+      "line-opacity": 0.96,
+    },
+  });
+  addLayerIfMissing(map, {
+    id: "project-area-draft-line",
+    type: "line",
+    source: "project-area-draft",
+    paint: {
+      "line-color": "#ffffff",
+      "line-width": 2,
+      "line-dasharray": [2, 1],
+    },
+  });
+  addLayerIfMissing(map, {
+    id: "project-area-draft-points",
+    type: "circle",
+    source: "project-area-draft",
+    filter: ["==", ["geometry-type"], "Point"],
+    paint: {
+      "circle-radius": 5,
+      "circle-color": "#f3d35c",
+      "circle-stroke-color": "#151817",
+      "circle-stroke-width": 1.5,
+    },
+  });
   addLayerIfMissing(map, {
     id: "xl-context-fill",
     type: "fill",
@@ -2252,6 +2393,14 @@ function addAnalysisSourcesAndLayers(map: MapLibreMap): void {
     },
   });
   movePoiLayersAboveBuildings(map);
+  for (const id of [
+    "project-area-fill",
+    "project-area-line",
+    "project-area-draft-line",
+    "project-area-draft-points",
+  ]) {
+    if (map.getLayer(id)) map.moveLayer(id, "selected-point-circle");
+  }
 }
 
 function movePoiLayersAboveBuildings(map: MapLibreMap): void {
@@ -2430,38 +2579,12 @@ function ensureSatelliteRasterLayer(map: MapLibreMap): void {
   }, "landuse");
 }
 
-function ensureGoogleSatelliteLayer(map: MapLibreMap): void {
-  const tileUrl = googleSatelliteTileUrl();
-  if (!tileUrl) return;
-  if (!map.getSource("google-satellite")) {
-    map.addSource("google-satellite", {
-      type: "raster",
-      tiles: [tileUrl],
-      tileSize: 256,
-      attribution: "Google Maps Platform",
-    });
-  }
-  addLayerIfMissing(map, {
-    id: "google-satellite-raster",
-    type: "raster",
-    source: "google-satellite",
-    paint: {
-      "raster-opacity": 0.86,
-      "raster-resampling": "linear",
-    },
-    layout: {
-      visibility: "none",
-    },
-  }, "landuse");
-}
-
 function applyBackgroundMode(map: MapLibreMap, mode: BackgroundMode): void {
   const osmRaster = mode === "osmRaster";
   const vector = mode === "vector";
-  const satellite = mode === "googleSatellite";
+  const satellite = mode === "satellite";
   setLayerVisibility(map, "osm-raster-basemap", osmRaster);
   setLayerVisibility(map, "satellite-raster-basemap", satellite);
-  setLayerVisibility(map, "google-satellite-raster", false);
   for (const id of ["versatiles-ocean", "versatiles-land", "versatiles-water", "versatiles-streets", "versatiles-buildings"]) {
     setLayerVisibility(map, id, vector);
   }
@@ -2511,14 +2634,60 @@ function syncAnalysisToMap(
   markerRef.current = new maplibregl.Marker({ color: "#ffffff" })
     .setLngLat([analysis.selectedPoint.lon, analysis.selectedPoint.lat])
     .addTo(map);
-  map.easeTo({
-    center: [analysis.selectedPoint.lon, analysis.selectedPoint.lat],
-    zoom: activeScale === "XL" ? 10.8 : activeScale === "L" ? 15 : 17.35,
-    pitch: activeScale === "M" && layers["3D"] ? 62 : 0,
-    bearing: activeScale === "M" && layers["3D"] ? -32 : 0,
-    duration: 650,
-  });
+  if (analysis.projectArea && activeScale === "L") {
+    const [west, south, east, north] = analysis.projectArea.bbox;
+    map.fitBounds(
+      [
+        [west, south],
+        [east, north],
+      ],
+      { padding: 72, maxZoom: 16, duration: 650 },
+    );
+  } else {
+    map.easeTo({
+      center: [analysis.selectedPoint.lon, analysis.selectedPoint.lat],
+      zoom: activeScale === "XL" ? 10.8 : activeScale === "L" ? 15 : 17.35,
+      pitch: activeScale === "M" && layers["3D"] ? 62 : 0,
+      bearing: activeScale === "M" && layers["3D"] ? -32 : 0,
+      duration: 650,
+    });
+  }
   applyLayerVisibility(map, layers, activeScale);
+}
+
+function syncProjectAreaToMap(
+  map: MapLibreMap,
+  projectArea: ProjectArea | null,
+  drawingMode: ProjectAreaDrawingMode,
+  vertices: ProjectAreaCoordinate[],
+): void {
+  const empty: GeoJSON.FeatureCollection = { type: "FeatureCollection", features: [] };
+  setSourceData(
+    map,
+    "project-area-overlay",
+    projectArea ? projectAreaToFeatureCollection(projectArea) : empty,
+  );
+
+  const draftFeatures: GeoJSON.Feature[] = vertices.map((coordinates, index) => ({
+    type: "Feature",
+    geometry: { type: "Point", coordinates },
+    properties: { index: index + 1 },
+  }));
+  if (vertices.length >= 2) {
+    const lineCoordinates =
+      drawingMode === "polygon" && vertices.length >= 3
+        ? [...vertices, vertices[0]]
+        : vertices;
+    draftFeatures.unshift({
+      type: "Feature",
+      geometry: { type: "LineString", coordinates: lineCoordinates },
+      properties: { drawingMode },
+    });
+  }
+  setSourceData(map, "project-area-draft", {
+    type: "FeatureCollection",
+    features: draftFeatures,
+  });
 }
 
 function syncScaleSources(

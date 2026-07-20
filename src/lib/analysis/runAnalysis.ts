@@ -18,6 +18,7 @@ import { createBenchmarkModule } from "./benchmark/benchmark";
 import { MOBILITY_ANALYSIS_RADIUS_METERS } from "./mobility/mobilityScales";
 import { fetchOpenRouteServiceIsochrones } from "../mobility/openRouteService";
 import { runOverpassModules } from "../overpass/client";
+import { projectAreaRadiusMeters } from "../projectArea/geometry";
 import type {
   AnalysisResult,
   DataSourceRunEvent,
@@ -26,9 +27,10 @@ import type {
   SelectedPoint,
   Scale,
   AnalysisLoadStep,
+  ProjectArea,
 } from "../types";
 import { featureCollection, geometryToFeature, pointGeometry } from "./geometry";
-import { createKpiMatrixModule } from "./kpi/kpiMatrix";
+import { createKpiMatrixModule, createKpiScenario } from "./kpi/kpiMatrix";
 import { analyzeL } from "./l/analyzeL";
 import { analyzeM } from "./m/analyzeM";
 import { analyzeXl } from "./xl/analyzeXl";
@@ -92,6 +94,7 @@ export async function runLocationAnalysis(input: {
   lat: number;
   lon: number;
   activeScale: Scale;
+  projectArea?: ProjectArea | null;
   layers?: LayerState;
   sectionLine?: SectionLine | null;
   preflightSourceRun?: DataSourceRunEvent[];
@@ -101,10 +104,20 @@ export async function runLocationAnalysis(input: {
   enableOverpass?: boolean;
 }): Promise<{ result: AnalysisResult; sectionSvg: string }> {
   const computedAt = new Date().toISOString();
+  const projectArea = input.projectArea ?? undefined;
+  const localContextRadiusMeters = projectArea
+    ? Math.min(
+        5_500,
+        Math.max(
+          500,
+          projectAreaRadiusMeters(projectArea, [input.lon, input.lat]) + 150,
+        ),
+      )
+    : MOBILITY_ANALYSIS_RADIUS_METERS;
   emitProgress(input.onProgress, {
     id: "geocoding",
     label: "Nominatim reverse lookup",
-    detail: "Fetching reverse address context from Nominatim without cache fallback.",
+    detail: "Loading optional reverse address context with a one-day local cache.",
     status: input.enableGeocoding === false ? "skipped" : "running",
   });
   const geocoding =
@@ -118,7 +131,7 @@ export async function runLocationAnalysis(input: {
           district: undefined,
           sourceStatus: undefined,
         }
-      : await reverseGeocode(input.lat, input.lon, { allowCache: false });
+      : await reverseGeocode(input.lat, input.lon, { allowCache: true });
   emitProgress(input.onProgress, {
     id: "geocoding",
     label: "Nominatim reverse lookup",
@@ -148,6 +161,7 @@ export async function runLocationAnalysis(input: {
   const overpassPromise = runOverpassModules({
     lat: input.lat,
     lon: input.lon,
+    bbox: projectArea?.bbox,
     enabled: input.enableOverpass ?? true,
     allowCache: true,
   });
@@ -178,11 +192,11 @@ export async function runLocationAnalysis(input: {
   ] = await Promise.all([
     loadZensusGridForPoint(selectedPoint),
     fetchZensusWmsIndicators(selectedPoint, computedAt),
-    loadLod2BuildingsForPoint(selectedPoint),
+    loadLod2BuildingsForPoint(selectedPoint, localContextRadiusMeters),
     loadBkgBoundariesForPoint(selectedPoint),
     loadFuaGeometriesForPoint(selectedPoint),
-    loadGtfsStopsForPoint(selectedPoint, MOBILITY_ANALYSIS_RADIUS_METERS),
-    loadUrbanAtlasForPoint(selectedPoint),
+    loadGtfsStopsForPoint(selectedPoint, localContextRadiusMeters),
+    loadUrbanAtlasForPoint(selectedPoint, localContextRadiusMeters),
     loadContourLinesForPoint(selectedPoint),
     input.sectionLine
       ? loadTerrainSamplesForSection(input.sectionLine)
@@ -194,18 +208,20 @@ export async function runLocationAnalysis(input: {
     detail: `${bkgBoundaries.features.length} BKG / ${fuaGeometries.features.length} FUA / ${gtfsStops.features.length} GTFS stops / ${urbanAtlas.features.length} Urban Atlas / ${lod2Buildings.features.length} building / ${contourLines.features.length} contour feature(s).`,
     status: "ok",
   });
-  const isochrones = await isochronePromise;
-  emitProgress(input.onProgress, {
-    id: "mobility-catchments",
-    label: "Mobility catchments",
-    detail: `${isochrones.collection.features.length} walking/cycling/driving catchment feature(s) available for mode-specific reachability.`,
-    status:
-      isochrones.receipt.status === "failed"
-        ? "failed"
-        : isochrones.receipt.status === "skipped"
-          ? "skipped"
-          : "ok",
-  });
+  let isochrones: Awaited<ReturnType<typeof fetchOpenRouteServiceIsochrones>> = {
+    collection: featureCollection(),
+    receipt: {
+      sourceId: "openrouteservice-isochrones",
+      label: "OpenRouteService isochrones",
+      type: "live-api",
+      status: "skipped",
+      queriedAt: computedAt,
+      elapsedMs: 0,
+      featureCount: 0,
+      method: "Mobility catchments were still loading when the local-first partial result was emitted.",
+      caveats: ["Routed mobility evidence may update in the complete analysis result."],
+    },
+  };
   const buildResult = async (
     overpass: Awaited<ReturnType<typeof runOverpassModules>>,
     isPartial: boolean,
@@ -240,7 +256,13 @@ export async function runLocationAnalysis(input: {
       isochrones: isochrones.collection,
     };
     const xl = analyzeXl(selectedPoint, computedAt);
-    const l = analyzeL(selectedPoint, computedAt, 500, analysisCollections);
+    const l = analyzeL(
+      selectedPoint,
+      computedAt,
+      500,
+      analysisCollections,
+      projectArea?.geometry,
+    );
     const m = analyzeM(
       selectedPoint,
       computedAt,
@@ -254,8 +276,10 @@ export async function runLocationAnalysis(input: {
     const contourUsesOpenTopography = contourLines.features.some(
       (feature) => feature.properties?.sourceId === "opentopography-contours",
     );
-    const sourceFetches = [
-      ...(await runSourceAdapters({
+    const sourceFetches = isPartial
+      ? [isochrones.receipt]
+      : [
+          ...(await runSourceAdapters({
         district: xl.district,
         selectedPoint,
         computedAt,
@@ -283,9 +307,9 @@ export async function runLocationAnalysis(input: {
             ? { [CONTOUR_FALLBACK_SOURCE_ID]: contourLines }
             : {}),
         },
-      })),
-      isochrones.receipt,
-    ];
+          })),
+          isochrones.receipt,
+        ];
     const xlSourceStatus = createXlSourceStatusModule(sourceFetches, computedAt);
     const fua = createFuaContextModule(fuaGeometries, computedAt);
     const zensus = createZensusGridModule(zensusGrid, computedAt);
@@ -370,8 +394,10 @@ export async function runLocationAnalysis(input: {
 
     const result: AnalysisResult = {
       app: "Urban Context Analysis",
-      analysisVersion: "0.1.0",
+      analysisVersion: "0.2.0",
       selectedPoint,
+      ...(projectArea ? { projectArea } : {}),
+      kpiScenario: createKpiScenario(allIndicators, undefined, undefined, computedAt),
       activeScale: input.activeScale,
       modules: allModules,
       indicators: allIndicators,
@@ -436,6 +462,12 @@ export async function runLocationAnalysis(input: {
         },
         caveats: [
           "Analysis is generated from structured indicators, not free-form LLM metrics.",
+          ...(projectArea
+            ? [
+                `${projectArea.label} (${Math.round(projectArea.areaSqm).toLocaleString()} m²) replaces the default 500 m L-scale radius for spatial filtering and area-normalized KPIs.`,
+                ...projectArea.caveats,
+              ]
+            : []),
           "Fresh live/API retrieval is requested for every new selected point; cached Overpass payloads may be used for the exact same query when all live endpoints fail.",
           ...partialCaveats,
           ...("error" in geocoding && geocoding.error
@@ -453,6 +485,19 @@ export async function runLocationAnalysis(input: {
     const partial = await buildResult({ collections: {}, provenance: [] }, true);
     input.onPartialResult(partial.result, partial.sectionSvg);
   }
+
+  isochrones = await isochronePromise;
+  emitProgress(input.onProgress, {
+    id: "mobility-catchments",
+    label: "Mobility catchments",
+    detail: `${isochrones.collection.features.length} walking/cycling/driving catchment feature(s) available for mode-specific reachability.`,
+    status:
+      isochrones.receipt.status === "failed"
+        ? "failed"
+        : isochrones.receipt.status === "skipped"
+          ? "skipped"
+          : "ok",
+  });
 
   const overpass = await overpassPromise;
   emitProgress(input.onProgress, {

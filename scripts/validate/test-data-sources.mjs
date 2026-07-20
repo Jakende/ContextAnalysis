@@ -80,10 +80,10 @@ async function runPointChecks(point) {
       indexPath: "public/data/processed/copernicus-urban-atlas/index.json",
       bbox,
     }),
-    await cacheManifestCoverage({
+    await shardedCoverage({
       id: "overture-buildings",
-      label: "Overture buildings point cache",
-      manifestPath: "public/data/processed/cache-manifest.json",
+      label: "Overture buildings canonical shards",
+      indexPath: "public/data/processed/overture-buildings/index.json",
       bbox,
     }),
     await zensusWmsProbe(),
@@ -151,27 +151,6 @@ async function shardedCoverage({ id, label, indexPath, bbox: targetBbox }) {
       featureCount > 0 ? "fetched" : "empty",
       `${shards.length} shard(s), ${featureCount} feature(s).`,
       { featureCount, recordCount: shards.length },
-    );
-  } catch (error) {
-    return result(id, label, "failed", errorMessage(error));
-  }
-}
-
-async function cacheManifestCoverage({ id, label, manifestPath, bbox: targetBbox }) {
-  if (!existsSync(manifestPath)) {
-    return result(id, label, "missing", `Missing ${manifestPath}`);
-  }
-  try {
-    const manifest = await readJson(manifestPath);
-    const entries = (manifest.entries ?? []).filter(
-      (entry) => entry.sourceId === id && bboxesIntersect(entry.bbox, targetBbox),
-    );
-    return result(
-      id,
-      label,
-      entries.length ? "cache-hit" : "empty",
-      `${entries.length} manifest entr${entries.length === 1 ? "y" : "ies"} cover the point bbox.`,
-      { recordCount: entries.length },
     );
   } catch (error) {
     return result(id, label, "failed", errorMessage(error));

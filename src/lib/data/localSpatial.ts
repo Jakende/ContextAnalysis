@@ -34,6 +34,12 @@ const URBAN_ATLAS_URL = "/data/processed/copernicus-urban-atlas.geojson";
 const URBAN_ATLAS_INDEX_URL = "/data/processed/copernicus-urban-atlas/index.json";
 const CACHE_MANIFEST_URL = "/data/processed/cache-manifest.json";
 
+const jsonRequestCache = new Map<string, Promise<unknown | null>>();
+const featureCollectionRequestCache = new Map<
+  string,
+  Promise<FeatureCollection | null>
+>();
+
 type TerrainSample = {
   distance: number;
   elevation: number;
@@ -574,22 +580,49 @@ async function loadManifestBackedShardedSourceForPoint(input: {
   radiusMeters: number;
 }): Promise<ShardedSourcePointLoad> {
   const bbox = bboxAroundPoint(input.selectedPoint.lat, input.selectedPoint.lon, input.radiusMeters);
-  const manifestUrls = await findManifestIndexUrls(input.sourceId, bbox);
-  const uniqueUrls = [...new Set([...manifestUrls, input.indexUrl])];
-  const loads = await Promise.all(
-    uniqueUrls.map((indexUrl) => fetchFeatureShardsForBboxWithStatus(indexUrl, bbox, input.sourceId)),
+  const canonical = await fetchFeatureShardsForBboxWithStatus(
+    input.indexUrl,
+    bbox,
+    input.sourceId,
   );
-  const usable = loads.filter((load) => load.status === "ok");
-  if (usable.length > 0) {
+  if (canonical.status === "ok") {
+    const features = deduplicateFeatures(canonical.collection.features);
     return {
-      ...usable[0],
-      collection: featureCollection(usable.flatMap((load) => load.collection.features)),
-      selectedShardCount: usable.reduce((total, load) => total + load.selectedShardCount, 0),
-      loadedFeatureCount: usable.reduce((total, load) => total + load.loadedFeatureCount, 0),
-      caveats: usable.flatMap((load) => load.caveats),
+      ...canonical,
+      collection: featureCollection(features),
+      loadedFeatureCount: features.length,
+      caveats: [
+        ...canonical.caveats,
+        "Canonical indexed coverage was used exclusively; overlapping point-cache extracts were not merged.",
+      ],
     };
   }
-  return loads.find((load) => load.status === "empty") ?? loads[0] ?? {
+
+  const manifestUrls = await findManifestIndexUrls(
+    input.sourceId,
+    bbox,
+    [input.selectedPoint.lon, input.selectedPoint.lat],
+  );
+  const fallbackLoads: ShardedSourcePointLoad[] = [];
+  for (const indexUrl of manifestUrls) {
+    if (indexUrl === input.indexUrl) continue;
+    const load = await fetchFeatureShardsForBboxWithStatus(indexUrl, bbox, input.sourceId);
+    fallbackLoads.push(load);
+    if (load.status === "ok") {
+      const features = deduplicateFeatures(load.collection.features);
+      return {
+        ...load,
+        collection: featureCollection(features),
+        loadedFeatureCount: features.length,
+        caveats: [
+          ...load.caveats,
+          "Canonical coverage was unavailable; one best-matching point cache was used without merging overlapping extracts.",
+        ],
+      };
+    }
+  }
+
+  return fallbackLoads.find((load) => load.status === "empty") ?? canonical ?? {
     sourceId: input.sourceId,
     indexUrl: input.indexUrl,
     status: "missing",
@@ -606,8 +639,8 @@ async function fetchFeatureShardsForBboxWithStatus(
   sourceId: string,
 ): Promise<ShardedSourcePointLoad> {
   try {
-    const response = await fetch(indexUrl, { cache: "no-store" });
-    if (!response.ok) {
+    const index = (await fetchJson(indexUrl)) as FeatureShardIndex | FeatureCollection | null;
+    if (!index) {
       return {
         sourceId,
         indexUrl,
@@ -616,10 +649,9 @@ async function fetchFeatureShardsForBboxWithStatus(
         loadedFeatureCount: 0,
         collection: featureCollection(),
         caveats: [`No local sharded index was available at ${indexUrl}.`],
-        error: `HTTP ${response.status}`,
+        error: "Index unavailable",
       };
     }
-    const index = (await response.json()) as FeatureShardIndex | FeatureCollection;
     if (index.type === "FeatureCollection") {
       const features = index.features.filter((feature) =>
         feature.geometry ? geometryIntersectsBbox(feature.geometry, bbox) : false,
@@ -674,7 +706,9 @@ async function fetchFeatureShardsForBboxWithStatus(
     const collections = await Promise.all(
       shards.map((shard) => fetchFeatureCollection(shard.url)),
     );
-    const features = collections.flatMap((collection) => collection?.features ?? []);
+    const features = deduplicateFeatures(
+      collections.flatMap((collection) => collection?.features ?? []),
+    );
     return {
       sourceId: index.sourceId ?? sourceId,
       indexUrl,
@@ -719,38 +753,87 @@ function indexUrlForSource(sourceId: string): string | undefined {
 async function findManifestIndexUrls(
   sourceId: string,
   bbox: [number, number, number, number],
+  point: [number, number],
 ): Promise<string[]> {
   const manifest = await fetchCacheManifest();
   if (!manifest) return [];
   return manifest.entries
     .filter((entry) => entry.sourceId === sourceId && bboxIntersects(entry.bbox, bbox))
+    .sort((left, right) => {
+      const leftContains = bboxContainsPoint(left.bbox, point) ? 1 : 0;
+      const rightContains = bboxContainsPoint(right.bbox, point) ? 1 : 0;
+      if (leftContains !== rightContains) return rightContains - leftContains;
+      const freshness = String(right.generatedAt ?? "").localeCompare(
+        String(left.generatedAt ?? ""),
+      );
+      if (freshness !== 0) return freshness;
+      return bboxArea(left.bbox) - bboxArea(right.bbox);
+    })
     .map((entry) => entry.indexUrl);
 }
 
 async function fetchCacheManifest(): Promise<CacheManifest | null> {
-  try {
-    const response = await fetch(CACHE_MANIFEST_URL, { cache: "no-store" });
-    if (!response.ok) return null;
-    const manifest = (await response.json()) as CacheManifest;
-    if (manifest.type !== "UcaCacheManifest" || !Array.isArray(manifest.entries)) return null;
-    return manifest;
-  } catch {
-    return null;
-  }
+  const manifest = (await fetchJson(CACHE_MANIFEST_URL)) as CacheManifest | null;
+  if (manifest?.type !== "UcaCacheManifest" || !Array.isArray(manifest.entries)) return null;
+  return manifest;
 }
 
 async function fetchFeatureCollection(url: string): Promise<FeatureCollection | null> {
-  try {
-    const response = await fetch(url, { cache: "no-store" });
-    if (!response.ok) return null;
-    const json = (await response.json()) as FeatureCollection;
-    if (json.type !== "FeatureCollection" || !Array.isArray(json.features)) {
+  const cached = featureCollectionRequestCache.get(url);
+  if (cached) return cached;
+  const request = fetchJson(url).then((json) => {
+    const collection = json as FeatureCollection | null;
+    if (collection?.type !== "FeatureCollection" || !Array.isArray(collection.features)) {
       return null;
     }
-    return json;
-  } catch {
-    return null;
+    return collection;
+  });
+  featureCollectionRequestCache.set(url, request);
+  return request;
+}
+
+async function fetchJson(url: string): Promise<unknown | null> {
+  const cached = jsonRequestCache.get(url);
+  if (cached) return cached;
+  const request = fetch(url)
+    .then((response) => (response.ok ? response.json() : null))
+    .catch(() => null);
+  jsonRequestCache.set(url, request);
+  return request;
+}
+
+function bboxContainsPoint(
+  bbox: [number, number, number, number],
+  point: [number, number],
+): boolean {
+  return point[0] >= bbox[0] && point[0] <= bbox[2] && point[1] >= bbox[1] && point[1] <= bbox[3];
+}
+
+function bboxArea(bbox: [number, number, number, number]): number {
+  return Math.max(0, bbox[2] - bbox[0]) * Math.max(0, bbox[3] - bbox[1]);
+}
+
+function deduplicateFeatures(features: Feature[]): Feature[] {
+  const seen = new Set<string>();
+  const output: Feature[] = [];
+  for (const feature of features) {
+    const properties = feature.properties ?? {};
+    const stableId =
+      feature.id ??
+      properties.id ??
+      properties.osmId ??
+      properties.osm_id ??
+      properties.gml_id ??
+      properties.stop_id ??
+      properties.identifier;
+    const key = stableId === undefined || stableId === null
+      ? `${feature.geometry.type}:${JSON.stringify(feature.geometry)}`
+      : `${properties.sourceId ?? "unknown"}:${String(stableId)}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    output.push(feature);
   }
+  return output;
 }
 
 async function fetchFeatureCollectionWithSource(

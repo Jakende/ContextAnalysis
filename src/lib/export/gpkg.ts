@@ -2,6 +2,7 @@ import type { Feature, FeatureCollection, Geometry, LineString, Point, Polygon }
 import initSqlJs from "sql.js";
 import wasmUrl from "sql.js/dist/sql-wasm.wasm?url";
 import { getSources } from "../data/sourceRegistry";
+import { projectAreaToFeatureCollection } from "../projectArea/geometry";
 import type { AnalysisResult } from "../types";
 import { createExportManifest } from "./manifest";
 
@@ -62,6 +63,19 @@ export async function analysisToGpkgBlob(
         features: [analysis.overlays.selectedPoint],
       },
     },
+    ...(analysis.projectArea
+      ? [
+          {
+            name: "project_area",
+            geometryType: "POLYGON" as const,
+            collection: onlyGeometry(
+              projectAreaToFeatureCollection(analysis.projectArea),
+              "Polygon",
+            ),
+            styleRole: "project-area",
+          },
+        ]
+      : []),
     {
       name: "l_buffer",
       geometryType: "POLYGON",
@@ -500,6 +514,7 @@ function styleForFeature(table: GeometryTable, feature: Feature): {
     };
   }
   const styles: Record<string, { color: string; opacity: number; width: number; symbol: string }> = {
+    "project-area": { color: "#f3d35c", opacity: 0.12, width: 2.4, symbol: "project-boundary" },
     "urban-atlas": { color: "#8b5cf6", opacity: 0.24, width: 0.8, symbol: "urban-atlas-purple-fill" },
     green: { color: "#31d158", opacity: 0.42, width: 0.8, symbol: "green-fill" },
     blue: { color: "#0ea5e9", opacity: 0.42, width: 0.9, symbol: "water-blue-fill" },
@@ -614,6 +629,26 @@ function onlyGeometry(
   collection: FeatureCollection,
   type: Geometry["type"],
 ): FeatureCollection {
+  if (type === "Polygon") {
+    return {
+      type: "FeatureCollection",
+      features: collection.features.flatMap((feature) => {
+        if (feature.geometry.type === "Polygon") return [feature];
+        if (feature.geometry.type !== "MultiPolygon") return [];
+        const multipartCoordinates = feature.geometry.coordinates;
+        return multipartCoordinates.map((coordinates, index) => ({
+          ...feature,
+          id: feature.id === undefined ? undefined : `${String(feature.id)}:${index + 1}`,
+          geometry: { type: "Polygon" as const, coordinates },
+          properties: {
+            ...(feature.properties ?? {}),
+            multipartIndex: index + 1,
+            multipartCount: multipartCoordinates.length,
+          },
+        }));
+      }),
+    };
+  }
   return {
     type: "FeatureCollection",
     features: collection.features.filter((feature) => feature.geometry.type === type),

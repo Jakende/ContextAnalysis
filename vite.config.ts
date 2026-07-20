@@ -1,7 +1,7 @@
 import { defineConfig, loadEnv, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
-import { existsSync, readFileSync } from "node:fs";
-import { spawnSync } from "node:child_process";
+import { cp } from "node:fs/promises";
+import { relative, resolve, sep } from "node:path";
 
 type ProbeRequest = {
   url?: string;
@@ -15,22 +15,6 @@ type ProbeResponse = {
   end: (body: string | Uint8Array) => void;
 };
 
-type PointCachePayload = {
-  lat?: unknown;
-  lon?: unknown;
-  radius?: unknown;
-  sources?: unknown;
-};
-
-type FuaFeature = {
-  type: "Feature";
-  geometry?: {
-    type: string;
-    coordinates?: unknown;
-  };
-  properties?: Record<string, unknown>;
-};
-
 const SERVER_OVERPASS_ENDPOINTS = [
   "https://overpass.private.coffee/api/interpreter",
   "https://overpass.kumi.systems/api/interpreter",
@@ -40,24 +24,63 @@ const SERVER_OVERPASS_ENDPOINTS = [
 
 const SERVER_OVERPASS_TIMEOUT_MS = 25_000;
 const SERVER_NOMINATIM_TIMEOUT_MS = 5_000;
+const SERVER_OPENROUTESERVICE_TIMEOUT_MS = 10_000;
 const SERVER_NOMINATIM_USER_AGENT =
   "SD-Stadtdaten-ContextAnalysis/0.1 local-nominatim-proxy";
-const SERVER_GOOGLE_TILE_TIMEOUT_MS = 10_000;
+const SOURCE_PROBE_ALLOWED_HOSTS = new Set([
+  "api.openrouteservice.org",
+  "download.gtfs.de",
+  "gdz.bkg.bund.de",
+  "geodaten.bayern.de",
+  "ghsl.jrc.ec.europa.eu",
+  "gisco-services.ec.europa.eu",
+  "huggingface.co",
+  "human-settlement.emergency.copernicus.eu",
+  "land.copernicus.eu",
+  "mobilithek.info",
+  "nominatim.openstreetmap.org",
+  "opendata.dwd.de",
+  "overpass-api.de",
+  "portal.opentopography.org",
+  "s3.waw3-1.cloudferro.com",
+  "server.arcgisonline.com",
+  "sgx.geodatenzentrum.de",
+  "stac.overturemaps.org",
+  "tile.openstreetmap.org",
+  "tiles.openfreemap.org",
+  "tiles.versatiles.org",
+  "tubvsig-so2sat-vm1.srv.mwn.de",
+  "www-genesis.destatis.de",
+  "www.adv-online.de",
+  "www.dwd.de",
+  "www.openstreetmap.org",
+  "www.wms.nrw.de",
+]);
 
-let googleTileSession:
-  | {
-      token: string;
-      expiresAt: number;
-    }
-  | null = null;
-
-export default defineConfig(({ mode }) => {
+export default defineConfig(({ command, mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
   process.env = { ...env, ...process.env };
   return {
-    plugins: [react(), localApiPlugin()],
+    plugins: [react(), localApiPlugin(), curatedPublicAssetsPlugin()],
+    publicDir: command === "build" ? false : "public",
     build: {
       chunkSizeWarningLimit: 1500,
+      rolldownOptions: {
+        output: {
+          codeSplitting: {
+            groups: [
+              {
+                name: "maplibre",
+                test: /node_modules[\\/]maplibre-gl[\\/]/,
+              },
+              {
+                name: "react",
+                test: /node_modules[\\/](?:react|react-dom)[\\/]/,
+              },
+            ],
+          },
+        },
+      },
     },
     server: {
       host: "127.0.0.1",
@@ -70,6 +93,30 @@ export default defineConfig(({ mode }) => {
   };
 });
 
+function curatedPublicAssetsPlugin(): Plugin {
+  return {
+    name: "uca-curated-public-assets",
+    apply: "build",
+    async closeBundle() {
+      const publicRoot = resolve(process.cwd(), "public");
+      const outputRoot = resolve(process.cwd(), "dist");
+      await cp(publicRoot, outputRoot, {
+        recursive: true,
+        filter(source) {
+          const normalized = relative(publicRoot, source).split(sep).join("/");
+          return (
+            normalized !== "data/processed/cache" &&
+            !normalized.startsWith("data/processed/cache/") &&
+            normalized !== "data/processed/cache-manifest.json" &&
+            !normalized.endsWith("/.DS_Store") &&
+            normalized !== ".DS_Store"
+          );
+        },
+      });
+    },
+  };
+}
+
 function localApiPlugin(): Plugin {
   return {
     name: "sd-local-api",
@@ -80,14 +127,16 @@ function localApiPlugin(): Plugin {
       server.middlewares.use("/api/overpass", (req, res) => {
         void handleOverpassProxy(req as ProbeRequest, res as ProbeResponse);
       });
+      server.middlewares.use("/api/openrouteservice-isochrones", (req, res) => {
+        void handleOpenRouteServiceIsochrones(req as ProbeRequest, res as ProbeResponse);
+      });
+      server.middlewares.use("/api/openrouteservice-status", (_req, res) => {
+        writeJson(res as ProbeResponse, 200, {
+          available: Boolean(process.env.OPENROUTESERVICE_API_KEY),
+        });
+      });
       server.middlewares.use("/api/nominatim-search", (req, res) => {
         void handleNominatimSearch(req as ProbeRequest, res as ProbeResponse);
-      });
-      server.middlewares.use("/api/point-cache", (req, res) => {
-        void handlePointCache(req as ProbeRequest, res as ProbeResponse);
-      });
-      server.middlewares.use("/api/google-satellite", (req, res) => {
-        void handleGoogleSatelliteTile(req as ProbeRequest, res as ProbeResponse);
       });
       server.middlewares.use("/api/ollama/tags", (req, res) => {
         void handleOllamaTags(req as ProbeRequest, res as ProbeResponse);
@@ -103,14 +152,16 @@ function localApiPlugin(): Plugin {
       server.middlewares.use("/api/overpass", (req, res) => {
         void handleOverpassProxy(req as ProbeRequest, res as ProbeResponse);
       });
+      server.middlewares.use("/api/openrouteservice-isochrones", (req, res) => {
+        void handleOpenRouteServiceIsochrones(req as ProbeRequest, res as ProbeResponse);
+      });
+      server.middlewares.use("/api/openrouteservice-status", (_req, res) => {
+        writeJson(res as ProbeResponse, 200, {
+          available: Boolean(process.env.OPENROUTESERVICE_API_KEY),
+        });
+      });
       server.middlewares.use("/api/nominatim-search", (req, res) => {
         void handleNominatimSearch(req as ProbeRequest, res as ProbeResponse);
-      });
-      server.middlewares.use("/api/point-cache", (req, res) => {
-        void handlePointCache(req as ProbeRequest, res as ProbeResponse);
-      });
-      server.middlewares.use("/api/google-satellite", (req, res) => {
-        void handleGoogleSatelliteTile(req as ProbeRequest, res as ProbeResponse);
       });
       server.middlewares.use("/api/ollama/tags", (req, res) => {
         void handleOllamaTags(req as ProbeRequest, res as ProbeResponse);
@@ -120,121 +171,6 @@ function localApiPlugin(): Plugin {
       });
     },
   };
-}
-
-async function handlePointCache(
-  req: ProbeRequest,
-  res: ProbeResponse,
-): Promise<void> {
-  const started = Date.now();
-  try {
-    if (req.method !== "POST") {
-      writeJson(res, 405, { ok: false, error: "POST required", results: [] });
-      return;
-    }
-
-    const payload = JSON.parse(await readBody(req)) as PointCachePayload;
-    const lat = Number(payload.lat);
-    const lon = Number(payload.lon);
-    const radius = Number(payload.radius ?? 1_000);
-    const requestedSources = Array.isArray(payload.sources)
-      ? payload.sources.map((source) => String(source))
-      : ["overture", "urban-atlas"];
-
-    if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
-      writeJson(res, 400, { ok: false, error: "lat and lon are required", results: [] });
-      return;
-    }
-
-    const results = requestedSources.map((source) =>
-      runPointCacheSource({ source, lat, lon, radius }),
-    );
-
-    writeJson(res, 200, {
-      ok: results.every((result) => result.status === "ok" || result.status === "skipped"),
-      elapsedMs: Date.now() - started,
-      results,
-    });
-  } catch (error) {
-    writeJson(res, 200, {
-      ok: false,
-      elapsedMs: Date.now() - started,
-      error: error instanceof Error ? error.message : String(error),
-      results: [],
-    });
-  }
-}
-
-function runPointCacheSource(input: {
-  source: string;
-  lat: number;
-  lon: number;
-  radius: number;
-}) {
-  const args = [
-    "scripts/preprocess/resolve-point-cache.mjs",
-    "--lat",
-    String(input.lat),
-    "--lon",
-    String(input.lon),
-    "--radius",
-    String(input.radius),
-    "--sources",
-    input.source,
-  ];
-
-  if (input.source === "urban-atlas") {
-    const fuaName = findFuaNameForPoint(input.lon, input.lat);
-    if (!fuaName) {
-      return {
-        source: input.source,
-        status: "skipped",
-        message: "No GISCO FUA covers this point; Urban Atlas is only available for FUA areas.",
-      };
-    }
-    args.push("--urban-atlas-fua-name", fuaName, "--source-version", "2021");
-  }
-
-  const result = spawnSync("node", args, {
-    cwd: process.cwd(),
-    env: {
-      ...process.env,
-      AWS_DEFAULT_REGION: process.env.AWS_DEFAULT_REGION ?? "default",
-      AWS_S3_ENDPOINT: process.env.AWS_S3_ENDPOINT ?? "eodata.dataspace.copernicus.eu",
-      AWS_VIRTUAL_HOSTING: process.env.AWS_VIRTUAL_HOSTING ?? "FALSE",
-    },
-    encoding: "utf8",
-    maxBuffer: 1024 * 1024 * 8,
-  });
-
-  const stdout = result.stdout?.trim() ?? "";
-  const stderr = result.stderr?.trim() ?? "";
-  const failedText = stderr || stdout || "Point cache failed.";
-  const missingCdseCredentials =
-    input.source === "urban-atlas" &&
-    /CDSE S3 credentials|s3:\/\/EODATA|AWS_ACCESS_KEY_ID|AWS_SECRET_ACCESS_KEY/i.test(failedText);
-  if (missingCdseCredentials) {
-    return {
-      source: input.source,
-      status: "skipped",
-      message: "CDSE credentials not available in local server environment.",
-    };
-  }
-  return {
-    source: input.source,
-    status: result.status === 0 ? "ok" : "failed",
-    message: result.status === 0 ? "Point cache updated." : compactProcessMessage(failedText),
-    stdout: result.status === 0 ? stdout : undefined,
-    stderr: result.status === 0 ? stderr : undefined,
-  };
-}
-
-function compactProcessMessage(message: string): string {
-  return message
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .find((line) => line && !line.startsWith("at ") && !line.startsWith("file://"))
-    ?.slice(0, 180) ?? "Point cache failed.";
 }
 
 async function handleNominatimSearch(
@@ -318,12 +254,19 @@ async function handleSourceProbe(
       writeJson(res, 400, { ok: false, error: "Only http and https URLs are supported" });
       return;
     }
+    if (!SOURCE_PROBE_ALLOWED_HOSTS.has(parsedTarget.hostname)) {
+      writeJson(res, 403, {
+        ok: false,
+        error: "Source probes are limited to hosts declared by the application source registry.",
+      });
+      return;
+    }
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 10_000);
     const response = await fetch(parsedTarget, {
       method: "GET",
-      redirect: "follow",
+      redirect: "manual",
       signal: controller.signal,
       headers: {
         "User-Agent": "SD-Stadtdaten-ContextAnalysis/0.1 local-source-probe",
@@ -333,8 +276,12 @@ async function handleSourceProbe(
     clearTimeout(timeout);
     await response.body?.cancel();
 
+    const safeRedirect =
+      response.status >= 300 &&
+      response.status < 400 &&
+      Boolean(response.headers.get("location"));
     writeJson(res, 200, {
-      ok: response.ok,
+      ok: response.ok || safeRedirect,
       status: response.status,
       statusText: response.statusText,
       url: response.url,
@@ -450,70 +397,69 @@ async function handleOverpassProxy(
   }
 }
 
-async function handleGoogleSatelliteTile(
+async function handleOpenRouteServiceIsochrones(
   req: ProbeRequest,
   res: ProbeResponse,
 ): Promise<void> {
   try {
-    if (req.method && req.method !== "GET") {
-      writeJson(res, 405, { ok: false, error: "GET required" });
+    if (req.method !== "POST") {
+      writeJson(res, 405, { error: "POST required" });
       return;
     }
-
-    const key = process.env.VITE_GOOGLE_MAPS_API_KEY ?? process.env.GOOGLE_MAPS_API_KEY;
-    if (!key) {
-      writeJson(res, 404, {
-        ok: false,
-        error: "Missing GOOGLE_MAPS_API_KEY in .env.local.",
-      });
+    const apiKey = process.env.OPENROUTESERVICE_API_KEY;
+    if (!apiKey) {
+      writeJson(res, 503, { error: "OpenRouteService API key is not configured on the server." });
       return;
     }
-
     const requestUrl = new URL(req.url ?? "", "http://127.0.0.1");
-    const [z, x, y] = requestUrl.pathname.split("/").filter(Boolean);
-    if (!z || !x || !y || ![z, x, y].every((value) => /^\d+$/.test(value))) {
-      writeJson(res, 400, { ok: false, error: "Expected /api/google-satellite/{z}/{x}/{y}" });
+    const profile = requestUrl.pathname.split("/").filter(Boolean).at(-1) ?? "";
+    if (!["foot-walking", "cycling-regular", "driving-car"].includes(profile)) {
+      writeJson(res, 400, { error: "Unsupported OpenRouteService profile." });
       return;
     }
-
-    const session = await getGoogleTileSession(key);
-    const tileParams = new URLSearchParams({
-      session,
-      key,
-    });
+    const body = await readBody(req);
+    const payload = JSON.parse(body) as {
+      locations?: unknown;
+      range?: unknown;
+      range_type?: unknown;
+      location_type?: unknown;
+    };
+    if (
+      !Array.isArray(payload.locations) ||
+      payload.locations.length !== 1 ||
+      !Array.isArray(payload.locations[0]) ||
+      payload.locations[0].length !== 2 ||
+      !payload.locations[0].every((value) => typeof value === "number" && Number.isFinite(value)) ||
+      !Array.isArray(payload.range) ||
+      payload.range.length > 3 ||
+      !payload.range.every(
+        (value) => typeof value === "number" && Number.isFinite(value) && value > 0 && value <= 3_600,
+      )
+    ) {
+      writeJson(res, 400, { error: "Invalid isochrone request payload." });
+      return;
+    }
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), SERVER_GOOGLE_TILE_TIMEOUT_MS);
+    const timeout = setTimeout(() => controller.abort(), SERVER_OPENROUTESERVICE_TIMEOUT_MS);
     const response = await fetch(
-      `https://tile.googleapis.com/v1/2dtiles/${z}/${x}/${y}?${tileParams.toString()}`,
+      `https://api.openrouteservice.org/v2/isochrones/${profile}`,
       {
-        method: "GET",
-        redirect: "follow",
-        signal: controller.signal,
+        method: "POST",
         headers: {
-          Accept: "image/*,*/*",
+          Authorization: apiKey,
+          "Content-Type": "application/json",
         },
+        body: JSON.stringify(payload),
+        signal: controller.signal,
       },
     );
     clearTimeout(timeout);
-
-    if (!response.ok) {
-      const message = await response.text().catch(() => "");
-      writeJson(res, response.status, {
-        ok: false,
-        error: message || `Google Map Tiles returned HTTP ${response.status}`,
-      });
-      return;
-    }
-
-    const contentType = response.headers.get("content-type") ?? "image/png";
-    const bytes = new Uint8Array(await response.arrayBuffer());
-    res.statusCode = 200;
-    res.setHeader("content-type", contentType);
-    res.setHeader("cache-control", "public, max-age=3600");
-    res.end(bytes);
+    const responseBody = await response.text();
+    res.statusCode = response.status;
+    res.setHeader("content-type", response.headers.get("content-type") ?? "application/json");
+    res.end(responseBody);
   } catch (error) {
     writeJson(res, 502, {
-      ok: false,
       error: error instanceof Error ? error.message : String(error),
     });
   }
@@ -584,103 +530,6 @@ function ollamaBaseUrl(): string {
     process.env.OLLAMA_BASE_URL ??
     "http://localhost:11434"
   ).replace(/\/+$/, "");
-}
-
-async function getGoogleTileSession(key: string): Promise<string> {
-  const now = Date.now();
-  if (googleTileSession && googleTileSession.expiresAt > now + 60_000) {
-    return googleTileSession.token;
-  }
-
-  const params = new URLSearchParams({ key });
-  const response = await fetch(
-    `https://tile.googleapis.com/v1/createSession?${params.toString()}`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        mapType: "satellite",
-        language: "de-DE",
-        region: "DE",
-      }),
-    },
-  );
-  const payload = (await response.json()) as {
-    session?: string;
-    expiry?: string;
-    error?: { message?: string };
-  };
-  if (!response.ok || !payload.session) {
-    throw new Error(
-      payload.error?.message ?? `Google Map Tiles createSession failed with HTTP ${response.status}`,
-    );
-  }
-
-  googleTileSession = {
-    token: payload.session,
-    expiresAt: payload.expiry ? Date.parse(payload.expiry) : now + 55 * 60 * 1000,
-  };
-  return googleTileSession.token;
-}
-
-function findFuaNameForPoint(lon: number, lat: number): string | null {
-  const path = "public/data/processed/eurostat-gisco-fua.geojson";
-  if (!existsSync(path)) return null;
-  try {
-    const collection = JSON.parse(readFileSync(path, "utf8")) as { features?: FuaFeature[] };
-    const feature = collection.features?.find((candidate) =>
-      geometryContainsPoint(candidate.geometry, [lon, lat]),
-    );
-    const name =
-      feature?.properties?.fua_name ??
-      feature?.properties?.FUA_NAME ??
-      feature?.properties?.URAU_NAME ??
-      feature?.properties?.name ??
-      feature?.properties?.label;
-    return typeof name === "string" && name.trim() ? name.trim() : null;
-  } catch {
-    return null;
-  }
-}
-
-function geometryContainsPoint(
-  geometry: FuaFeature["geometry"] | undefined,
-  point: [number, number],
-): boolean {
-  if (!geometry) return false;
-  if (geometry.type === "Polygon") {
-    return polygonContainsPoint(geometry.coordinates, point);
-  }
-  if (geometry.type === "MultiPolygon" && Array.isArray(geometry.coordinates)) {
-    return geometry.coordinates.some((polygon) => polygonContainsPoint(polygon, point));
-  }
-  return false;
-}
-
-function polygonContainsPoint(coordinates: unknown, point: [number, number]): boolean {
-  if (!Array.isArray(coordinates)) return false;
-  const rings = coordinates as number[][][];
-  if (!ringContainsPoint(rings[0] ?? [], point)) return false;
-  return !rings.slice(1).some((ring) => ringContainsPoint(ring, point));
-}
-
-function ringContainsPoint(ring: number[][], point: [number, number]): boolean {
-  let inside = false;
-  const [x, y] = point;
-  for (let index = 0, previous = ring.length - 1; index < ring.length; previous = index, index += 1) {
-    const xi = ring[index]?.[0];
-    const yi = ring[index]?.[1];
-    const xj = ring[previous]?.[0];
-    const yj = ring[previous]?.[1];
-    if (![xi, yi, xj, yj].every(Number.isFinite)) continue;
-    const intersects =
-      yi > y !== yj > y &&
-      x < ((xj - xi) * (y - yi)) / ((yj - yi) || Number.EPSILON) + xi;
-    if (intersects) inside = !inside;
-  }
-  return inside;
 }
 
 function readBody(req: ProbeRequest): Promise<string> {

@@ -1,5 +1,6 @@
 import {
   useEffect,
+  useMemo,
   useRef,
   useState,
   type CSSProperties,
@@ -13,9 +14,8 @@ import { FactSheetPanel } from "../components/factsheet/FactSheetPanel";
 import { MapView } from "../components/map/MapView";
 import { recomputeMSectionFromAnalysis } from "../lib/analysis/m/analyzeM";
 import { runLocationAnalysis } from "../lib/analysis/runAnalysis";
-import { resolvePointCache } from "../lib/api/pointCache";
+import { projectAreaContainsCoordinate } from "../lib/projectArea/geometry";
 import { loadLod2BuildingsForPoint, loadTerrainSamplesForSection } from "../lib/data/localSpatial";
-import { pointCacheResultsToRunEvents } from "../lib/data/sourceRun";
 import type {
   AnalysisResult,
   AnalysisLoadStep,
@@ -24,6 +24,8 @@ import type {
   LayerStyleState,
   LayerState,
   LayerVisualStyle,
+  KpiScenario,
+  ProjectArea,
   Scale,
   SectionLine,
 } from "../lib/types";
@@ -129,6 +131,8 @@ export function App() {
   const [layers, setLayers] = useState<LayerState>(DEFAULT_LAYERS);
   const [layerStyles, setLayerStyles] = useState<LayerStyleState>(DEFAULT_LAYER_STYLES);
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
+  const [projectArea, setProjectArea] = useState<ProjectArea | null>(null);
+  const [kpiScenario, setKpiScenario] = useState<KpiScenario | null>(null);
   const [sectionLine, setSectionLine] = useState<SectionLine | null>(null);
   const [sectionSvg, setSectionSvg] = useState("");
   const [status, setStatus] = useState("Map initializing.");
@@ -144,6 +148,13 @@ export function App() {
   const workspaceRef = useRef<HTMLElement | null>(null);
   const sideStackRef = useRef<HTMLDivElement | null>(null);
   const analysisRunIdRef = useRef(0);
+  const presentationAnalysis = useMemo(
+    () =>
+      analysis && kpiScenario
+        ? { ...analysis, kpiScenario }
+        : analysis,
+    [analysis, kpiScenario],
+  );
 
   useEffect(() => {
     document.body.classList.toggle("theme-invert", themeInvert);
@@ -161,9 +172,19 @@ export function App() {
     };
   }, []);
 
-  async function handlePointSelected(point: { lat: number; lon: number }) {
+  async function handlePointSelected(
+    point: { lat: number; lon: number },
+    projectAreaOverride: ProjectArea | null = projectArea,
+  ) {
     if (analysis || isAnalyzing) {
       setStatus("Analysis is locked. Close the current analysis before selecting a new point.");
+      return;
+    }
+    if (
+      projectAreaOverride &&
+      !projectAreaContainsCoordinate(projectAreaOverride, [point.lon, point.lat])
+    ) {
+      setStatus("Select a point inside the active project boundary, or clear the boundary first.");
       return;
     }
     const runId = analysisRunIdRef.current + 1;
@@ -173,37 +194,19 @@ export function App() {
     setAnalysisLoadSteps(createInitialLoadSteps());
     setStatus("Analysis running.");
     try {
-      const requestedAt = new Date().toISOString();
-      setLoadStep(setAnalysisLoadSteps, "point-cache", "running", "Checking point cache coverage and resolving missing large datasets.");
-      const cacheResult = await resolvePointCache({
-        ...point,
-        radius: 1_000,
-        sources: ["overture", "urban-atlas"],
-      });
-      const failedCacheSources = cacheResult.results.filter((result) => result.status === "failed");
-      const skippedCacheSources = cacheResult.results.filter((result) => result.status === "skipped");
       setLoadStep(
         setAnalysisLoadSteps,
         "point-cache",
-        failedCacheSources.length ? "failed" : "ok",
-        summarizePointCache(cacheResult.results, cacheResult.error),
+        "ok",
+        "Using existing versioned local indexes. Runtime analysis never downloads or rewrites large source datasets.",
       );
-      if (skippedCacheSources.length || failedCacheSources.length) {
-        setStatus(compactPointCacheStatus(cacheResult.results, cacheResult.error));
-      }
-      const preflightSourceRun = pointCacheResultsToRunEvents({
-        requestedAt,
-        elapsedMs: cacheResult.elapsedMs,
-        results: cacheResult.results,
-        error: cacheResult.error,
-      });
 
       const { result, sectionSvg: nextSectionSvg } = await runLocationAnalysis({
         ...point,
         activeScale,
+        projectArea: projectAreaOverride,
         layers,
         sectionLine,
-        preflightSourceRun,
         onProgress: (step) => {
           if (analysisRunIdRef.current !== runId) return;
           setLoadStep(setAnalysisLoadSteps, step.id, step.status, step.detail);
@@ -211,6 +214,7 @@ export function App() {
         onPartialResult: (partialResult, partialSectionSvg) => {
           if (analysisRunIdRef.current !== runId) return;
           setAnalysis(partialResult);
+          setKpiScenario((current) => current ?? partialResult.kpiScenario ?? null);
           setSectionSvg(partialSectionSvg);
           setAnalysisPhase("local-ready");
           setStatus("Local results ready. Live OSM enrichment is still running.");
@@ -220,6 +224,7 @@ export function App() {
       });
       if (analysisRunIdRef.current !== runId) return;
       setAnalysis(result);
+      setKpiScenario((current) => current ?? result.kpiScenario ?? null);
       setSectionSvg(nextSectionSvg);
       setAnalysisPhase("complete");
       setAnalysisLoadSteps((current) =>
@@ -255,13 +260,38 @@ export function App() {
   function handleAnalysisClear() {
     analysisRunIdRef.current += 1;
     setAnalysis(null);
+    setKpiScenario(null);
     setSectionLine(null);
     setSectionSvg("");
     setIsAnalyzing(false);
     setAnalysisPhase("idle");
     setAnalysisLoadSteps([]);
     setExportDockOpen(false);
-    setStatus("Analysis closed. Search can zoom the map; click the canvas pin target for a new analysis.");
+    setStatus(
+      projectArea
+        ? "Analysis closed. The project boundary remains active; clear it or run a new analysis inside it."
+        : "Analysis closed. Search can zoom the map; click the canvas pin target for a new analysis.",
+    );
+  }
+
+  function handleProjectAreaChange(nextProjectArea: ProjectArea) {
+    if (analysis || isAnalyzing) {
+      setStatus("Close the current analysis before replacing the project boundary.");
+      return;
+    }
+    setProjectArea(nextProjectArea);
+    const [lon, lat] = nextProjectArea.representativePoint;
+    setStatus(`${nextProjectArea.label} loaded. Starting boundary-based analysis.`);
+    void handlePointSelected({ lat, lon }, nextProjectArea);
+  }
+
+  function handleProjectAreaClear() {
+    if (analysis || isAnalyzing) {
+      setStatus("Close the current analysis before clearing the project boundary.");
+      return;
+    }
+    setProjectArea(null);
+    setStatus("Project boundary cleared. Click the map to analyze the default 500 m context.");
   }
 
   async function handleSectionLineSelected(nextSectionLine: SectionLine) {
@@ -414,6 +444,7 @@ export function App() {
       >
         <MapView
           analysis={analysis}
+          projectArea={projectArea}
           activeScale={activeScale}
           layers={layers}
           layerStyles={layerStyles}
@@ -422,6 +453,8 @@ export function App() {
           analysisLoadSteps={analysisLoadSteps}
           analysisLocked={Boolean(analysis)}
           onPointSelected={handlePointSelected}
+          onProjectAreaChange={handleProjectAreaChange}
+          onProjectAreaClear={handleProjectAreaClear}
           onAnalysisClear={handleAnalysisClear}
           onSectionLineSelected={handleSectionLineSelected}
           onScaleChange={handleScaleChange}
@@ -503,10 +536,11 @@ export function App() {
             </section>
           ) : null}
           <FactSheetPanel
-            analysis={analysis}
+            analysis={presentationAnalysis}
             activeScale={activeScale}
             analysisPhase={analysisPhase}
             analysisLoadSteps={analysisLoadSteps}
+            onKpiScenarioChange={setKpiScenario}
           />
         </div>
       </section>
@@ -516,7 +550,7 @@ export function App() {
           {exportDockOpen ? (
             <div id="export-dock-panel" className="export-dock-panel">
               <ExportPanel
-                analysis={analysis}
+                analysis={presentationAnalysis ?? analysis}
                 analysisPhase={analysisPhase}
                 sectionSvg={sectionSvg}
                 onStatus={setStatus}
@@ -556,14 +590,14 @@ function createInitialLoadSteps(): AnalysisLoadStep[] {
   return [
     {
       id: "point-cache",
-      label: "Area cache resolver",
-      detail: "Checking Overture buildings and Urban Atlas cache coverage.",
+      label: "Local data policy",
+      detail: "Waiting to inspect existing versioned indexes.",
       status: "queued",
     },
     {
       id: "geocoding",
       label: "Nominatim reverse lookup",
-      detail: "Waiting for point-cache resolver.",
+      detail: "Waiting for optional address context.",
       status: "queued",
     },
     {
@@ -602,36 +636,6 @@ function setLoadStep(
   setSteps((current) =>
     current.map((step) => (step.id === id ? { ...step, status, detail } : step)),
   );
-}
-
-function summarizePointCache(
-  results: Array<{ source: string; status: string; message?: string }>,
-  error?: string,
-): string {
-  if (error && results.length === 0) return "Point cache resolver unavailable.";
-  if (!results.length) return "Point cache resolver returned no source results.";
-  return results
-    .map((result) => `${result.source}: ${result.status}${result.message ? ` (${compactMessage(result.message)})` : ""}`)
-    .join(" / ");
-}
-
-function compactPointCacheStatus(
-  results: Array<{ source: string; status: string; message?: string }>,
-  error?: string,
-): string {
-  if (error && results.length === 0) return "Point cache unavailable. Continuing with live/local sources.";
-  const failed = results.filter((result) => result.status === "failed");
-  const skipped = results.filter((result) => result.status === "skipped");
-  if (!failed.length && !skipped.length) return "Point cache ready.";
-  return [...failed, ...skipped]
-    .map((result) => `${result.source}: ${result.status}`)
-    .join(" / ");
-}
-
-function compactMessage(message: string): string {
-  if (/CDSE credentials/i.test(message)) return "CDSE credentials missing";
-  if (/Point cache updated/i.test(message)) return "updated";
-  return message.split(/\r?\n/)[0].slice(0, 90);
 }
 
 async function loadBuildingsForSectionLine(sectionLine: SectionLine): Promise<FeatureCollection> {

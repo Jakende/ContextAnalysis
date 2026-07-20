@@ -1,6 +1,7 @@
 import type { Feature, FeatureCollection } from "geojson";
 import { kpiFormulaLines } from "../analysis/kpi/kpiMatrix";
 import { getSources } from "../data/sourceRegistry";
+import { projectAreaToFeature } from "../projectArea/geometry";
 import type { AnalysisResult } from "../types";
 import { createExportManifest } from "./manifest";
 
@@ -27,6 +28,8 @@ export function analysisToProvenanceJson(analysis: AnalysisResult): string {
     {
       manifest,
       selectedPoint: analysis.selectedPoint,
+      projectArea: analysis.projectArea ?? null,
+      kpiScenario: analysis.kpiScenario ?? null,
       dataSourceRun: analysis.provenance.dataSourceRun,
       sourceFetches: analysis.provenance.sourceFetches,
       overpassQueries: analysis.provenance.overpassQueries,
@@ -72,6 +75,7 @@ export function analysisToCsv(analysis: AnalysisResult): string {
 export function analysisToGeoJson(analysis: AnalysisResult): string {
   const features: Feature[] = [
     analysis.overlays.selectedPoint,
+    ...(analysis.projectArea ? [projectAreaToFeature(analysis.projectArea)] : []),
     ...analysis.overlays.xlContext.features,
     ...analysis.overlays.xlGrid.features,
     ...analysis.overlays.xlSources.features,
@@ -108,7 +112,7 @@ export function analysisToGeoJson(analysis: AnalysisResult): string {
 
   return JSON.stringify(
     {
-      name: "sd_stadtdaten_analysis_geometries",
+      name: "urban_context_analysis_geometries",
       manifest: createExportManifest(analysis, [
         {
           name: "analysis.geojson",
@@ -138,6 +142,9 @@ export function analysisToMarkdown(analysis: AnalysisResult): string {
     analysis.selectedPoint.district
       ? `District: ${analysis.selectedPoint.district}`
       : "District: not available",
+    analysis.projectArea
+      ? `Project boundary: ${analysis.projectArea.label} (${Math.round(analysis.projectArea.areaSqm)} m², ${analysis.projectArea.source})`
+      : "Project boundary: default 500 m L-scale radius",
     "",
     "## Summary",
     "This report summarizes only computed structured indicators. Missing or approximate data are stated explicitly.",
@@ -201,6 +208,20 @@ export function analysisToMarkdown(analysis: AnalysisResult): string {
   }
 
   appendKpiFormulaSection(lines);
+  if (analysis.kpiScenario) {
+    lines.push(
+      "",
+      "## Active KPI Scenario",
+      `- Strategy: ${analysis.kpiScenario.strategyName}`,
+      `- Composite: ${analysis.kpiScenario.composite ?? "not available"}`,
+      `- Classification: ${analysis.kpiScenario.classification}`,
+      `- Confidence: ${analysis.kpiScenario.confidence}`,
+      `- Schema version: ${analysis.kpiScenario.schemaVersion}`,
+      `- Weights: ${Object.entries(analysis.kpiScenario.weights)
+        .map(([id, weight]) => `${id}=${weight}`)
+        .join(", ")}`,
+    );
+  }
   appendBenchmarkSection(lines, analysis);
   appendFeatureInventory(lines, analysis);
 
@@ -412,16 +433,7 @@ function splitProperty(value: unknown): string[] {
 
 export function analysisToHtml(analysis: AnalysisResult): string {
   const markdown = analysisToMarkdown(analysis);
-  const body = markdown
-    .split("\n")
-    .map((line) => {
-      if (line.startsWith("# ")) return `<h1>${escapeHtml(line.slice(2))}</h1>`;
-      if (line.startsWith("## ")) return `<h2>${escapeHtml(line.slice(3))}</h2>`;
-      if (line.startsWith("- ")) return `<li>${escapeHtml(line.slice(2))}</li>`;
-      if (line.trim() === "") return "";
-      return `<p>${escapeHtml(line)}</p>`;
-    })
-    .join("\n");
+  const body = markdownToHtml(markdown);
 
   return `<!doctype html>
 <html lang="en">
@@ -432,11 +444,70 @@ export function analysisToHtml(analysis: AnalysisResult): string {
     body{font-family:JetBrains Mono,SFMono-Regular,Menlo,Consolas,monospace;background:#fff;color:#111;line-height:1.5;margin:32px}
     h1{text-transform:uppercase;letter-spacing:.04em;font-size:28px}
     h2{font-size:18px;margin-top:28px;border-top:1px solid #d9d9d9;padding-top:12px}
+    h3{font-size:15px;margin-top:20px}
+    ul{padding-left:24px}
     li{margin:6px 0}
+    .list-detail{color:#444;margin:2px 0 2px 12px}
+    code{background:#f3f3f3;padding:1px 4px}
   </style>
 </head>
 <body>${body}</body>
 </html>`;
+}
+
+function markdownToHtml(markdown: string): string {
+  const output: string[] = [];
+  let listOpen = false;
+  let itemOpen = false;
+
+  const closeList = () => {
+    if (itemOpen) {
+      output.push("</li>");
+      itemOpen = false;
+    }
+    if (listOpen) {
+      output.push("</ul>");
+      listOpen = false;
+    }
+  };
+
+  for (const line of markdown.split("\n")) {
+    if (line.startsWith("- ")) {
+      if (!listOpen) {
+        output.push("<ul>");
+        listOpen = true;
+      }
+      if (itemOpen) output.push("</li>");
+      output.push(`<li>${renderInlineMarkdown(line.slice(2))}`);
+      itemOpen = true;
+      continue;
+    }
+
+    if (itemOpen && /^\s{2,}\S/.test(line)) {
+      output.push(`<div class="list-detail">${renderInlineMarkdown(line.trim())}</div>`);
+      continue;
+    }
+
+    closeList();
+    if (line.startsWith("### ")) {
+      output.push(`<h3>${renderInlineMarkdown(line.slice(4))}</h3>`);
+    } else if (line.startsWith("## ")) {
+      output.push(`<h2>${renderInlineMarkdown(line.slice(3))}</h2>`);
+    } else if (line.startsWith("# ")) {
+      output.push(`<h1>${renderInlineMarkdown(line.slice(2))}</h1>`);
+    } else if (line.trim()) {
+      output.push(`<p>${renderInlineMarkdown(line)}</p>`);
+    }
+  }
+
+  closeList();
+  return output.join("\n");
+}
+
+function renderInlineMarkdown(value: string): string {
+  return escapeHtml(value)
+    .replace(/`([^`]+)`/g, "<code>$1</code>")
+    .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
 }
 
 function csvEscape(value: unknown): string {

@@ -18,6 +18,10 @@ type OverpassElement = {
 };
 
 function around(params: QueryParams): string {
+  if (params.bbox) {
+    const [west, south, east, north] = params.bbox;
+    return `(${south},${west},${north},${east})`;
+  }
   return `(around:${Math.min(params.radiusMeters, 1000)},${params.lat},${params.lon})`;
 }
 

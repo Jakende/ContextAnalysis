@@ -1,5 +1,5 @@
 {
-  "version": "0.3.0",
+  "version": "0.4.0",
   "defaultStrategyId": "balanced",
   "definitions": [
     {
@@ -33,13 +33,14 @@
         "type": "direct",
         "formula": "clamp(round(value), 0, 100)"
       },
-      "formula": "Weighted multimodal reachability score derived from explicit mode KPIs: Walking KPI 35%, Cycling KPI 25%, Transit KPI 25%, and Car-driving KPI 15%. Each mode uses routed isochrone POI reachability where available plus mode-relevant nearest-feature, infrastructure, and stop evidence.",
+      "formula": "Weighted urban-quality reachability score derived from Walking KPI 35%, Cycling KPI 25%, and Transit KPI 25%, normalized across available contributing modes. Car-driving KPI remains visible as comparison context with zero composite weight. Only live or cached routed isochrones contribute POI reachability; geometric fallback buffers never contribute to the score.",
       "thresholds": [
         "Walking KPI uses the 10-minute routed walking isochrone where available, nearest POI distance, stop access, and pedestrian/support infrastructure.",
         "Cycling KPI uses the 10-minute routed cycling isochrone where available, nearest POI distance, stop access, and bike/support infrastructure.",
         "Transit KPI uses GTFS/OSM stop availability, nearest stop distance, and pedestrian/support access evidence; routed transit catchments are not inferred.",
-        "Car-driving KPI uses the 15-minute routed driving isochrone where available, nearest POI distance, and car-support evidence.",
-        "Geometric radii are not used as reachability KPI evidence."
+        "Car-driving KPI uses the 15-minute routed driving isochrone where available, nearest POI distance, and car-support evidence, but has zero weight in urban quality.",
+        "Geometric fallback radii are visual context only and are not used as reachability KPI evidence.",
+        "Stop, POI, mobility-infrastructure, and development evidence is filtered to the configured L-scale radius or project boundary before KPI calculation."
       ]
     },
     {

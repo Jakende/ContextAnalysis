@@ -3,7 +3,7 @@ import { fetchWithTimeout, getCached, setCached } from "../api/cache";
 import type { SelectedPoint, SourceFetchReceipt } from "../types";
 import { bufferPolygon, featureCollection, geometryToFeature } from "../analysis/geometry";
 
-const ORS_URL = "https://api.openrouteservice.org/v2/isochrones";
+const ORS_URL = "/api/openrouteservice-isochrones";
 const CACHE_VERSION = "v1";
 const CACHE_MAX_AGE_MS = 1000 * 60 * 60 * 24 * 14;
 const DEFAULT_RANGES_SECONDS = [300, 600, 900];
@@ -31,15 +31,15 @@ export async function fetchOpenRouteServiceIsochrones(
   computedAt: string,
 ): Promise<IsochroneResult> {
   const startedAt = performance.now();
-  const apiKey = import.meta.env.VITE_OPENROUTESERVICE_API_KEY;
   const profiles = [
     { id: "foot-walking", label: "walking", rangeType: "time" },
     { id: "cycling-regular", label: "cycling", rangeType: "time" },
     { id: "driving-car", label: "driving", rangeType: "time" },
   ] as const;
   const fallbackCollection = createFallbackIsochrones(selectedPoint, computedAt);
+  const serviceAvailable = await openRouteServiceAvailable();
 
-  if (!apiKey) {
+  if (!serviceAvailable) {
     return {
       collection: fallbackCollection,
       receipt: createReceipt({
@@ -48,9 +48,9 @@ export async function fetchOpenRouteServiceIsochrones(
         status: "missing",
         featureCount: fallbackCollection.features.length,
         method:
-          "OpenRouteService API key not configured; generated deterministic geometric mobility catchment placeholders from the selected point.",
+          "OpenRouteService server credential is unavailable; generated deterministic geometric mobility catchment placeholders from the selected point.",
         caveats: [
-          "Set VITE_OPENROUTESERVICE_API_KEY to request network isochrones from OpenRouteService.",
+          "Set server-only OPENROUTESERVICE_API_KEY to enable routed isochrones.",
           "Fallback polygons are distance buffers, not routed isochrones.",
         ],
       }),
@@ -63,7 +63,7 @@ export async function fetchOpenRouteServiceIsochrones(
         try {
           return {
             mode: profile.label,
-            collection: await fetchProfileIsochrone(profile.id, profile.label, selectedPoint, apiKey),
+            collection: await fetchProfileIsochrone(profile.id, profile.label, selectedPoint),
             fallback: false,
             error: undefined,
           };
@@ -79,12 +79,19 @@ export async function fetchOpenRouteServiceIsochrones(
     );
     const collection = featureCollection(profileResults.flatMap((item) => item.collection.features));
     const fallbackModes = profileResults.filter((item) => item.fallback);
+    const missingCredentials =
+      fallbackModes.length === profiles.length &&
+      fallbackModes.every((item) => /not configured|missing.*key/i.test(item.error ?? ""));
     return {
       collection,
       receipt: createReceipt({
         startedAt,
         computedAt,
-        status: fallbackModes.length === profiles.length ? "failed" : "ok",
+        status: missingCredentials
+          ? "missing"
+          : fallbackModes.length === profiles.length
+            ? "failed"
+            : "ok",
         featureCount: collection.features.length,
         error:
           fallbackModes.length === profiles.length
@@ -94,6 +101,9 @@ export async function fetchOpenRouteServiceIsochrones(
           "Requested walking, cycling, and driving isochrone polygons from OpenRouteService with 5-, 10-, and 15-minute ranges and cached responses by coordinate/profile/range. Failed profiles fall back independently instead of discarding successful modes.",
         caveats: [
           "OpenRouteService isochrones depend on external API availability, quota, and network model coverage.",
+          ...(missingCredentials
+            ? ["Set server-only OPENROUTESERVICE_API_KEY to enable routed isochrones."]
+            : []),
           ...(fallbackModes.length
             ? [
                 `Fallback geometric catchments were used for: ${fallbackModes
@@ -124,11 +134,25 @@ export async function fetchOpenRouteServiceIsochrones(
   }
 }
 
+async function openRouteServiceAvailable(): Promise<boolean> {
+  try {
+    const response = await fetchWithTimeout(
+      "/api/openrouteservice-status",
+      { method: "GET" },
+      2_000,
+    );
+    if (!response.ok) return false;
+    const payload = (await response.json()) as { available?: boolean };
+    return payload.available === true;
+  } catch {
+    return false;
+  }
+}
+
 async function fetchProfileIsochrone(
   profile: string,
   mode: string,
   selectedPoint: SelectedPoint,
-  apiKey: string,
 ): Promise<FeatureCollection> {
   const cacheKey = [
     "uca:ors",
@@ -146,7 +170,6 @@ async function fetchProfileIsochrone(
     {
       method: "POST",
       headers: {
-        Authorization: apiKey,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({

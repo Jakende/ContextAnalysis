@@ -14,7 +14,3 @@ export const ESPON_FUA_WMS_CAPABILITIES_URL =
 
 export const GLOBAL_BUILDING_ATLAS_WFS_CAPABILITIES_URL =
   "https://tubvsig-so2sat-vm1.srv.mwn.de/geoserver/ows?service=WFS&request=GetCapabilities";
-
-export function googleSatelliteTileUrl(): string | null {
-  return "/api/google-satellite/{z}/{x}/{y}";
-}

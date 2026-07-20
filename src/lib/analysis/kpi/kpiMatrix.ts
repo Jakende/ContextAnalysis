@@ -1,5 +1,5 @@
 import kpiSchema from "./kpiSchema.json";
-import type { Confidence, FactSheetModule, Indicator } from "../../types";
+import type { Confidence, FactSheetModule, Indicator, KpiScenario } from "../../types";
 import { createIndicator } from "../indicators/createIndicator";
 
 export type KpiDefinition = {
@@ -218,6 +218,26 @@ export function scoreKpis(
       ? strategy.classifications.minimal
       : classifyStrategicLocation(composite, strategy),
     strategy,
+  };
+}
+
+export function createKpiScenario(
+  indicators: Indicator[],
+  strategy: KpiStrategy = defaultKpiStrategy,
+  weightOverrides: Record<string, number> = strategy.weights,
+  computedAt = new Date().toISOString(),
+): KpiScenario {
+  const scored = scoreKpis(indicators, strategy, weightOverrides);
+  return {
+    schemaVersion: kpiModel.version,
+    strategyId: strategy.id,
+    strategyName: strategy.name,
+    weights: Object.fromEntries(scored.rows.map((row) => [row.definition.id, row.weight])),
+    composite: scored.composite,
+    classification: formatClassification(scored.classification, scored.confidence),
+    confidence: scored.confidence,
+    availableKpiIds: scored.availableRows.map((row) => row.definition.id),
+    computedAt,
   };
 }
 

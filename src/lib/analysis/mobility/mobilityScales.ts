@@ -79,7 +79,7 @@ const MODE_CONFIGS: MobilityScaleConfig[] = [
     sourceScale: "XL/L",
     poiTarget: 36,
     stopTarget: 0,
-    aggregateWeight: 0.15,
+    aggregateWeight: 0,
     isochroneMode: "driving",
   },
 ];
@@ -87,6 +87,8 @@ const MODE_CONFIGS: MobilityScaleConfig[] = [
 export function analyzeMobilityScales(input: {
   selectedPoint: SelectedPoint;
   computedAt: string;
+  evidenceRadiusMeters?: number;
+  evidenceAreaSqkm?: number;
   pois?: FeatureCollection;
   transportStops?: FeatureCollection;
   mobilityInfrastructure?: FeatureCollection;
@@ -99,15 +101,18 @@ export function analyzeMobilityScales(input: {
   summaries: ModeSummary[];
 } {
   const summaries = MODE_CONFIGS.map((config) => summarizeMode(config, input));
-  const scoredSummaries = summaries.filter((summary) => summary.score !== null);
-  const combinedScore = scoredSummaries.length
-    ? weightedModeScore(scoredSummaries)
+  const qualitySummaries = summaries.filter(
+    (summary) => summary.score !== null && summary.config.aggregateWeight > 0,
+  );
+  const combinedScore = qualitySummaries.length
+    ? weightedModeScore(qualitySummaries)
     : null;
   const sharedCaveats = [
     "Reachability scoring uses routed OpenRouteService isochrone polygons where configured and available; geometric mode radii are not used as reachability evidence.",
     "If a routed isochrone is unavailable for a mode, that mode is scored only from direct source evidence such as nearest features, transit stops, and infrastructure hints, with low-confidence caveats.",
     "Bike/car POI reachability is limited by the currently loaded POI source coverage unless a local POI extract is preprocessed.",
     "GTFS stop density counts preprocessed stop points and does not yet include timetable frequency or service span.",
+    "Car-driving reachability is retained as comparison context but has zero weight in the multimodal urban-quality score.",
   ];
   const indicators = [
     ...summaries.map((summary) =>
@@ -135,13 +140,13 @@ export function analyzeMobilityScales(input: {
       value: combinedScore,
       unit: "0-100",
       method:
-        "Weighted aggregation of explicit mode KPIs: walking 35%, cycling 25%, transit 25%, and car driving 15%. Each mode uses routed isochrones where available and direct source evidence where no routed catchment exists.",
+        "Weighted aggregation of urban-quality mode KPIs: walking 41.2%, cycling 29.4%, and transit 29.4% after normalizing their 35:25:25 weights. Car-driving is reported separately with zero composite weight. Each active mode uses routed isochrones where available and direct source evidence where no routed catchment exists.",
       sourceIds: ["osm-core", "osm-overpass", "gtfs-de-local-transit", "mobilithek-gtfs", "openrouteservice-isochrones"],
-      confidence: scoredSummaries.length >= 3 ? "medium" : "low",
+      confidence: qualitySummaries.length >= 3 ? "medium" : "low",
       caveats: [
         ...sharedCaveats,
-        scoredSummaries.length
-          ? `Available mode scores: ${scoredSummaries
+        qualitySummaries.length
+          ? `Available contributing mode scores: ${qualitySummaries
               .map((summary) => `${summary.config.label.toLowerCase()} ${summary.score}`)
               .join(" / ")}.`
           : "No mode had enough loaded POI, stop, infrastructure, or isochrone evidence to score.",
@@ -175,10 +180,10 @@ export function analyzeMobilityScales(input: {
       scale: "L",
       indicators,
       method:
-        "Mode-aware reachability model with one explicit KPI each for walking, cycling, transit, and car driving. The multimodal score is a weighted aggregation of those mode KPIs.",
+        "Mode-aware reachability model with one explicit KPI each for walking, cycling, transit, and car driving. The urban-quality aggregate uses walking, cycling, and transit only; driving remains context.",
       sourceIds: ["osm-core", "osm-overpass", "gtfs-de-local-transit", "mobilithek-gtfs", "openrouteservice-isochrones"],
       computedAt: input.computedAt,
-      confidence: scoredSummaries.length >= 3 ? "medium" : "low",
+      confidence: qualitySummaries.length >= 3 ? "medium" : "low",
       caveats: sharedCaveats,
     },
     bufferFeatures: [],
@@ -191,6 +196,8 @@ function summarizeMode(
   config: MobilityScaleConfig,
   input: {
     selectedPoint: SelectedPoint;
+    evidenceRadiusMeters?: number;
+    evidenceAreaSqkm?: number;
     pois?: FeatureCollection;
     transportStops?: FeatureCollection;
     mobilityInfrastructure?: FeatureCollection;
@@ -199,6 +206,9 @@ function summarizeMode(
 ): ModeSummary {
   const poiFeatures = input.pois?.features ?? [];
   const stopFeatures = input.transportStops?.features ?? [];
+  const evidenceRadiusMeters = input.evidenceRadiusMeters ?? MOBILITY_ANALYSIS_RADIUS_METERS;
+  const evidenceAreaSqkm =
+    input.evidenceAreaSqkm ?? circleAreaSqkm(evidenceRadiusMeters);
   const nearestPoi = nearestFeature(input.selectedPoint, poiFeatures, "poi");
   const nearestStop = nearestFeature(input.selectedPoint, stopFeatures, "stop");
   const isochroneReachability = config.isochroneMode
@@ -207,7 +217,7 @@ function summarizeMode(
   const isochronePoiCount = isochroneReachability?.count ?? null;
   const infrastructureScore = scoreInfrastructure(config.mode, input.mobilityInfrastructure);
   const stopDensityPerSqkm =
-    Math.round((stopFeatures.length / Math.max(0.0001, circleAreaSqkm(MOBILITY_ANALYSIS_RADIUS_METERS))) * 10) / 10;
+    Math.round((stopFeatures.length / Math.max(0.0001, evidenceAreaSqkm)) * 10) / 10;
   const isochronePoiScore = Math.min(
     100,
     isochroneReachability
@@ -216,7 +226,7 @@ function summarizeMode(
       : 0,
   );
   const nearestPoiScore = nearestPoi
-    ? scoreDistance(nearestPoi.distanceMeters, MOBILITY_ANALYSIS_RADIUS_METERS)
+    ? scoreDistance(nearestPoi.distanceMeters, evidenceRadiusMeters)
     : 0;
   const stopScore =
     config.mode === "driving"
@@ -224,14 +234,22 @@ function summarizeMode(
       : Math.min(
           100,
           Math.round((stopFeatures.length / Math.max(1, config.stopTarget)) * 65) +
-            (nearestStop ? Math.round(scoreDistance(nearestStop.distanceMeters, MOBILITY_ANALYSIS_RADIUS_METERS) * 0.35) : 0),
+            (nearestStop ? Math.round(scoreDistance(nearestStop.distanceMeters, evidenceRadiusMeters) * 0.35) : 0),
         );
-  const score = scoreMode(config.mode, {
-    isochronePoiScore,
-    nearestPoiScore,
-    stopScore,
-    infrastructureScore,
-  });
+  const hasDirectEvidence = config.mode === "transit"
+    ? stopFeatures.length > 0 || infrastructureScore > 0
+    : isochroneReachability !== null ||
+      nearestPoi !== null ||
+      (config.mode !== "driving" && stopFeatures.length > 0) ||
+      infrastructureScore > 0;
+  const score = hasDirectEvidence
+    ? scoreMode(config.mode, {
+        isochronePoiScore,
+        nearestPoiScore,
+        stopScore,
+        infrastructureScore,
+      })
+    : null;
   const caveats = [
     poiFeatures.length
       ? isochronePoiCount === null
@@ -239,10 +257,10 @@ function summarizeMode(
         : `${isochronePoiCount} loaded POI point(s) or polygons intersect the ${config.timeMinutes}-minute ${config.label.toLowerCase()} isochrone.`
       : "No loaded POI features were available for this mode.",
     stopFeatures.length
-      ? `${stopFeatures.length} loaded GTFS/OSM stop point(s) were available in the analysis source window.`
+      ? `${stopFeatures.length} loaded GTFS/OSM stop point(s) were available inside the configured analysis context.`
       : "No GTFS/OSM stop points were available for this mode.",
     ...(config.isochroneMode && isochronePoiCount === null
-      ? [`No ${config.label.toLowerCase()} ${config.timeMinutes}-minute isochrone polygon was available.`]
+      ? [`No routed ${config.label.toLowerCase()} ${config.timeMinutes}-minute isochrone polygon was available; geometric fallbacks do not count as routed evidence.`]
       : []),
   ];
 
@@ -389,7 +407,8 @@ function isochronePoiReachability(
     (feature) =>
       (feature.geometry.type === "Polygon" || feature.geometry.type === "MultiPolygon") &&
       feature.properties?.isochroneMode === mode &&
-      Number(feature.properties?.rangeSeconds ?? 0) === targetRangeSeconds,
+      Number(feature.properties?.rangeSeconds ?? 0) === targetRangeSeconds &&
+      isRoutedIsochrone(feature),
   );
   if (!polygons.length) return null;
   const reachable = poiFeatures.filter((poi) => {
@@ -402,6 +421,11 @@ function isochronePoiReachability(
     count: reachable.length,
     categoryCount: uniqueCategories(reachable).size,
   };
+}
+
+function isRoutedIsochrone(feature: Feature): boolean {
+  return feature.properties?.retrievalStatus === "live" ||
+    feature.properties?.retrievalStatus === "cached";
 }
 
 function scoreInfrastructure(

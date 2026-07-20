@@ -6,6 +6,7 @@ import type {
   LayerVisualStyle,
   Scale,
 } from "../../lib/types";
+import { useState } from "react";
 
 type LayerControl = {
   id: LayerId;
@@ -85,6 +86,9 @@ export function LayerTogglePanel({
   onStyleChange: (id: LayerId, patch: Partial<LayerVisualStyle>) => void;
   onReset: () => void;
 }) {
+  const [isOpen, setIsOpen] = useState(() =>
+    typeof window === "undefined" ? true : window.matchMedia("(min-width: 721px)").matches,
+  );
   if (!analysis) return null;
   const visibleControls = layerControls.filter(
     (layer) =>
@@ -95,17 +99,29 @@ export function LayerTogglePanel({
   const groups = groupLayerControls(visibleControls);
 
   return (
-    <section className="layer-panel" aria-label="Layer toggles">
+    <section className="layer-panel" data-open={isOpen} aria-label="Layer toggles">
       <div className="panel-heading">
         <div>
           <span className="label">Layer picker</span>
           <strong>{activeScale === "M" ? "M + L context" : `${activeScale} scale`}</strong>
         </div>
-        <button type="button" className="ghost-button" onClick={onReset}>
-          Reset
-        </button>
+        <div className="layer-panel-actions">
+          <button
+            type="button"
+            className="ghost-button"
+            aria-expanded={isOpen}
+            onClick={() => setIsOpen((current) => !current)}
+          >
+            {isOpen ? "Hide" : "Show"}
+          </button>
+          {isOpen ? (
+            <button type="button" className="ghost-button" onClick={onReset}>
+              Reset
+            </button>
+          ) : null}
+        </div>
       </div>
-      <div className="layer-picker-list">
+      {isOpen ? <div className="layer-picker-list">
         {groups.map(([group, controls]) => (
           <div className="layer-picker-group" key={group}>
             <span className="layer-picker-group-title">{group}</span>
@@ -180,7 +196,7 @@ export function LayerTogglePanel({
             })}
           </div>
         ))}
-      </div>
+      </div> : null}
     </section>
   );
 }

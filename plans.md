@@ -1,12 +1,12 @@
 # Product Plan
 
-Last updated: 2026-05-31.
+Last updated: 2026-07-20.
 
 This file is the standing product plan for the Urban Context Analysis MVP. Agents must read it at the beginning of each session after `AGENTS.md` and before proposing or implementing product changes.
 
 ## Current Product Direction
 
-The tool should stay a lightweight, map-first urban context analysis workspace. The selected point remains the anchor. The app should not become a heavy workflow engine.
+The tool should stay a lightweight, map-first urban context analysis workspace. A selected point remains the default anchor; an uploaded or drawn project boundary may replace the default L-scale radius while an interior representative point anchors XL and M. The app should not become a heavy workflow engine.
 
 KPIs are the product spine. Raw indicators, map layers, reports, and exports should support the KPI interpretation rather than competing with it.
 
@@ -18,9 +18,32 @@ Completed in the 2026-05-31 implementation pass:
 - The L-scale fact sheet is KPI-first: the KPI matrix appears before raw modules and each KPI row exposes trace details.
 - Markdown/HTML reports include the new KPI families and benchmark section.
 
+Completed in the 2026-07-20 implementation pass:
+
+- WGS84 GeoJSON `Polygon` / `MultiPolygon` upload and polygon/rectangle drawing define a canonical project area up to 5 km diagonally.
+- The project boundary replaces the default 500 m L-scale spatial filter and area denominator; its bounding box limits Overpass and local retrieval.
+- KPI schema `0.4.0` filters evidence to one context, excludes geometric ORS fallbacks from routed scores, and gives driving zero weight in the urban-quality composite.
+- The active KPI strategy, weights, composite, classification, and evidence availability are serialized in analysis results, manifests, and reports.
+- Public Nominatim search is submit-only and cached. Analysis no longer downloads or rewrites large point caches during an interactive run.
+- Production builds omit generated point-cache/cache-manifest duplicates while retaining canonical sharded datasets; the satellite background uses the registered Esri raster path rather than an inactive Google tile session.
+- GPKG loading is deferred; ZIP packages contain a standalone manifest plus CSV, HTML, provenance, and graphics.
+- UI validation passes.
+
+### Durable KPI contract
+
+The KPI model is a versioned interpretation layer over immutable structured indicators:
+
+1. Evidence is filtered to one declared spatial context before normalization.
+2. Source indicators keep method, source IDs, version, confidence, timestamp, and caveats.
+3. Strategy weights never alter raw evidence; they produce a separate serializable `KpiScenario`.
+4. The score shown in the UI must equal the score in JSON, manifest, reports, and geodata exports.
+5. Missing evidence is excluded transparently and the remaining weights are normalized; low evidence must reduce confidence rather than be silently filled.
+6. Visual or geometric fallbacks cannot masquerade as routed or measured evidence.
+7. Formula, threshold, or classification changes require a schema-version change and fixture updates.
+
 ## Priority Roadmap
 
-### 1. KPI-First Analysis Surface — Done
+### 1. KPI-First Analysis Surface — Done / Durable Contract Updated
 
 Make the KPI model more visible and more useful.
 
@@ -29,6 +52,10 @@ Make the KPI model more visible and more useful.
 - [x] Show missing KPI inputs explicitly instead of hiding them.
 - [x] Preserve confidence, caveats, method, and source IDs for every KPI.
 - [x] Keep UI controls for KPI strategies and weights compact and analytical.
+- [x] Serialize the active strategy, weights, composite, classification, and available KPI IDs.
+- [x] Exclude geometric ORS fallback buffers from routed reachability.
+- [x] Keep car-driving reachability visible as context with zero composite weight.
+- [x] Filter KPI evidence to the same radius or project-area context.
 
 Acceptance target:
 
@@ -39,7 +66,9 @@ Current status:
 
 - The L-scale fact sheet shows the KPI matrix before raw modules.
 - KPI rows expose source indicator, method, source IDs, and normalization details.
-- KPI schema version `0.3.0` defines six core KPI families: Mobility Access, Green/Blue Access, Urban Mix, Social Infrastructure Access, Tree Canopy, and Station Axis.
+- KPI schema version `0.4.0` defines six core KPI families: Mobility Access, Green/Blue Access, Urban Mix, Social Infrastructure Access, Tree Canopy, and Station Axis.
+- Walking, cycling, and transit contribute to Mobility Access; car driving is reported separately and contributes zero to the urban-quality composite.
+- Only live or cached routed isochrones contribute routed reachability. Geometric fallback buffers remain visual context.
 
 ### 2. Multi-City Benchmarking — Initial Done / Production Data Open
 
@@ -117,9 +146,60 @@ Current status:
 - `l.station-axis-score` and `kpi.station_axis` are emitted from nearest stop/station distance, mode hierarchy, stop density, and route/corridor evidence.
 - `l.station-axis-evidence` records the supporting nearest-distance, mode, and line details.
 
-### 5. In-App Editing — Open
+### 5. Project Boundary Workflow — Initial Done / Geometry Precision Open
+
+Let a user define the analysis site without turning boundary creation into a guided workflow.
+
+- [x] Upload GeoJSON Feature or FeatureCollection data containing `Polygon` / `MultiPolygon` geometry.
+- [x] Draw and close a free polygon or define an axis-aligned rectangle from two corners.
+- [x] Normalize the result to canonical WGS84 geometry with stable ID, bounding box, centroid, representative interior point, approximate area, source, timestamp, and caveats.
+- [x] Reject invalid, self-intersecting, degenerate, excessively detailed, or greater-than-5-km-diagonal boundaries.
+- [x] Use the boundary for L-scale feature filtering and area-normalized KPI denominators.
+- [x] Use its bounding box for deterministic Overpass queries and bounded local retrieval.
+- [x] Preserve the full boundary and creation source in structured analysis and exports.
+- [ ] Clip intersecting Urban Atlas, OSM land-use, and green/blue polygons exactly to the irregular boundary before area aggregation.
+- [ ] Dissolve overlapping polygons and apply an explicit source precedence model before calculating mutually exclusive land-use shares.
+
+Acceptance target:
+
+- A valid uploaded or drawn boundary immediately produces one traceable boundary-based analysis.
+- XL and M remain anchored to a representative point inside the boundary.
+- L-scale counts and density denominators refer to the same boundary.
+- Until exact polygon clipping is implemented, area indicators expose the approximation caveat and are not promoted to high confidence.
+
+Open questions to resolve before production area scoring:
+
+- Which source-precedence rules make Urban Atlas and OSM land-use classes mutually exclusive without discarding useful OSM detail?
+- Should overlapping components in an uploaded multipart layer be dissolved automatically, or rejected until the user supplies a clean project geometry?
+- Should the 5 km browser-analysis limit remain a product constraint after indexed server-side spatial queries are available?
+- How should peer benchmarking distinguish fixed-radius neighbourhood scores from differently sized project-area scores?
+
+### 6. Data Coverage And Deployment Storage — Partial / Open
+
+Keep the browser bundle small while treating large geodata as versioned deployment assets.
+
+Current verified state on 2026-07-20:
+
+- [x] Runtime reads a canonical sharded index first and never merges dozens of overlapping point-cache extracts.
+- [x] Production builds omit the generated `public/data/processed/cache/` tree and duplicate cache manifest.
+- [x] JavaScript is split into app, React, MapLibre, and on-demand GPKG chunks.
+- [x] BKG, FUA, GTFS, canonical Overture, canonical Urban Atlas, and Zensus WMS checks pass for Munich.
+- [ ] Canonical Urban Atlas and Overture coverage is empty at the Frankfurt and Rosenheim regression points; expand/version those preprocessing outputs before claiming national coverage.
+- [ ] Move canonical geodata out of the client artifact into a versioned static-data deployment or object store. The cache-clean production artifact is still approximately 2.4 GB because it intentionally retains canonical shards.
+- [ ] Add checksums, source versions, immutable cache headers, coverage footprints, and a release manifest so app releases do not recopy unchanged geodata.
+- [ ] Convert the largest browser-delivered GeoJSON shards to range-friendly GeoPackage/PMTiles/MBTiles or an indexed spatial API after measuring query and hosting constraints.
+
+Acceptance target:
+
+- The UI deploy artifact and geodata release can be updated independently.
+- A coverage regression distinguishes `available`, `empty`, and `missing` for every supported city before release.
+- Selecting one project area transfers only intersecting shards, with no overlapping point-cache duplication.
+
+### 7. In-App Scenario Editing — Open
 
 Keep in-app editing as a useful later expert workflow, not a core MVP blocker.
+
+Project-boundary drawing defines the observation context and is already implemented. The items below concern proposed design interventions and must remain a separate scenario layer.
 
 Possible scope:
 
@@ -133,7 +213,7 @@ Acceptance target:
 - Edits never overwrite authoritative or live source data.
 - Reports and exports distinguish existing conditions from user-created scenario geometry.
 
-### 6. Sun / Shadow Model — Open / Deferred
+### 8. Sun / Shadow Model — Open / Deferred
 
 Keep the existing sun/shadow hint behavior, but defer a validated model.
 
@@ -158,6 +238,7 @@ Acceptance target:
 ## Implementation Notes For Agents
 
 - Before changing KPI behavior, inspect `src/lib/analysis/kpi/kpiSchema.json`, `src/lib/analysis/kpi/kpiMatrix.ts`, and `src/components/factsheet/FactSheetPanel.tsx`.
+- Before changing spatial context behavior, inspect `src/lib/projectArea/`, `src/lib/analysis/runAnalysis.ts`, and the L-scale spatial filters together.
 - Before adding a new metric source, update `src/lib/data/sourceRegistry.ts`.
 - Before adding a new export field, confirm JSON, CSV, GeoJSON, SVG, GPKG, Markdown, and HTML behavior still makes sense.
 - Keep all benchmark, canopy, and station-axis values reproducible from structured analysis JSON.

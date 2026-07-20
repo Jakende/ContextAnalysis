@@ -198,7 +198,7 @@ function geocodingToReceipt(
     queriedAt,
     elapsedMs: 0,
     method:
-      "Reverse geocoding executed for the selected point with cache fallback disabled for analysis freshness.",
+      "Reverse geocoding executed for the selected point with a one-day local cache and live refresh fallback.",
     caveats:
       geocoding.status === "ok"
         ? []

@@ -5,8 +5,6 @@ from pathlib import Path
 
 
 FORBIDDEN = {
-    "box-shadow": "shadows are forbidden",
-    "text-shadow": "shadows are forbidden",
     "filter: blur": "blur is forbidden",
     "backdrop-filter": "blur is forbidden",
     "linear-gradient": "gradients are forbidden",
@@ -28,6 +26,10 @@ def main() -> int:
         for token, message in FORBIDDEN.items():
             if token in text:
                 failures.append(f"{path}: {message}: {token}")
+        for shadow_property in ("box-shadow", "text-shadow"):
+            for match in re.finditer(rf"{shadow_property}\s*:\s*([^;]+)", text):
+                if match.group(1).strip() != "none":
+                    failures.append(f"{path}: shadows are forbidden: {shadow_property}")
         for match in re.finditer(r"border-radius\s*:\s*([^;]+)", text):
             value = match.group(1).strip()
             if value not in {"var(--radius)", "0", "0px"}:

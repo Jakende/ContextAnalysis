@@ -4,6 +4,7 @@ import type {
   AnalysisPhase,
   DataSourceRunEvent,
   FactSheetModule,
+  KpiScenario,
   Scale,
 } from "../../lib/types";
 import type { Feature, FeatureCollection } from "geojson";
@@ -14,6 +15,7 @@ import {
   kpiStrategies,
   scoreKpis,
   formatClassification,
+  createKpiScenario,
 } from "../../lib/analysis/kpi/kpiMatrix";
 
 export function FactSheetPanel({
@@ -21,11 +23,13 @@ export function FactSheetPanel({
   activeScale,
   analysisPhase,
   analysisLoadSteps,
+  onKpiScenarioChange,
 }: {
   analysis: AnalysisResult | null;
   activeScale: Scale;
   analysisPhase: AnalysisPhase;
   analysisLoadSteps: AnalysisLoadStep[];
+  onKpiScenarioChange?: (scenario: KpiScenario) => void;
 }) {
   const modules = analysis?.modules.filter(
     (module) => module.scale === activeScale,
@@ -62,9 +66,19 @@ export function FactSheetPanel({
               {analysis.selectedPoint.lon.toFixed(5)}
             </strong>
             <span>{analysis.selectedPoint.label ?? "Address not available"}</span>
+            {analysis.projectArea ? (
+              <span>
+                Boundary: {analysis.projectArea.label} / {formatProjectArea(analysis.projectArea.areaSqm)}
+              </span>
+            ) : null}
           </div>
           <DependencyStrip steps={analysisLoadSteps} phase={analysisPhase} />
-          {activeScale === "L" ? <KpiWeightMatrix analysis={analysis} /> : null}
+          {activeScale === "L" ? (
+            <KpiWeightMatrix
+              analysis={analysis}
+              onScenarioChange={onKpiScenarioChange}
+            />
+          ) : null}
           <div className="module-list">
             {modules?.map((module) => (
               <FactModule key={module.id} module={module} />
@@ -164,12 +178,21 @@ function phaseLabel(phase: AnalysisPhase): string {
   return "Idle";
 }
 
-function KpiWeightMatrix({ analysis }: { analysis: AnalysisResult }) {
-  const [strategyId, setStrategyId] = useState("balanced");
+function KpiWeightMatrix({
+  analysis,
+  onScenarioChange,
+}: {
+  analysis: AnalysisResult;
+  onScenarioChange?: (scenario: KpiScenario) => void;
+}) {
+  const [strategyId, setStrategyId] = useState(
+    analysis.kpiScenario?.strategyId ?? "balanced",
+  );
   const strategy =
     kpiStrategies.find((item) => item.id === strategyId) ?? kpiStrategies[0];
   const [weights, setWeights] = useState(() =>
-    Object.fromEntries(kpiDefinitions.map((definition) => [definition.id, definition.defaultWeight])),
+    analysis.kpiScenario?.weights ??
+      Object.fromEntries(kpiDefinitions.map((definition) => [definition.id, definition.defaultWeight])),
   );
   const scored = useMemo(
     () => scoreKpis(analysis.indicators, strategy, weights),
@@ -196,6 +219,9 @@ function KpiWeightMatrix({ analysis }: { analysis: AnalysisResult }) {
             onClick={() => {
               setStrategyId(item.id);
               setWeights(item.weights);
+              onScenarioChange?.(
+                createKpiScenario(analysis.indicators, item, item.weights),
+              );
             }}
             title={item.description}
           >
@@ -247,12 +273,16 @@ function KpiWeightMatrix({ analysis }: { analysis: AnalysisResult }) {
               max="1"
               step="0.05"
               value={row.weight}
-              onChange={(event) =>
-                setWeights((current) => ({
-                  ...current,
+              onChange={(event) => {
+                const nextWeights = {
+                  ...weights,
                   [row.definition.id]: Number(event.target.value),
-                }))
-              }
+                };
+                setWeights(nextWeights);
+                onScenarioChange?.(
+                  createKpiScenario(analysis.indicators, strategy, nextWeights),
+                );
+              }}
               aria-label={`${row.definition.name} weight`}
             />
             </label>
@@ -261,6 +291,12 @@ function KpiWeightMatrix({ analysis }: { analysis: AnalysisResult }) {
       </details>
     </section>
   );
+}
+
+function formatProjectArea(areaSqm: number): string {
+  return areaSqm >= 1_000_000
+    ? `${(areaSqm / 1_000_000).toFixed(2)} km²`
+    : `${(areaSqm / 10_000).toFixed(2)} ha`;
 }
 
 type FeatureGroup = {

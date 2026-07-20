@@ -13,6 +13,7 @@ export function analyzeL(
   computedAt: string,
   radiusMeters = 500,
   liveCollections: Record<string, FeatureCollection | undefined> = {},
+  contextGeometry?: Polygon | MultiPolygon,
 ): { modules: FactSheetModule[]; indicators: Indicator[]; overlays: ReturnType<typeof createLOverlays> } {
   const liveGreenBlue = liveCollections.greenBlue;
   const liveTransportStops = liveCollections.transportStops;
@@ -23,20 +24,69 @@ export function analyzeL(
   const liveDevelopment = liveCollections.developmentHints;
   const liveLandUse = liveCollections.landUse;
   const liveTrees = liveCollections.trees;
+  const contextAreaSqm = contextGeometry
+    ? geometryAreaSqm(contextGeometry)
+    : circleAreaSqm(radiusMeters);
+  const contextDescription = contextGeometry
+    ? "uploaded or drawn project boundary"
+    : `${radiusMeters} m radius`;
+  const transportStopsRadius = filterCollectionToContext(
+    liveTransportStops,
+    selectedPoint,
+    radiusMeters,
+    contextGeometry,
+  );
+  const transportLinesRadius = filterCollectionToContext(
+    liveTransportLines,
+    selectedPoint,
+    radiusMeters,
+    contextGeometry,
+  );
+  const mobilityRadius = filterCollectionToContext(
+    liveMobility,
+    selectedPoint,
+    radiusMeters,
+    contextGeometry,
+  );
+  const poisRadius = filterCollectionToContext(
+    livePois,
+    selectedPoint,
+    radiusMeters,
+    contextGeometry,
+  );
+  const developmentRadius = filterCollectionToContext(
+    liveDevelopment,
+    selectedPoint,
+    radiusMeters,
+    contextGeometry,
+  );
+  const treesRadius = filterCollectionToContext(
+    liveTrees,
+    selectedPoint,
+    radiusMeters,
+    contextGeometry,
+  );
   const mobilityScales = analyzeMobilityScales({
     selectedPoint,
     computedAt,
-    pois: livePois,
-    transportStops: liveTransportStops,
-    mobilityInfrastructure: liveMobility,
+    evidenceRadiusMeters: radiusMeters,
+    evidenceAreaSqkm: contextAreaSqm / 1_000_000,
+    pois: poisRadius,
+    transportStops: transportStopsRadius,
+    mobilityInfrastructure: mobilityRadius,
     isochrones: liveIsochrones,
   });
-  const overlays = createLOverlays(selectedPoint, radiusMeters, mobilityScales.bufferFeatures);
+  const overlays = createLOverlays(
+    selectedPoint,
+    radiusMeters,
+    mobilityScales.bufferFeatures,
+    contextGeometry,
+  );
   const urbanAtlas = liveCollections.urbanAtlas;
   const urbanAtlasRadius = urbanAtlas
     ? featureCollection(
         urbanAtlas.features.filter((feature) =>
-          featureTouchesRadius(feature, selectedPoint, radiusMeters),
+          featureTouchesAnalysisContext(feature, selectedPoint, radiusMeters, contextGeometry),
         ),
       )
     : undefined;
@@ -44,14 +94,14 @@ export function analyzeL(
   const landUseRadius = liveLandUse
     ? featureCollection(
         liveLandUse.features.filter((feature) =>
-          featureTouchesRadius(feature, selectedPoint, radiusMeters),
+          featureTouchesAnalysisContext(feature, selectedPoint, radiusMeters, contextGeometry),
         ),
       )
     : undefined;
   const greenBlueRadius = liveGreenBlue
     ? featureCollection(
         liveGreenBlue.features.filter((feature) =>
-          featureTouchesRadius(feature, selectedPoint, radiusMeters),
+          featureTouchesAnalysisContext(feature, selectedPoint, radiusMeters, contextGeometry),
         ),
       )
     : undefined;
@@ -59,25 +109,28 @@ export function analyzeL(
   const measuredGreenArea = greenBlueRadius ? collectionAreaSqm(greenBlueRadius, isGreenFeature) : 0;
   const greenPercent =
     hasLiveGreenResponse && measuredGreenArea > 0
-      ? Math.min(100, Math.round((measuredGreenArea / circleAreaSqm(radiusMeters)) * 10_000) / 100)
+      ? Math.min(100, Math.round((measuredGreenArea / Math.max(1, contextAreaSqm)) * 10_000) / 100)
       : null;
-  const exactTransitStops = liveTransportStops?.features.length;
-  const exactTransitLines = liveTransportLines?.features.filter(
+  const exactTransitStops = transportStopsRadius?.features.length;
+  const exactTransitLines = transportLinesRadius?.features.filter(
     (feature) => feature.geometry.type === "LineString",
   ).length;
-  const exactMobilityFeatures = liveMobility?.features.length;
-  const exactPois = livePois?.features.length;
+  const exactMobilityFeatures = mobilityRadius?.features.length;
+  const exactPois = poisRadius?.features.length;
   const exactLandUseFeatures = landUseRadius?.features.length;
-  const landUseSummary = summarizeLandUse(landUseRadius, radiusMeters);
-  const transitSummary = summarizeTransitStops(liveTransportStops, radiusMeters);
-  const transitLineSummary = summarizeTransitLines(liveTransportLines);
-  const poiSummary = summarizeFeatureCategories(livePois, "poiCategory");
-  const mobilitySummary = summarizeFeatureCategories(liveMobility, "mobilityMode");
+  const landUseSummary = summarizeLandUse(landUseRadius, contextAreaSqm);
+  const transitSummary = summarizeTransitStops(transportStopsRadius, contextAreaSqm);
+  const transitLineSummary = summarizeTransitLines(transportLinesRadius);
+  const poiSummary = summarizeFeatureCategories(poisRadius, "poiCategory");
+  const mobilitySummary = summarizeFeatureCategories(mobilityRadius, "mobilityMode");
   const isochroneSummary = summarizeFeatureCategories(liveIsochrones, "isochroneMode");
-  const isochroneReachability = summarizeIsochroneReachability(livePois, liveIsochrones);
-  const developmentSummary = summarizeFeatureCategories(liveDevelopment, "landuse", "amenity", "disused", "abandoned");
+  const hasFallbackIsochrones = liveIsochrones?.features.some(
+    (feature) => feature.properties?.retrievalStatus === "fallback",
+  ) ?? false;
+  const isochroneReachability = summarizeIsochroneReachability(poisRadius, liveIsochrones);
+  const developmentSummary = summarizeFeatureCategories(developmentRadius, "landuse", "amenity", "disused", "abandoned");
   const landUseEntropyScore = calculateLandUseEntropyScore(landUseSummary);
-  const poiDiversityScore = calculatePoiDiversityScore(livePois);
+  const poiDiversityScore = calculatePoiDiversityScore(poisRadius);
   const landUseMix = combineUrbanMixIndex(landUseEntropyScore, poiDiversityScore);
   const transitStops = transitSummary?.uniqueStopCount ?? exactTransitStops ?? null;
   const mobilityHints = exactMobilityFeatures ?? null;
@@ -85,7 +138,7 @@ export function analyzeL(
     transitStops,
     transitDensity: transitSummary?.stopDensityPerSqkm ?? null,
     transitModeCounts: transitSummary?.modeCounts ?? [],
-    mobilityCollection: liveMobility,
+    mobilityCollection: mobilityRadius,
     isochroneCollection: liveIsochrones,
     activeReachabilityScore: isochroneReachability?.activeScore ?? null,
     multimodalReachabilityScore: mobilityScales.combinedScore,
@@ -93,16 +146,17 @@ export function analyzeL(
   const infrastructurePois = exactPois ?? null;
   const socialInfrastructureScore = calculateSocialInfrastructureScore(
     selectedPoint,
-    livePois,
+    poisRadius,
   );
   const treeCanopyScore = calculateTreeCanopyScore({
-    trees: liveTrees,
+    trees: treesRadius,
     greenPercent,
     radiusMeters,
+    contextAreaSqm,
   });
   const stationAxisScore = calculateStationAxisScore({
     selectedPoint,
-    transitStops: liveTransportStops,
+    transitStops: transportStopsRadius,
     transitSummary,
     transitLineSummary,
   });
@@ -119,16 +173,20 @@ export function analyzeL(
   const indicators = [
     createIndicator({
       id: "l.radius",
-      label: "Analysis radius",
+      label: contextGeometry ? "Project analysis area" : "Analysis radius",
       scale: "L",
-      value: radiusMeters,
-      unit: "m",
+      value: contextGeometry ? Math.round((contextAreaSqm / 10_000) * 100) / 100 : radiusMeters,
+      unit: contextGeometry ? "ha" : "m",
       geometry: overlays.lBuffer.features[0]?.geometry,
-      method: "Geometric buffer around selected point.",
+      method: contextGeometry
+        ? "Uploaded or drawn project boundary used as the L-scale analysis extent."
+        : "Geometric buffer around selected point.",
       sourceIds: ["osm-core"],
       confidence: "medium",
       caveats: [
-        "MVP uses a geometric buffer. Network catchments are a later preprocessing enhancement.",
+        contextGeometry
+          ? "Feature evidence is included against the project boundary; network catchments remain separate accessibility evidence."
+          : "MVP uses a geometric buffer. Network catchments are a later preprocessing enhancement.",
       ],
       computedAt,
     }),
@@ -143,7 +201,7 @@ export function analyzeL(
           ?.geometry ?? overlays.green.features[0]?.geometry,
       method:
         greenPercent !== null
-          ? "Computed from loaded Urban Atlas and/or live Overpass green/blue polygon area intersecting the configured radius."
+          ? `Computed from loaded Urban Atlas and/or live Overpass green/blue polygon area intersecting the ${contextDescription}.`
           : "Live green/blue source did not return a usable response and no local preprocessed polygons are loaded.",
       sourceIds: ["osm-core", "osm-overpass", "copernicus-urban-atlas", "urban-atlas-2021-catalog"],
       confidence: hasLiveGreenResponse ? "medium" : "low",
@@ -154,7 +212,7 @@ export function analyzeL(
           : "No synthetic green percentage is emitted without real polygon area.",
         ...(greenPercent !== null
           ? [
-              "Polygon areas are approximated from intersecting source polygons and capped at 100%; exact clipping to the circular buffer is a later geometry-processing refinement.",
+              "Polygon areas are approximated from intersecting source polygons and capped at 100%; exact clipping to the circular buffer or project boundary remains a geometry-processing refinement.",
             ]
           : []),
       ],
@@ -200,7 +258,7 @@ export function analyzeL(
           ? "Grouped loaded Urban Atlas and OSM polygon classes into analytical land-use families and ranked them by approximate polygon area inside the L-scale context."
           : "No polygonal land-use source returned usable classes for this point.",
       sourceIds: ["osm-core", "osm-overpass", "copernicus-urban-atlas", "urban-atlas-2021-catalog"],
-      confidence: urbanAtlasFeatures > 0 ? "high" : exactLandUseFeatures !== undefined ? "medium" : "low",
+      confidence: urbanAtlasFeatures > 0 || exactLandUseFeatures !== undefined ? "medium" : "low",
       caveats: [
         landUseSummary !== null ? urbanAtlasCaveat : fallbackCaveat,
         "Families are analytical classes derived from source labels/codes, not official zoning categories.",
@@ -218,7 +276,7 @@ export function analyzeL(
           ? "Computed approximate area shares for built, green/blue, transport, industrial, social/open, and underused land-use families."
           : "No polygonal land-use source returned usable classes for this point.",
       sourceIds: ["osm-core", "osm-overpass", "copernicus-urban-atlas", "urban-atlas-2021-catalog"],
-      confidence: urbanAtlasFeatures > 0 ? "high" : exactLandUseFeatures !== undefined ? "medium" : "low",
+      confidence: urbanAtlasFeatures > 0 || exactLandUseFeatures !== undefined ? "medium" : "low",
       caveats: [
         landUseSummary !== null ? urbanAtlasCaveat : fallbackCaveat,
         "Shares are approximate because MVP geometry uses intersecting polygons, not exact clipped overlay areas.",
@@ -230,13 +288,13 @@ export function analyzeL(
       label: "Public transport stops",
       scale: "L",
       value: transitStops,
-      unit: "within radius",
+      unit: contextGeometry ? "within project area" : "within radius",
       method:
         exactTransitStops !== undefined
-          ? "Counted unique GTFS and live Overpass stop/platform/station points inside the radius, de-duplicated by rounded coordinate and name where possible."
+          ? `Counted unique GTFS and live Overpass stop/platform/station points inside the ${contextDescription}, de-duplicated by rounded coordinate and name where possible.`
           : "Live transport stop retrieval was unavailable; no fallback count is emitted.",
       sourceIds: ["osm-core", "mobilithek-gtfs", "gtfs-de-local-transit", "osm-overpass"],
-      confidence: liveTransportStops ? "high" : "low",
+      confidence: transportStopsRadius ? "high" : "low",
       caveats: [
         exactTransitStops !== undefined
           ? "GTFS stop points are preferred where preprocessed; OSM stop points may still duplicate station/platform concepts."
@@ -255,7 +313,7 @@ export function analyzeL(
           ? "Computed from unique GTFS/OSM stop count divided by the configured L-scale buffer area."
           : "No stop collection was available for density calculation.",
       sourceIds: ["mobilithek-gtfs", "gtfs-de-local-transit", "osm-overpass", "osm-core"],
-      confidence: liveTransportStops ? "high" : "low",
+      confidence: transportStopsRadius ? "high" : "low",
       caveats: [
         transitSummary !== null
           ? "Density reflects stop/platform availability, not service frequency or timetable quality."
@@ -273,7 +331,7 @@ export function analyzeL(
           ? "Grouped GTFS and OSM stop features by available transportMode tags."
           : "No stop collection was available for mode-mix calculation.",
       sourceIds: ["mobilithek-gtfs", "gtfs-de-local-transit", "osm-overpass", "osm-core"],
-      confidence: liveTransportStops ? "medium" : "low",
+      confidence: transportStopsRadius ? "medium" : "low",
       caveats: [
         transitSummary !== null
           ? "GTFS stop mode is provider-derived when available; generic stops remain classified as transit."
@@ -287,7 +345,7 @@ export function analyzeL(
       scale: "L",
       value: exactTransitLines ?? null,
       unit: "line geometries",
-      geometry: liveTransportLines?.features.find(
+      geometry: transportLinesRadius?.features.find(
         (feature) => feature.geometry.type === "LineString",
       )?.geometry,
       method:
@@ -334,7 +392,7 @@ export function analyzeL(
       unit: exactMobilityFeatures !== undefined ? "features" : undefined,
       method:
         exactMobilityFeatures !== undefined
-          ? `Counted live Overpass mobility infrastructure features for cycleways, parking, charging, sharing, and pedestrian/cycle classes.${mobilitySummary ? ` Main classes: ${mobilitySummary}.` : ""}`
+          ? `Counted live Overpass mobility infrastructure features inside the ${contextDescription} for cycleways, parking, charging, sharing, and pedestrian/cycle classes.${mobilitySummary ? ` Main classes: ${mobilitySummary}.` : ""}`
           : "Live mobility infrastructure retrieval was unavailable; no fallback class count is emitted.",
       sourceIds: ["osm-core", "osm-overpass"],
       confidence: exactMobilityFeatures !== undefined ? "medium" : "low",
@@ -347,14 +405,18 @@ export function analyzeL(
       scale: "L",
       value: isochroneReachability?.comparison ?? null,
       method:
-        "Compared OpenRouteService walking, cycling, and driving isochrone polygons by configured travel-time ranges and counted reachable POIs for each mode/time where POI points are available.",
+        "Compared routed OpenRouteService walking, cycling, and driving isochrone polygons by configured travel-time ranges and counted reachable POIs for each mode/time where POI points are available. Geometric fallback polygons are excluded from reachable counts.",
       sourceIds: ["openrouteservice-isochrones", "osm-core", "osm-overpass"],
       confidence: isochroneReachability?.confidence ?? "low",
       caveats: [
         isochroneSummary
           ? `Isochrone modes present: ${isochroneSummary}.`
           : "No isochrone polygons were available for mode/time comparison.",
-        ...(isochroneReachability?.caveats ?? ["POI reachability requires both POI points and isochrone polygons."]),
+        ...(isochroneReachability?.caveats ?? [
+          hasFallbackIsochrones
+            ? "Only geometric fallback catchments were available; they remain visual context and are excluded from routed POI reachability."
+            : "POI reachability requires both POI points and routed isochrone polygons.",
+        ]),
       ],
       computedAt,
     }),
@@ -369,7 +431,11 @@ export function analyzeL(
       sourceIds: ["openrouteservice-isochrones", "osm-core", "osm-overpass"],
       confidence: isochroneReachability?.confidence ?? "low",
       caveats: [
-        ...(isochroneReachability?.caveats ?? ["POI reachability requires both POI points and isochrone polygons."]),
+        ...(isochroneReachability?.caveats ?? [
+          hasFallbackIsochrones
+            ? "Only geometric fallback catchments were available; they remain visual context and are excluded from routed POI reachability."
+            : "POI reachability requires both POI points and routed isochrone polygons.",
+        ]),
         "Driving reachability is shown for comparison but does not increase this active mobility score.",
       ],
       computedAt,
@@ -381,7 +447,7 @@ export function analyzeL(
       value: mobilityScore.value,
       unit: "0-100",
       method:
-        "Composite KPI from public-transport stop availability and density, transit mode hierarchy, OSM walking/cycling infrastructure hints, OpenRouteService walking/cycling isochrone context, and mode-specific walking, cycling, transit, and car reachability.",
+        "Composite KPI from public-transport stop availability and density, transit mode hierarchy, OSM walking/cycling infrastructure hints, and walking/cycling/transit reachability. Car-driving reachability remains a separate context indicator and has zero composite weight.",
       sourceIds: ["osm-core", "osm-overpass", "mobilithek-gtfs", "gtfs-de-local-transit", "openrouteservice-isochrones"],
       confidence: mobilityScore.confidence,
       caveats: [
@@ -400,7 +466,7 @@ export function analyzeL(
       unit: "features",
       method:
         exactPois !== undefined
-          ? `Counted live Overpass amenity/shop POIs relevant to social and civic infrastructure inside the radius.${poiSummary ? ` Main categories: ${poiSummary}.` : ""}`
+          ? `Counted live Overpass amenity/shop POIs relevant to social and civic infrastructure inside the ${contextDescription}.${poiSummary ? ` Main categories: ${poiSummary}.` : ""}`
           : "Live POI retrieval was unavailable; no fallback POI count is emitted.",
       sourceIds: ["osm-core", "osm-overpass"],
       confidence: exactPois !== undefined ? "medium" : "low",
@@ -429,7 +495,7 @@ export function analyzeL(
       scale: "L",
       value: treeCanopyScore.value,
       unit: "0-100",
-      geometry: liveTrees?.features[0]?.geometry ?? overlays.green.features[0]?.geometry,
+      geometry: treesRadius?.features[0]?.geometry ?? overlays.green.features[0]?.geometry,
       method:
         treeCanopyScore.value !== null
           ? "Proxy score from loaded OSM tree/tree-row evidence and green/open-space share in the L-scale context."
@@ -460,9 +526,9 @@ export function analyzeL(
       scale: "L",
       value: stationAxisScore.value,
       unit: "0-100",
-      geometry: liveTransportLines?.features.find(
+      geometry: transportLinesRadius?.features.find(
         (feature) => feature.geometry.type === "LineString",
-      )?.geometry ?? liveTransportStops?.features.find((feature) => feature.geometry.type === "Point")?.geometry,
+      )?.geometry ?? transportStopsRadius?.features.find((feature) => feature.geometry.type === "Point")?.geometry,
       method:
         stationAxisScore.value !== null
           ? "Screening score from nearest transit stop/station distance, mode hierarchy, stop density, and public-transport line or corridor evidence."
@@ -492,19 +558,19 @@ export function analyzeL(
       label: "Development potential hints",
       scale: "L",
       value:
-        (liveDevelopment?.features.length ?? 0) > 0
-          ? `${liveDevelopment?.features.length} live OSM potential hints`
-          : liveDevelopment
+        (developmentRadius?.features.length ?? 0) > 0
+          ? `${developmentRadius?.features.length} live OSM potential hints inside the ${contextDescription}`
+          : developmentRadius
             ? "no live OSM development hints"
             : null,
       method:
-        liveDevelopment?.features.length
+        developmentRadius?.features.length
           ? `Read live Overpass brownfield, construction, parking, disused, abandoned and related development-hint classes.${developmentSummary ? ` Main tags: ${developmentSummary}.` : ""}`
           : "Live development-hint source did not return a usable response and no local preprocessing is loaded.",
       sourceIds: ["osm-core", "osm-overpass", "copernicus-urban-atlas", "urban-atlas-2021-catalog"],
-      confidence: liveDevelopment ? "medium" : "low",
+      confidence: developmentRadius ? "medium" : "low",
       caveats: [
-        liveDevelopment ? liveCaveat : caveat,
+        developmentRadius ? liveCaveat : caveat,
         "This is a screening hint, not a planning-law assessment.",
       ],
       computedAt,
@@ -521,7 +587,7 @@ export function analyzeL(
       method: "Radius buffer with explicit green/open-space class mapping.",
       sourceIds: ["osm-core", "osm-overpass", "copernicus-urban-atlas", "urban-atlas-2021-catalog"],
       computedAt,
-      confidence: urbanAtlasFeatures > 0 ? "high" : "low",
+      confidence: urbanAtlasFeatures > 0 ? "medium" : "low",
       caveats: [caveat, urbanAtlasCaveat],
     },
     {
@@ -532,10 +598,10 @@ export function analyzeL(
       method: "Counts, class hints, mode/time isochrone comparison, and POI reachability within the selected context.",
       sourceIds: ["osm-core", "osm-overpass", "mobilithek-gtfs", "gtfs-de-local-transit", "openrouteservice-isochrones"],
       computedAt,
-      confidence: liveTransportStops ? "medium" : "low",
+      confidence: transportStopsRadius ? "medium" : "low",
       caveats: [
-        liveTransportStops
-          ? "GTFS/OSM stop data were loaded for this point; service frequency is not yet evaluated."
+        transportStopsRadius
+          ? `GTFS/OSM stop data were filtered to the ${contextDescription}; service frequency is not yet evaluated.`
           : caveat,
       ],
     },
@@ -559,8 +625,8 @@ export function analyzeL(
     );
     overlays.blue = featureCollection(greenBlueRadius.features.filter(isBlueFeature));
   }
-  if (liveTrees) {
-    overlays.trees = liveTrees;
+  if (treesRadius) {
+    overlays.trees = treesRadius;
   }
 
   return { modules, indicators, overlays };
@@ -570,13 +636,15 @@ function createLOverlays(
   selectedPoint: SelectedPoint,
   radiusMeters: number,
   mobilityScaleBuffers: ReturnType<typeof analyzeMobilityScales>["bufferFeatures"] = [],
+  contextGeometry?: Polygon | MultiPolygon,
 ) {
   const { lat, lon } = selectedPoint;
   const lBuffer = featureCollection([
-    geometryToFeature(bufferPolygon(lat, lon, radiusMeters), {
-      id: "l-buffer",
-      label: `L context ${radiusMeters} m`,
+    geometryToFeature(contextGeometry ?? bufferPolygon(lat, lon, radiusMeters), {
+      id: contextGeometry ? "l-project-area" : "l-buffer",
+      label: contextGeometry ? "L project area" : `L context ${radiusMeters} m`,
       radiusMeters,
+      contextType: contextGeometry ? "project-area" : "radius",
     }),
     ...mobilityScaleBuffers,
   ]);
@@ -651,7 +719,9 @@ function summarizeIsochroneReachability(
     (feature) => feature.geometry.type === "Point",
   );
   const polygons = (isochrones?.features ?? []).filter(
-    (feature) => feature.geometry.type === "Polygon" || feature.geometry.type === "MultiPolygon",
+    (feature) =>
+      (feature.geometry.type === "Polygon" || feature.geometry.type === "MultiPolygon") &&
+      isRoutedIsochrone(feature),
   );
   if (!poiPoints.length || !polygons.length) return null;
 
@@ -682,7 +752,6 @@ function summarizeIsochroneReachability(
   const walkingScore = scoreReachabilityMode(rows, "walking", totalPois);
   const cyclingScore = scoreReachabilityMode(rows, "cycling", totalPois);
   const activeScore = Math.round(walkingScore * 0.7 + cyclingScore * 0.3);
-  const hasFallback = polygons.some((feature) => feature.properties?.retrievalStatus === "fallback");
   const comparison = modes
     .map((mode) => {
       const modeRows = rows.filter((row) => row.mode === mode);
@@ -695,13 +764,11 @@ function summarizeIsochroneReachability(
   return {
     comparison,
     activeScore,
-    confidence: hasFallback ? "low" : "medium",
+    confidence: "medium",
     caveats: [
       `${poiPoints.length} loaded POI point(s) were tested against ${polygons.length} isochrone polygon(s).`,
       "Reachability counts reflect loaded POIs only; unmapped or uncategorized facilities are not inferred.",
-      hasFallback
-        ? "Some or all isochrones are geometric fallback buffers, not routed network catchments."
-        : "Routed OpenRouteService isochrones were used where API/cache data were available.",
+      "Only live or cached routed OpenRouteService isochrones contribute to reachability; geometric fallback buffers are excluded.",
     ],
   };
 }
@@ -795,9 +862,9 @@ function calculateMobilityScore(input: {
       confidence: availableInputs >= 3 && !hasFallbackIsochrones ? "medium" : "low",
       caveats: [
         "Mobility Access KPI is now the weighted multimodal reachability score, not a separate radius-based calculation.",
-        "Weights are walking 35%, cycling 25%, transit 25%, and car driving 15%; unavailable or low-evidence mode inputs lower confidence.",
+        "Contributing weights are walking 35, cycling 25, and transit 25, normalized across available active/transit modes; car driving has zero urban-quality weight.",
         hasFallbackIsochrones
-          ? "OpenRouteService routed isochrones were unavailable for at least one active mode; geometric fallback catchments reduce confidence."
+          ? "OpenRouteService routed isochrones were unavailable for at least one active mode; geometric fallback catchments were excluded from scoring and lower confidence."
           : "OpenRouteService routed isochrones are used where available, but transit timetable quality and service frequency are not yet scored.",
         `Mode-based multimodal score: ${input.multimodalReachabilityScore}. Supporting active POI score ${input.activeReachabilityScore ?? "not available"}, active isochrone context ${isochroneScore}.`,
       ],
@@ -832,9 +899,9 @@ function calculateMobilityScore(input: {
     caveats: [
       "Mobility score is a deterministic screening KPI, not a routing or service-quality model.",
       hasFallbackIsochrones
-        ? "OpenRouteService routed isochrones were unavailable; geometric fallback catchments reduce confidence."
+        ? "OpenRouteService routed isochrones were unavailable; geometric fallback catchments were excluded from scoring and lower confidence."
         : "OpenRouteService routed isochrones increase context but do not include timetable quality.",
-      "Driving reachability is included as one mode in the multimodal reachability score, but public-space quality still depends on local walking/cycling and transit evidence.",
+      "Driving reachability is retained as comparison context and has zero weight in this urban-quality score.",
       `Mobility subscores: transit access ${transitAccessScore}, transit mode hierarchy ${transitModeScore}, walking/cycling infrastructure ${walkingCyclingScore}, walking/cycling isochrone context ${isochroneScore}, multimodal reachability ${reachabilityScore}.`,
     ],
   };
@@ -844,6 +911,7 @@ function calculateTreeCanopyScore(input: {
   trees: FeatureCollection | undefined;
   greenPercent: number | null;
   radiusMeters: number;
+  contextAreaSqm?: number;
 }): { value: number | null; confidence: "high" | "medium" | "low"; detail: string; caveats: string[] } {
   const features = input.trees?.features ?? [];
   const treeCount = features.filter((feature) => feature.geometry.type === "Point").length;
@@ -861,7 +929,7 @@ function calculateTreeCanopyScore(input: {
     };
   }
 
-  const areaSqkm = circleAreaSqm(input.radiusMeters) / 1_000_000;
+  const areaSqkm = (input.contextAreaSqm ?? circleAreaSqm(input.radiusMeters)) / 1_000_000;
   const treeDensity = treeCount / Math.max(0.0001, areaSqkm);
   const treeCountScore = Math.min(100, Math.round((treeDensity / 65) * 100));
   const treeRowScore = Math.min(100, treeRows * 35);
@@ -1003,13 +1071,16 @@ function calculateActiveIsochroneScore(collection: FeatureCollection | undefined
     const features = collection.features.filter(
       (feature) => feature.properties?.isochroneMode === mode,
     );
-    if (features.some((feature) => feature.properties?.retrievalStatus === "live" || feature.properties?.retrievalStatus === "cached")) {
+    if (features.some(isRoutedIsochrone)) {
       score += 40;
-    } else if (features.some((feature) => feature.properties?.retrievalStatus === "fallback")) {
-      score += 18;
     }
   }
   return Math.min(80, score);
+}
+
+function isRoutedIsochrone(feature: Feature): boolean {
+  return feature.properties?.retrievalStatus === "live" ||
+    feature.properties?.retrievalStatus === "cached";
 }
 
 function summarizeMobilityModeCounts(
@@ -1159,7 +1230,7 @@ type TransitLineSummary = {
 
 function summarizeLandUse(
   collection: FeatureCollection | undefined,
-  radiusMeters: number,
+  contextAreaSqm: number,
 ): LandUseSummary | null {
   if (!collection?.features.length) return null;
   const areaByFamily = new Map<string, number>();
@@ -1171,12 +1242,11 @@ function summarizeLandUse(
   }
   const totalArea = [...areaByFamily.values()].reduce((total, area) => total + area, 0);
   if (totalArea <= 0) return null;
-  const contextArea = circleAreaSqm(radiusMeters);
   const familyShares = [...areaByFamily.entries()]
     .map(([family, areaSqm]) => ({
       family,
       areaSqm,
-      percent: Math.min(100, Math.round((areaSqm / contextArea) * 10_000) / 100),
+      percent: Math.min(100, Math.round((areaSqm / Math.max(1, contextAreaSqm)) * 10_000) / 100),
     }))
     .sort((left, right) => right.areaSqm - left.areaSqm);
   const dominant = familyShares[0];
@@ -1189,7 +1259,7 @@ function summarizeLandUse(
 
 function summarizeTransitStops(
   collection: FeatureCollection | undefined,
-  radiusMeters: number,
+  contextAreaSqm: number,
 ): TransitSummary | null {
   if (!collection?.features.length) return null;
   const uniqueStops = new Map<string, { mode: string }>();
@@ -1215,7 +1285,7 @@ function summarizeTransitStops(
   for (const stop of uniqueStops.values()) {
     modeMap.set(stop.mode, (modeMap.get(stop.mode) ?? 0) + 1);
   }
-  const contextAreaSqkm = circleAreaSqm(radiusMeters) / 1_000_000;
+  const contextAreaSqkm = contextAreaSqm / 1_000_000;
   return {
     uniqueStopCount: uniqueStops.size,
     stopDensityPerSqkm:
@@ -1462,39 +1532,158 @@ function ringContainsCoordinate(ring: number[][], coordinate: number[]): boolean
   return inside;
 }
 
+function filterCollectionToContext(
+  collection: FeatureCollection | undefined,
+  selectedPoint: SelectedPoint,
+  radiusMeters: number,
+  contextGeometry?: Polygon | MultiPolygon,
+): FeatureCollection | undefined {
+  if (!collection) return undefined;
+  return featureCollection(
+    collection.features.filter((feature) =>
+      featureTouchesAnalysisContext(
+        feature,
+        selectedPoint,
+        radiusMeters,
+        contextGeometry,
+      ),
+    ),
+  );
+}
+
+function featureTouchesAnalysisContext(
+  feature: Feature,
+  selectedPoint: SelectedPoint,
+  radiusMeters: number,
+  contextGeometry?: Polygon | MultiPolygon,
+): boolean {
+  if (!contextGeometry) {
+    return featureTouchesRadius(feature, selectedPoint, radiusMeters);
+  }
+  const featureCoordinates: number[][] = [];
+  collectGeometryCoordinates(feature.geometry, featureCoordinates);
+  if (featureCoordinates.some((coordinate) => geometryContainsCoordinate(contextGeometry, coordinate))) {
+    return true;
+  }
+  const contextCoordinates: number[][] = [];
+  collectGeometryCoordinates(contextGeometry, contextCoordinates);
+  if (
+    (feature.geometry.type === "Polygon" || feature.geometry.type === "MultiPolygon") &&
+    contextCoordinates.some((coordinate) => containsCoordinate(feature, coordinate))
+  ) {
+    return true;
+  }
+  const featureSegments = geometrySegments(feature.geometry);
+  const contextSegments = geometrySegments(contextGeometry);
+  return featureSegments.some(([featureStart, featureEnd]) =>
+    contextSegments.some(([contextStart, contextEnd]) =>
+      segmentsIntersect(featureStart, featureEnd, contextStart, contextEnd),
+    ),
+  );
+}
+
 function featureTouchesRadius(
   feature: Feature,
   selectedPoint: SelectedPoint,
   radiusMeters: number,
 ): boolean {
+  const selectedCoordinate = [selectedPoint.lon, selectedPoint.lat];
   if (feature.geometry.type === "Point") {
     return (
       distanceBetweenCoordinates(
-        [selectedPoint.lon, selectedPoint.lat],
+        selectedCoordinate,
         feature.geometry.coordinates,
       ) <= radiusMeters
     );
   }
-  const bbox = featureBbox(feature);
-  if (!bbox) return false;
-  return bboxDistanceToPointMeters(bbox, [selectedPoint.lon, selectedPoint.lat]) <= radiusMeters;
+  if (
+    (feature.geometry.type === "Polygon" || feature.geometry.type === "MultiPolygon") &&
+    containsCoordinate(feature, selectedCoordinate)
+  ) {
+    return true;
+  }
+  const coordinates: number[][] = [];
+  collectGeometryCoordinates(feature.geometry, coordinates);
+  if (
+    coordinates.some(
+      (coordinate) =>
+        distanceBetweenCoordinates(selectedCoordinate, coordinate) <= radiusMeters,
+    )
+  ) {
+    return true;
+  }
+  return geometrySegments(feature.geometry).some(
+    ([start, end]) =>
+      pointToSegmentDistanceMeters(selectedCoordinate, start, end) <= radiusMeters,
+  );
 }
 
-function featureBbox(feature: Feature): [number, number, number, number] | null {
-  const coords: number[][] = [];
-  collectGeometryCoordinates(feature.geometry, coords);
-  if (!coords.length) return null;
-  let west = Infinity;
-  let south = Infinity;
-  let east = -Infinity;
-  let north = -Infinity;
-  for (const [x, y] of coords) {
-    west = Math.min(west, x);
-    south = Math.min(south, y);
-    east = Math.max(east, x);
-    north = Math.max(north, y);
+function geometryContainsCoordinate(
+  geometry: Polygon | MultiPolygon,
+  coordinate: number[],
+): boolean {
+  if (geometry.type === "Polygon") {
+    return polygonContainsCoordinate(geometry.coordinates, coordinate);
   }
-  return [west, south, east, north];
+  return geometry.coordinates.some((polygon) =>
+    polygonContainsCoordinate(polygon, coordinate),
+  );
+}
+
+function geometrySegments(
+  geometry: Feature["geometry"],
+): Array<[number[], number[]]> {
+  const segments: Array<[number[], number[]]> = [];
+  const appendLine = (coordinates: number[][]) => {
+    for (let index = 1; index < coordinates.length; index += 1) {
+      segments.push([coordinates[index - 1], coordinates[index]]);
+    }
+  };
+  if (geometry.type === "LineString") appendLine(geometry.coordinates);
+  if (geometry.type === "MultiLineString" || geometry.type === "Polygon") {
+    for (const line of geometry.coordinates) appendLine(line);
+  }
+  if (geometry.type === "MultiPolygon") {
+    for (const polygon of geometry.coordinates) {
+      for (const ring of polygon) appendLine(ring);
+    }
+  }
+  if (geometry.type === "GeometryCollection") {
+    for (const child of geometry.geometries) {
+      segments.push(...geometrySegments(child));
+    }
+  }
+  return segments;
+}
+
+function segmentsIntersect(
+  leftStart: number[],
+  leftEnd: number[],
+  rightStart: number[],
+  rightEnd: number[],
+): boolean {
+  const orientation = (a: number[], b: number[], c: number[]) =>
+    (b[1] - a[1]) * (c[0] - b[0]) - (b[0] - a[0]) * (c[1] - b[1]);
+  const onSegment = (a: number[], b: number[], c: number[]) =>
+    b[0] <= Math.max(a[0], c[0]) + Number.EPSILON &&
+    b[0] + Number.EPSILON >= Math.min(a[0], c[0]) &&
+    b[1] <= Math.max(a[1], c[1]) + Number.EPSILON &&
+    b[1] + Number.EPSILON >= Math.min(a[1], c[1]);
+  const first = orientation(leftStart, leftEnd, rightStart);
+  const second = orientation(leftStart, leftEnd, rightEnd);
+  const third = orientation(rightStart, rightEnd, leftStart);
+  const fourth = orientation(rightStart, rightEnd, leftEnd);
+  if ((first > 0) !== (second > 0) && (third > 0) !== (fourth > 0)) return true;
+  if (Math.abs(first) <= Number.EPSILON && onSegment(leftStart, rightStart, leftEnd)) return true;
+  if (Math.abs(second) <= Number.EPSILON && onSegment(leftStart, rightEnd, leftEnd)) return true;
+  if (Math.abs(third) <= Number.EPSILON && onSegment(rightStart, leftStart, rightEnd)) return true;
+  return Math.abs(fourth) <= Number.EPSILON && onSegment(rightStart, leftEnd, rightEnd);
+}
+
+function geometryAreaSqm(geometry: Polygon | MultiPolygon): number {
+  return geometry.type === "Polygon"
+    ? polygonAreaSqm(geometry)
+    : multiPolygonAreaSqm(geometry);
 }
 
 function collectGeometryCoordinates(
@@ -1502,13 +1691,23 @@ function collectGeometryCoordinates(
   coords: number[][],
 ): void {
   if (geometry.type === "Point") coords.push(geometry.coordinates);
-  if (geometry.type === "LineString") pushCoordinates(coords, geometry.coordinates);
+  if (geometry.type === "LineString" || geometry.type === "MultiPoint") {
+    pushCoordinates(coords, geometry.coordinates);
+  }
   if (geometry.type === "Polygon") {
     for (const ring of geometry.coordinates) pushCoordinates(coords, ring);
+  }
+  if (geometry.type === "MultiLineString") {
+    for (const line of geometry.coordinates) pushCoordinates(coords, line);
   }
   if (geometry.type === "MultiPolygon") {
     for (const polygon of geometry.coordinates) {
       for (const ring of polygon) pushCoordinates(coords, ring);
+    }
+  }
+  if (geometry.type === "GeometryCollection") {
+    for (const child of geometry.geometries) {
+      collectGeometryCoordinates(child, coords);
     }
   }
 }
@@ -1517,13 +1716,37 @@ function pushCoordinates(target: number[][], coordinates: number[][]): void {
   for (const coordinate of coordinates) target.push(coordinate);
 }
 
-function bboxDistanceToPointMeters(
-  bbox: [number, number, number, number],
+function pointToSegmentDistanceMeters(
   point: number[],
+  segmentStart: number[],
+  segmentEnd: number[],
 ): number {
-  const clampedLon = Math.max(bbox[0], Math.min(point[0], bbox[2]));
-  const clampedLat = Math.max(bbox[1], Math.min(point[1], bbox[3]));
-  return distanceBetweenCoordinates(point, [clampedLon, clampedLat]);
+  const referenceLat = point[1];
+  const projectedPoint = projectMeters(point, referenceLat);
+  const projectedStart = projectMeters(segmentStart, referenceLat);
+  const projectedEnd = projectMeters(segmentEnd, referenceLat);
+  const dx = projectedEnd.x - projectedStart.x;
+  const dy = projectedEnd.y - projectedStart.y;
+  const lengthSquared = dx * dx + dy * dy;
+  if (lengthSquared <= Number.EPSILON) {
+    return Math.hypot(
+      projectedPoint.x - projectedStart.x,
+      projectedPoint.y - projectedStart.y,
+    );
+  }
+  const ratio = Math.max(
+    0,
+    Math.min(
+      1,
+      ((projectedPoint.x - projectedStart.x) * dx +
+        (projectedPoint.y - projectedStart.y) * dy) /
+        lengthSquared,
+    ),
+  );
+  return Math.hypot(
+    projectedPoint.x - (projectedStart.x + ratio * dx),
+    projectedPoint.y - (projectedStart.y + ratio * dy),
+  );
 }
 
 function distanceBetweenCoordinates(left: number[], right: number[]): number {
