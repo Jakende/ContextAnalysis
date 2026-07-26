@@ -820,6 +820,7 @@ function deduplicateFeatures(features: Feature[]): Feature[] {
   for (const feature of features) {
     const properties = feature.properties ?? {};
     const stableId =
+      properties.fragmentId ??
       feature.id ??
       properties.id ??
       properties.osmId ??

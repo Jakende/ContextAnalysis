@@ -48,12 +48,13 @@ Completed in the continued 2026-07-20 hardening pass:
 - Copernicus Urban Atlas owns baseline land-use coverage; OSM contributes detail only outside that coverage, with deterministic family precedence inside each source.
 - Benchmark peers now live in a schema-versioned dataset with explicit source versions, timestamps, confidence, caveats, and spatial-context comparability. Project-area and mismatched-radius ranks are suppressed.
 - The UI can deploy independently as an approximately 5.4 MB slim artifact through `UCA_INCLUDE_GEODATA=false` and `VITE_GEODATA_BASE_URL`.
-- Canonical assets have a deterministic SHA-256 release manifest and `available` / `empty` / `missing` regression coverage gate. The current schema-1.1 release is `uca-data-edde681ba2da0b93` with 9,363 assets and 2.21 GB logical data.
+- Canonical assets have a deterministic SHA-256 release manifest and `available` / `empty` / `missing` regression coverage gate. The current schema-1.1 release is `uca-data-f2908a8e5313e3aa` with 9,377 assets and 1,583,124,437 bytes.
+- Urban Atlas source parts now receive full OGR topology preflight, explicit `MakeValid(LINEWORK)` repair provenance when required, exact shard clipping, stable fragment IDs, and final OGR fragment validation. The tree fell from 983,872,937 to 344,790,532 encoded bytes; the representative data-access profile passes all declared limits.
 - A browser-verified technical coverage audit is available under `docs/data-quality/coverage-audit.html`.
 
 Completed in the 2026-07-26 release-gate pass:
 
-- `npm run validate` is the canonical local gate. It runs 11 deterministic contract/build stages and then the desktop/mobile Chromium regression matrix.
+- `npm run validate` is the canonical local gate. It runs 15 deterministic contract/build stages and then the desktop/mobile Chromium regression matrix.
 - The integrated contract runner uses a fresh operating-system temporary directory, verifies that the slim production artifact contains no canonical geodata, and removes its staging directory after completion.
 - Repository Playwright coverage now exercises point selection; Munich, Frankfurt, Rosenheim, and multipart project contexts; project-layer upload; polygon and rectangle drawing; XL/L/M switching; scenario add/remove; JSON and Ollama-fallback export; external-API failure; console-error absence; and horizontal containment at 1,440 px and 390 px.
 - Analysis now emits local structured results before optional geocoding, Zensus WMS, routing, and Overpass enrichment completes.
@@ -62,7 +63,7 @@ Completed in the 2026-07-26 release-gate pass:
 
 Current next milestone:
 
-- Goal 2, Data Coverage and Deployment Storage: choose the immutable data host, deploy and pin the canonical release, fill Frankfurt/Rosenheim gaps, and add semantic municipality/FUA quality thresholds.
+- Goal 2, Data Coverage and Deployment Storage: the deployment, semantic-quality, compaction, and access-profile contracts are implemented. The remaining release blockers are a chosen immutable host/UI origin and complete Frankfurt/Rosenheim canonical source inputs that pass the existing municipality/FUA thresholds.
 
 ### Durable KPI contract
 

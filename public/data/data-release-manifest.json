@@ -1,8 +1,8 @@
 {
   "schema": "uca-data-release-manifest/1.1",
-  "releaseId": "uca-data-edde681ba2da0b93",
-  "releaseDigest": "edde681ba2da0b93c6ff5351f2a28f62746a1cf9e7d3d1de5f3b6953e869df39",
-  "assetDigest": "e00fd5af9fdb6d64ba9ab118a1fb4dd58425f32b5790aa0fc72314c1ca96d4ed",
+  "releaseId": "uca-data-f2908a8e5313e3aa",
+  "releaseDigest": "f2908a8e5313e3aa3a70738d637889c18d82a877c43bd1b520835a6e7a13a6ae",
+  "assetDigest": "0560e8c2fc4dada13093c20686137fc22043009ff82fb6109eaf2e0a5af626fb",
   "cacheControl": "public, max-age=31536000, immutable",
   "dataRootContract": "VITE_GEODATA_BASE_URL points to the immutable release root containing processed/.",
   "excluded": [
@@ -30359,17 +30359,17 @@
       "sourceId": "copernicus-urban-atlas",
       "indexPath": "processed/copernicus-urban-atlas/index.json",
       "sourceVersion": "2021",
-      "featureCount": 81510,
-      "assets": 355,
-      "bytes": 982656618,
+      "featureCount": 81717,
+      "assets": 363,
+      "bytes": 344790532,
       "inventory": {
-        "declaredFeatureCount": 81510,
-        "validFeatureCount": 81510,
-        "declaredShardCount": 354,
-        "indexedShardCount": 354,
-        "validShardCount": 354,
-        "referencedAssetCount": 354,
-        "presentReferencedAssetCount": 354,
+        "declaredFeatureCount": 81717,
+        "validFeatureCount": 92409,
+        "declaredShardCount": 362,
+        "indexedShardCount": 362,
+        "validShardCount": 362,
+        "referencedAssetCount": 362,
+        "presentReferencedAssetCount": 362,
         "missingReferencedAssetCount": 0,
         "missingReferencedAssets": [],
         "invalidShardCount": 0,
@@ -30377,9 +30377,9 @@
       },
       "coverageFootprint": {
         "bbox": [
-          10.850000000000023,
+          10.85,
           47.75,
-          12.350000000000012,
+          12.35,
           48.7
         ],
         "geometry": {
@@ -30388,168 +30388,168 @@
             [
               [
                 [
-                  10.850000000000023,
-                  48.099999999999994
+                  10.85,
+                  48.1
                 ],
                 [
-                  12.250000000000018,
-                  48.099999999999994
+                  12.25,
+                  48.1
                 ],
                 [
-                  12.250000000000018,
-                  48.14999999999999
+                  12.25,
+                  48.15
                 ],
                 [
-                  10.850000000000023,
-                  48.14999999999999
+                  10.85,
+                  48.15
                 ],
                 [
-                  10.850000000000023,
-                  48.099999999999994
+                  10.85,
+                  48.1
                 ]
               ]
             ],
             [
               [
                 [
-                  10.900000000000006,
-                  48.05000000000001
+                  10.9,
+                  48.05
                 ],
                 [
-                  12.100000000000012,
-                  48.05000000000001
+                  12.1,
+                  48.05
                 ],
                 [
-                  12.100000000000012,
-                  48.10000000000001
+                  12.1,
+                  48.1
                 ],
                 [
-                  10.900000000000006,
-                  48.10000000000001
+                  10.9,
+                  48.1
                 ],
                 [
-                  10.900000000000006,
-                  48.05000000000001
+                  10.9,
+                  48.05
                 ]
               ]
             ],
             [
               [
                 [
-                  10.900000000000006,
-                  48.150000000000006
+                  10.9,
+                  48.15
                 ],
                 [
                   12.3,
-                  48.150000000000006
+                  48.15
                 ],
                 [
                   12.3,
                   48.2
                 ],
                 [
-                  10.900000000000006,
+                  10.9,
                   48.2
                 ],
                 [
-                  10.900000000000006,
-                  48.150000000000006
+                  10.9,
+                  48.15
                 ]
               ]
             ],
             [
               [
                 [
-                  10.900000000000006,
-                  48.25
+                  10.9,
+                  48.2
                 ],
                 [
-                  12.350000000000012,
-                  48.25
+                  12.35,
+                  48.2
                 ],
                 [
-                  12.350000000000012,
+                  12.35,
                   48.3
                 ],
                 [
-                  10.900000000000006,
+                  10.9,
                   48.3
                 ],
                 [
-                  10.900000000000006,
-                  48.25
+                  10.9,
+                  48.2
                 ]
               ]
             ],
             [
               [
                 [
-                  10.950000000000017,
-                  47.900000000000006
+                  10.95,
+                  47.9
                 ],
                 [
-                  11.950000000000006,
-                  47.900000000000006
+                  11.95,
+                  47.9
                 ],
                 [
-                  11.950000000000006,
+                  11.95,
                   47.95
                 ],
                 [
-                  10.950000000000017,
+                  10.95,
                   47.95
                 ],
                 [
-                  10.950000000000017,
-                  47.900000000000006
+                  10.95,
+                  47.9
                 ]
               ]
             ],
             [
               [
                 [
-                  10.950000000000017,
-                  47.95000000000002
+                  10.95,
+                  47.95
                 ],
                 [
-                  12.100000000000012,
-                  47.95000000000002
+                  12.15,
+                  47.95
                 ],
                 [
-                  12.100000000000012,
+                  12.15,
+                  48
+                ],
+                [
+                  10.95,
+                  48
+                ],
+                [
+                  10.95,
+                  47.95
+                ]
+              ]
+            ],
+            [
+              [
+                [
+                  10.95,
+                  48
+                ],
+                [
+                  12.1,
+                  48
+                ],
+                [
+                  12.1,
                   48.05
                 ],
                 [
-                  10.950000000000017,
+                  10.95,
                   48.05
                 ],
                 [
-                  10.950000000000017,
-                  47.95000000000002
-                ]
-              ]
-            ],
-            [
-              [
-                [
-                  10.950000000000017,
-                  48.20000000000002
-                ],
-                [
-                  12.350000000000012,
-                  48.20000000000002
-                ],
-                [
-                  12.350000000000012,
-                  48.250000000000014
-                ],
-                [
-                  10.950000000000017,
-                  48.250000000000014
-                ],
-                [
-                  10.950000000000017,
-                  48.20000000000002
+                  10.95,
+                  48
                 ]
               ]
             ],
@@ -30557,143 +30557,143 @@
               [
                 [
                   11,
-                  48.30000000000001
+                  47.85
+                ],
+                [
+                  11.9,
+                  47.85
+                ],
+                [
+                  11.9,
+                  47.9
+                ],
+                [
+                  11,
+                  47.9
+                ],
+                [
+                  11,
+                  47.85
+                ]
+              ]
+            ],
+            [
+              [
+                [
+                  11,
+                  48.3
                 ],
                 [
                   12.3,
-                  48.30000000000001
+                  48.3
                 ],
                 [
                   12.3,
-                  48.35000000000001
+                  48.35
                 ],
                 [
                   11,
-                  48.35000000000001
+                  48.35
                 ],
                 [
                   11,
-                  48.30000000000001
+                  48.3
                 ]
               ]
             ],
             [
               [
                 [
-                  11.050000000000011,
-                  48.349999999999994
+                  11.05,
+                  48.35
                 ],
                 [
-                  11.950000000000006,
-                  48.349999999999994
+                  11.95,
+                  48.35
                 ],
                 [
-                  11.950000000000006,
-                  48.39999999999999
+                  11.95,
+                  48.4
                 ],
                 [
-                  11.050000000000011,
-                  48.39999999999999
+                  11.05,
+                  48.4
                 ],
                 [
-                  11.050000000000011,
-                  48.349999999999994
+                  11.05,
+                  48.35
                 ]
               ]
             ],
             [
               [
                 [
-                  11.100000000000023,
-                  47.849999999999994
-                ],
-                [
-                  11.900000000000023,
-                  47.849999999999994
-                ],
-                [
-                  11.900000000000023,
-                  47.89999999999999
-                ],
-                [
-                  11.100000000000023,
-                  47.89999999999999
-                ],
-                [
-                  11.100000000000023,
-                  47.849999999999994
-                ]
-              ]
-            ],
-            [
-              [
-                [
-                  11.100000000000023,
-                  48.400000000000006
+                  11.1,
+                  48.4
                 ],
                 [
                   12.05,
-                  48.400000000000006
+                  48.4
                 ],
                 [
                   12.05,
                   48.45
                 ],
                 [
-                  11.100000000000023,
+                  11.1,
                   48.45
                 ],
                 [
-                  11.100000000000023,
-                  48.400000000000006
+                  11.1,
+                  48.4
                 ]
               ]
             ],
             [
               [
                 [
-                  11.150000000000006,
-                  48.45000000000002
+                  11.15,
+                  48.45
                 ],
                 [
                   12.05,
-                  48.45000000000002
+                  48.45
                 ],
                 [
                   12.05,
-                  48.500000000000014
+                  48.5
                 ],
                 [
-                  11.150000000000006,
-                  48.500000000000014
+                  11.15,
+                  48.5
                 ],
                 [
-                  11.150000000000006,
-                  48.45000000000002
+                  11.15,
+                  48.45
                 ]
               ]
             ],
             [
               [
                 [
-                  11.200000000000017,
-                  47.80000000000001
+                  11.2,
+                  47.8
                 ],
                 [
-                  11.450000000000006,
-                  47.80000000000001
+                  11.9,
+                  47.8
                 ],
                 [
-                  11.450000000000006,
-                  47.85000000000001
+                  11.9,
+                  47.85
                 ],
                 [
-                  11.200000000000017,
-                  47.85000000000001
+                  11.2,
+                  47.85
                 ],
                 [
-                  11.200000000000017,
-                  47.80000000000001
+                  11.2,
+                  47.8
                 ]
               ]
             ],
@@ -30704,11 +30704,11 @@
                   47.75
                 ],
                 [
-                  11.450000000000006,
+                  11.45,
                   47.75
                 ],
                 [
-                  11.450000000000006,
+                  11.45,
                   47.8
                 ],
                 [
@@ -30724,23 +30724,23 @@
             [
               [
                 [
-                  11.300000000000011,
+                  11.3,
                   48.5
                 ],
                 [
-                  12.000000000000018,
+                  12,
                   48.5
                 ],
                 [
-                  12.000000000000018,
+                  12,
                   48.55
                 ],
                 [
-                  11.300000000000011,
+                  11.3,
                   48.55
                 ],
                 [
-                  11.300000000000011,
+                  11.3,
                   48.5
                 ]
               ]
@@ -30748,103 +30748,55 @@
             [
               [
                 [
-                  11.350000000000023,
-                  48.55000000000001
+                  11.35,
+                  48.55
                 ],
                 [
-                  11.750000000000018,
-                  48.55000000000001
+                  11.75,
+                  48.55
                 ],
                 [
-                  11.750000000000018,
-                  48.60000000000001
+                  11.75,
+                  48.6
                 ],
                 [
-                  11.350000000000023,
-                  48.60000000000001
+                  11.35,
+                  48.6
                 ],
                 [
-                  11.350000000000023,
-                  48.55000000000001
+                  11.35,
+                  48.55
                 ]
               ]
             ],
             [
               [
                 [
-                  11.450000000000017,
-                  48.599999999999994
+                  11.45,
+                  48.6
                 ],
                 [
-                  11.750000000000018,
-                  48.599999999999994
+                  11.75,
+                  48.6
                 ],
                 [
-                  11.750000000000018,
-                  48.64999999999999
+                  11.75,
+                  48.65
                 ],
                 [
-                  11.450000000000017,
-                  48.64999999999999
+                  11.45,
+                  48.65
                 ],
                 [
-                  11.450000000000017,
-                  48.599999999999994
+                  11.45,
+                  48.6
                 ]
               ]
             ],
             [
               [
                 [
-                  11.5,
-                  47.80000000000001
-                ],
-                [
-                  11.900000000000023,
-                  47.80000000000001
-                ],
-                [
-                  11.900000000000023,
-                  47.85000000000001
-                ],
-                [
-                  11.5,
-                  47.85000000000001
-                ],
-                [
-                  11.5,
-                  47.80000000000001
-                ]
-              ]
-            ],
-            [
-              [
-                [
-                  11.550000000000011,
-                  48.650000000000006
-                ],
-                [
-                  11.650000000000023,
-                  48.650000000000006
-                ],
-                [
-                  11.650000000000023,
-                  48.7
-                ],
-                [
-                  11.550000000000011,
-                  48.7
-                ],
-                [
-                  11.550000000000011,
-                  48.650000000000006
-                ]
-              ]
-            ],
-            [
-              [
-                [
-                  11.600000000000023,
+                  11.55,
                   47.75
                 ],
                 [
@@ -30856,11 +30808,11 @@
                   47.8
                 ],
                 [
-                  11.600000000000023,
+                  11.55,
                   47.8
                 ],
                 [
-                  11.600000000000023,
+                  11.55,
                   47.75
                 ]
               ]
@@ -30868,55 +30820,103 @@
             [
               [
                 [
-                  11.850000000000023,
-                  48.55000000000001
+                  11.55,
+                  48.65
                 ],
                 [
-                  11.950000000000006,
-                  48.55000000000001
+                  11.65,
+                  48.65
                 ],
                 [
-                  11.950000000000006,
-                  48.60000000000001
+                  11.65,
+                  48.7
                 ],
                 [
-                  11.850000000000023,
-                  48.60000000000001
+                  11.55,
+                  48.7
                 ],
                 [
-                  11.850000000000023,
-                  48.55000000000001
+                  11.55,
+                  48.65
                 ]
               ]
             ],
             [
               [
                 [
-                  12.050000000000011,
-                  48.349999999999994
+                  11.85,
+                  48.55
                 ],
                 [
-                  12.100000000000012,
-                  48.349999999999994
+                  11.95,
+                  48.55
                 ],
                 [
-                  12.100000000000012,
-                  48.39999999999999
+                  11.95,
+                  48.6
                 ],
                 [
-                  12.050000000000011,
-                  48.39999999999999
+                  11.85,
+                  48.6
                 ],
                 [
-                  12.050000000000011,
-                  48.349999999999994
+                  11.85,
+                  48.55
+                ]
+              ]
+            ],
+            [
+              [
+                [
+                  12.05,
+                  48.35
+                ],
+                [
+                  12.1,
+                  48.35
+                ],
+                [
+                  12.1,
+                  48.4
+                ],
+                [
+                  12.05,
+                  48.4
+                ],
+                [
+                  12.05,
+                  48.35
+                ]
+              ]
+            ],
+            [
+              [
+                [
+                  12.1,
+                  47.8
+                ],
+                [
+                  12.15,
+                  47.8
+                ],
+                [
+                  12.15,
+                  47.9
+                ],
+                [
+                  12.1,
+                  47.9
+                ],
+                [
+                  12.1,
+                  47.8
                 ]
               ]
             ]
           ]
         },
         "method": "shard-index-bbox-cells",
-        "unitCount": 354,
+        "unitCount": 362,
         "polygonCount": 22,
         "limitations": [
           "The footprint describes indexed shard cells, not continuous feature presence inside every cell.",
@@ -30931,7 +30931,7 @@
             "method": "1-km-query-window",
             "radiusMeters": 1000,
             "shards": 1,
-            "features": 1053
+            "features": 1127
           },
           "footprint": {
             "containment": "inside",
@@ -30952,13 +30952,14 @@
         },
         "rosenheim": {
           "point": {
-            "status": "empty",
+            "status": "available",
             "method": "1-km-query-window",
-            "shards": 0,
-            "features": 0
+            "radiusMeters": 1000,
+            "shards": 2,
+            "features": 225
           },
           "footprint": {
-            "containment": "outside",
+            "containment": "inside",
             "method": "shard-index-bbox-cells"
           }
         }
@@ -30967,18 +30968,18 @@
     {
       "sourceId": "overture-buildings",
       "indexPath": "processed/overture-buildings/index.json",
-      "sourceVersion": "2026-05-17-munich",
-      "featureCount": 261446,
-      "assets": 180,
-      "bytes": 393398923,
+      "sourceVersion": "2026-05-17-munich+2026-05-18+2026-05-29",
+      "featureCount": 268788,
+      "assets": 186,
+      "bytes": 405229125,
       "inventory": {
-        "declaredFeatureCount": 261446,
-        "validFeatureCount": 261446,
-        "declaredShardCount": 179,
-        "indexedShardCount": 179,
-        "validShardCount": 179,
-        "referencedAssetCount": 179,
-        "presentReferencedAssetCount": 179,
+        "declaredFeatureCount": 268788,
+        "validFeatureCount": 268888,
+        "declaredShardCount": 185,
+        "indexedShardCount": 185,
+        "validShardCount": 185,
+        "referencedAssetCount": 185,
+        "presentReferencedAssetCount": 185,
         "missingReferencedAssetCount": 0,
         "missingReferencedAssets": [],
         "invalidShardCount": 0,
@@ -30986,10 +30987,10 @@
       },
       "coverageFootprint": {
         "bbox": [
-          11.379999999999995,
-          48.03999999999999,
-          11.739999999999998,
-          48.26000000000001
+          8.659999999999997,
+          47.84,
+          12.140000000000004,
+          50.12
         ],
         "geometry": {
           "type": "MultiPolygon",
@@ -30997,6 +30998,30 @@
             [
               [
                 [
+                  8.659999999999997,
+                  50.099999999999994
+                ],
+                [
+                  8.700000000000006,
+                  50.099999999999994
+                ],
+                [
+                  8.700000000000006,
+                  50.12
+                ],
+                [
+                  8.659999999999997,
+                  50.12
+                ],
+                [
+                  8.659999999999997,
+                  50.099999999999994
+                ]
+              ]
+            ],
+            [
+              [
+                [
                   11.379999999999995,
                   48.08000000000001
                 ],
@@ -31303,14 +31328,38 @@
                 [
                   11.640000000000015,
                   48.03999999999999
+                ]
+              ]
+            ],
+            [
+              [
+                [
+                  12.099999999999994,
+                  47.84
+                ],
+                [
+                  12.140000000000004,
+                  47.84
+                ],
+                [
+                  12.140000000000004,
+                  47.88000000000002
+                ],
+                [
+                  12.099999999999994,
+                  47.88000000000002
+                ],
+                [
+                  12.099999999999994,
+                  47.84
                 ]
               ]
             ]
           ]
         },
         "method": "shard-index-bbox-cells",
-        "unitCount": 179,
-        "polygonCount": 13,
+        "unitCount": 185,
+        "polygonCount": 15,
         "limitations": [
           "The footprint describes indexed shard cells, not continuous feature presence inside every cell.",
           "Adjacent grid cells are merged into rectangles for compact delivery; disconnected cells remain separate polygons.",
@@ -31333,25 +31382,27 @@
         },
         "frankfurt": {
           "point": {
-            "status": "empty",
+            "status": "available",
             "method": "1-km-query-window",
-            "shards": 0,
-            "features": 0
+            "radiusMeters": 1000,
+            "shards": 2,
+            "features": 4405
           },
           "footprint": {
-            "containment": "outside",
+            "containment": "inside",
             "method": "shard-index-bbox-cells"
           }
         },
         "rosenheim": {
           "point": {
-            "status": "empty",
+            "status": "available",
             "method": "1-km-query-window",
-            "shards": 0,
-            "features": 0
+            "radiusMeters": 1000,
+            "shards": 4,
+            "features": 3037
           },
           "footprint": {
-            "containment": "outside",
+            "containment": "inside",
             "method": "shard-index-bbox-cells"
           }
         }
@@ -31367,2132 +31418,2180 @@
     },
     {
       "path": "processed/copernicus-urban-atlas/index.json",
-      "bytes": 91941,
-      "sha256": "405846dc9e803190a93d40c20d7319379879b111bfdfddfdc72746754fb6b0a6",
+      "bytes": 81327,
+      "sha256": "5e6a8e886b7fb3685cb0ed687d1429d0342c5c0d29546404efa192e0b6fa63bc",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2755_3825.geojson",
-      "bytes": 530559,
-      "sha256": "2d79ac18319f66c3510dff05c2defc19caee6090c7f63be26476f0d71f9c6db4",
+      "bytes": 204551,
+      "sha256": "afdf016f174a013da46d6caab4cddd1ebf6384d126a7c0de6c886af78ab0ae4c",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2755_3826.geojson",
-      "bytes": 1902682,
-      "sha256": "aa2f18313111f294e5c937c84e405cc236c2b04f7d69fceb380f9c60141f788e",
+      "bytes": 723440,
+      "sha256": "91b219c19f3908337e9a5214c54883fa8fd5d4b9a1ef5718904728691ba82f4a",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2755_3827.geojson",
-      "bytes": 400182,
-      "sha256": "33647962e13dabc53e45c23abe42fc22fa67da8f86f18214e0d29c45415eca4a",
+      "bytes": 129737,
+      "sha256": "763f5c4c575237c7c8018b4d7965fe2d89c1a32e264017de8d87750de663c9b2",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2755_3828.geojson",
-      "bytes": 103291,
-      "sha256": "3b0b08b71bdae12a6ad8109cbb47289d29c8e8a5b2f0ceadce5cef125385e0b8",
+      "bytes": 42489,
+      "sha256": "b1d9a81efecb397c710a663084f6a784522805502304c4e8ac885274916f0494",
+      "sourceId": "copernicus-urban-atlas"
+    },
+    {
+      "path": "processed/copernicus-urban-atlas/shards/2755_3831.geojson",
+      "bytes": 2335,
+      "sha256": "feb249564c69c08f4c71f912f16b89f0dcea3d7c6d2f61a6ba11065cc0af15ff",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2755_3832.geojson",
-      "bytes": 198207,
-      "sha256": "618b7f02148054d2da8b2c5a88766190050ddf12b89ae3d6676db958595042ff",
+      "bytes": 60319,
+      "sha256": "fda0b202a675845ffccfc42b088dc92e4818bddfc6cead70e49059c20acb734f",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2755_3833.geojson",
-      "bytes": 48315,
-      "sha256": "a5f16fdda2ccbc9d449c8b3cae5d78f0c98ce478ab706e64ddff5b116a48df41",
+      "bytes": 39709,
+      "sha256": "5b78bd42d0706738c352d0b963def7e36ef3f9d4254f1f2b37fe08bead46b52f",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2755_3834.geojson",
-      "bytes": 431066,
-      "sha256": "2e5157e7a8084cd56c228476e5d4151e65f57a64a94f17ed2268c718c950903e",
+      "bytes": 199660,
+      "sha256": "e4505d4f577439c35371d52b37d86c35d74fc85b2b1cdce4e26a350b360aec98",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2755_3835.geojson",
-      "bytes": 1121061,
-      "sha256": "dc44b23f65b0aae19ac74d6ba240cb43fa34e26b96862f92c44c14bfa5b62599",
+      "bytes": 452421,
+      "sha256": "351b174a6e31a0251e8f8c0d18a9c584e0eba5a06381c137b98a0af772d500e0",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2756_3824.geojson",
-      "bytes": 1247790,
-      "sha256": "37a6899adc24a0d1a6ea217ff50f783a62c9b5b4a4e6b8b1d6dd47118dfa2c8e",
+      "bytes": 499369,
+      "sha256": "6f404abaf7d6a3290c071bf39f8b6934afc65f280247046465aeac3f62aafad4",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2756_3825.geojson",
-      "bytes": 2263940,
-      "sha256": "c03af33319affdcd55b7d2be788a8dc9902f1036595ce55de134131b9cfb3bfc",
+      "bytes": 951247,
+      "sha256": "cb05ad79f198866b403f1168a15c22a86fc9a106b46efc55ebb9448a49ac61b6",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2756_3826.geojson",
-      "bytes": 834419,
-      "sha256": "fa9deb123066e7f8079e4c895463693ccaa515055ba31367570ecd259c961ca0",
+      "bytes": 406131,
+      "sha256": "7d53b9c447e8512afe95786dd463abcbab53590906305cde2f61742f316affaa",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2756_3827.geojson",
-      "bytes": 1687891,
-      "sha256": "7cd2f8b5417cc7c95e8d939ba1b3a7883470f2230bf887fa1ad92f08687d440d",
+      "bytes": 525758,
+      "sha256": "8449214055d5c7a26fd96d0187ed7eaae68abab2ede7fb9b9f8997b4f60ae933",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2756_3828.geojson",
-      "bytes": 1876904,
-      "sha256": "02f183ef71861a67a060e319e17d3634bf38017d01190fc97f41a4ed06706d32",
+      "bytes": 818045,
+      "sha256": "c389668ff40f780b10065dd6ad91717542caadb8dee27063d7c7661abbf22f06",
+      "sourceId": "copernicus-urban-atlas"
+    },
+    {
+      "path": "processed/copernicus-urban-atlas/shards/2756_3829.geojson",
+      "bytes": 3200,
+      "sha256": "0f50efd5a7faa950fd7fff130d8ce88085167a7ad4470c0a6d52e578708d0de4",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2756_3830.geojson",
-      "bytes": 1100652,
-      "sha256": "9ea77a5f4b078ea8f0c1fcb3d302836cf112ac7d6a545713fc0e41950e68267c",
+      "bytes": 462936,
+      "sha256": "87e4de42873d4ac0ce570bdba6344803307e85ee39b059beba6bc5779c6c6fe1",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2756_3831.geojson",
-      "bytes": 1633649,
-      "sha256": "b2c7a3cfddbe0803c1322867f9c24677d7bcf75521196b0f960f6b43081e9b6e",
+      "bytes": 671000,
+      "sha256": "c2585f8026cdb9f20436bce6ca0cc61593ffad6a1885c9b999ec7d29fe093b3f",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2756_3832.geojson",
-      "bytes": 2187494,
-      "sha256": "777a3d86f7a775c572c8d58966e72dfb469d17340193e9104bd9933d109ffc61",
+      "bytes": 721886,
+      "sha256": "79dd7f78998ba0c5a6d645bb1d3af53fe622399c34dce9f35d5b5ac7b5b73693",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2756_3833.geojson",
-      "bytes": 981339,
-      "sha256": "538e6f08cdfd0c14a3c396610565063abb355eed558db3dce67656b3924bfc24",
+      "bytes": 464819,
+      "sha256": "a935ca3268f4ce91be15886da9879226b6ef1c61d741b3870a362c649620fbe3",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2756_3834.geojson",
-      "bytes": 1453891,
-      "sha256": "36e165a090a6acd6cfa99acedfe94365bc14b4a00db0197bd4c38759cfe826db",
+      "bytes": 682707,
+      "sha256": "c502935a2363301a3bc8b9f0abe9bdfce025bfa2f9fde2ccf6c488b157d23a98",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2756_3835.geojson",
-      "bytes": 2970367,
-      "sha256": "72a4617fe103aa07ef70d897584e08a8fe808de67efe4e72e9d32344e0bcb28e",
+      "bytes": 561494,
+      "sha256": "b24d6b315bf6e0ecffbced0880afa59191289f2f86e09652845d3f34092ecb3f",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2756_3836.geojson",
-      "bytes": 1781291,
-      "sha256": "df8a848453eaf07c71bb863e86689a93b584d740f1959c9203ca60e7fa93944b",
+      "bytes": 566704,
+      "sha256": "1f9a5b86f2d4d4940e62f6f38b59de820cd4f56cca3e74d065e31f917969e7a5",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2756_3837.geojson",
-      "bytes": 210965,
-      "sha256": "77df1c31ccaa553a41ee724d808bc257a3208489437e74bc6c6f31cd85241abb",
+      "bytes": 67962,
+      "sha256": "ed180d5e3681facd20366ae619edccbf8429b010d00c2190bf882d79a8cbfb44",
+      "sourceId": "copernicus-urban-atlas"
+    },
+    {
+      "path": "processed/copernicus-urban-atlas/shards/2756_3842.geojson",
+      "bytes": 108311,
+      "sha256": "49a892afdcbb2138b9f9f0b56eb90a7981f9c2ba1d3e433faebfe8f6cd5aa593",
+      "sourceId": "copernicus-urban-atlas"
+    },
+    {
+      "path": "processed/copernicus-urban-atlas/shards/2757_3820.geojson",
+      "bytes": 1059,
+      "sha256": "85df22dd7ccf3fd7362e31307c5442dcd0d80a89a3c75084590fed07c79a79d0",
+      "sourceId": "copernicus-urban-atlas"
+    },
+    {
+      "path": "processed/copernicus-urban-atlas/shards/2757_3821.geojson",
+      "bytes": 2606,
+      "sha256": "dd1d94d28466b31bf3bb0d874b8984a05b526a43a900b1a28009d1b775c74b38",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2757_3822.geojson",
-      "bytes": 109996,
-      "sha256": "92bf11546d09a393b27b9e98e5a2cd0b4de7645dcb36f4da88c4d076f8745eb3",
+      "bytes": 41752,
+      "sha256": "b7e9ef812875e2541d20c4a4004abdcee9ebd59c1a8b433d97068cd816c952db",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2757_3823.geojson",
-      "bytes": 556143,
-      "sha256": "f63380cd43d3211428f0b1e9c7ed3b85416e6102c127651cc5acf3346ed8cf8b",
+      "bytes": 244211,
+      "sha256": "c82d36cf062f00caac751358dd58a5ae33b4a4b4c7e212f3f76633687a910b13",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2757_3824.geojson",
-      "bytes": 812579,
-      "sha256": "2cea90cbe7aeb3ac4d614f61772a08740a27533e4d5a2b2db7a52cdac3c14d17",
+      "bytes": 349513,
+      "sha256": "4f5b473d998b23e76c5ec04a56b359f16be45ee611e9ec27ed66836438113074",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2757_3825.geojson",
-      "bytes": 4101565,
-      "sha256": "9ead85afcae10af2cf80a015568a1a79a0d07112c817d1ac6f431b68632f094f",
+      "bytes": 955078,
+      "sha256": "b62df396a58014ea16ddbc85b0d4541674aaba592e9ba321391dc01f5b7e1b31",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2757_3826.geojson",
-      "bytes": 710411,
-      "sha256": "d8643283bfa2f32df2ce13707af5ffa3b54c1c2ef5f6488c482d1c36056a524a",
+      "bytes": 350750,
+      "sha256": "abeec31e3e56f08d6946ec9e66fdc6ce194571a2ae4207a92d15a66659e937f0",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2757_3827.geojson",
-      "bytes": 1785604,
-      "sha256": "a847c2dcf5466f43c2fee1c2ad55de3fbe683fafb1b5d8977c2320adb323f322",
+      "bytes": 822581,
+      "sha256": "e8ad2f107be84605a816e600db12d18fd352e3668e20cab540d901ef6a89cb0d",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2757_3828.geojson",
-      "bytes": 1447510,
-      "sha256": "b1be7dfd320bcca574e82484e8ff32f075e3322def234656da70d686aa26d3d3",
+      "bytes": 632019,
+      "sha256": "cd256031234fce46f77b50176423f7b8f270c828139f599279cf6da79150b99e",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2757_3829.geojson",
-      "bytes": 697804,
-      "sha256": "12164a069a1da6941e25e50cbe1b9390d8f4f220bc1eb117108971636db5d91c",
+      "bytes": 297926,
+      "sha256": "f348dcb66cee8c9040c543925d9403d876c9b2bebce663549865fad7d78b2438",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2757_3830.geojson",
-      "bytes": 1801640,
-      "sha256": "425f2dcdc8deefe158f2d4adc3801f4ca53ee01effde82b3610a58c53d7ac837",
+      "bytes": 841238,
+      "sha256": "f1d61bfbd94820b7a92d7b01245207efe81952bcc5775ae1bd36ae3a3c888138",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2757_3831.geojson",
-      "bytes": 2044208,
-      "sha256": "e88766a518755f12ce1a16adafffabf10d12a68663dd5cb33dae87a9030a2cdf",
+      "bytes": 891454,
+      "sha256": "2151e0e64812dcaf65e9d57838e477c3c73731a513362fd494809e4f464eb80c",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2757_3832.geojson",
-      "bytes": 1209988,
-      "sha256": "1810829e248ad47d91265f7400a0670574578deabafcdade7964bc5e7693cd1c",
+      "bytes": 546526,
+      "sha256": "dfe71f00f6c37b9a5c52364ec9d4b9763241bca70d6ca45803cb167be6e226c6",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2757_3833.geojson",
-      "bytes": 2262869,
-      "sha256": "a97fa6d2bd788bacb6f19821f9c78b12e75d7bcc2f302864552e3c66e671a698",
+      "bytes": 1103940,
+      "sha256": "4d813a2660c0fbf2e74311cc00d69d2e8c3468b0f55fb52ebe17ba24ea3928f5",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2757_3834.geojson",
-      "bytes": 2651811,
-      "sha256": "3e3f98269fe402d1365dffb141629129d8b3f8040f26b98936037f6834241c75",
+      "bytes": 1187346,
+      "sha256": "061d03d11a56c7a75f7e55402d289b8881d6d3ae334fb678218bcc51a1f595e2",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2757_3835.geojson",
-      "bytes": 2326472,
-      "sha256": "64bf70e0be2deb4186b5e6083a6326d07f323140bc2d35c65ca8dc191251a9e4",
+      "bytes": 1072237,
+      "sha256": "9b64624a0733b8d18348c034aa8c3b579a55a71528609308a6aeffecec648fc0",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2757_3836.geojson",
-      "bytes": 2159308,
-      "sha256": "71460bfec0a9e2cbe553126c1c0ad00466ae0bf204e1b972b3dda4baa5f4b8e8",
+      "bytes": 1076499,
+      "sha256": "48f4abf45e0a174e416fb1d32cae59ecab6a3c462e4ea41f15f4d6bf1c36cdd8",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2757_3837.geojson",
-      "bytes": 1849090,
-      "sha256": "8efa2032eed955974cffe251419c9d2e6cb5871a282bcacecae1bfb3337998f1",
+      "bytes": 701210,
+      "sha256": "a54de01da036f391c30f3ec6561af7fec6e513ae0c293c7e65cec6849a63ca22",
+      "sourceId": "copernicus-urban-atlas"
+    },
+    {
+      "path": "processed/copernicus-urban-atlas/shards/2757_3842.geojson",
+      "bytes": 312520,
+      "sha256": "aecf6ccf1ce8fa38b23a8c085a292249041ac5eed44c0874da1ea01d62acda22",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2758_3819.geojson",
-      "bytes": 103505,
-      "sha256": "d77f59422a3a4cd61f879c0d3c3ccb5ee20dc21a6ad1637ec9ea80c1f2a409ca",
+      "bytes": 37517,
+      "sha256": "b5dd3abec8a622675717f3ea0ee37fd96f3eb44add6a43c36a85e7e8e4316fa3",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2758_3820.geojson",
-      "bytes": 477251,
-      "sha256": "7d6367fdfbbfe625752a051218c6769e919deb78e2ba725f1e017623c1b1e438",
+      "bytes": 261717,
+      "sha256": "aeca900aa7ec54b5006fe02d7fe5b6d2c9bdf9e13f906f0ba6d0eaec05fadcbb",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2758_3821.geojson",
-      "bytes": 1867624,
-      "sha256": "c3f5f5bef7a46248e9a01b7ebbe30112da5183d2098cc59ca9207528f4468a38",
+      "bytes": 879890,
+      "sha256": "cf0d7738ddc92898e585a465c3fabf747923bc49ff63b408e20329802b5cb01d",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2758_3822.geojson",
-      "bytes": 1504247,
-      "sha256": "71807af3140d52af608538cf6dc9eebe411e6f9bb06e040f4ce236f3a25f2201",
+      "bytes": 643338,
+      "sha256": "f6869940034b5223095ffaa61334203862a393547b42bc9d81c4d566c325c8b2",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2758_3823.geojson",
-      "bytes": 2258854,
-      "sha256": "23e8df4f1866fc3d7603145448d1026f5449bd11070abac97437243f0602a068",
+      "bytes": 1029276,
+      "sha256": "d028a1a4932d39c94fb9cc55379def645c140c697fd4a5acb17c8dee24433fe0",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2758_3824.geojson",
-      "bytes": 2000825,
-      "sha256": "536a7b7a778cd801c3da67b073abb980643ec32358689208cacb77a1fed400b9",
+      "bytes": 790249,
+      "sha256": "4c3a1ba83cce3d6892a2e199b5484ac6515445f38a6fbbed2d653de1bc45c130",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2758_3825.geojson",
-      "bytes": 2845075,
-      "sha256": "a853bb5a4b623afa29ec548a2050c9b7d4a8bb551fbcce252620788b364e8c35",
+      "bytes": 1581685,
+      "sha256": "13e36e662886fda43b1dc47d01d63a794b0c83c667fb55e25111c44ea06bda3f",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2758_3826.geojson",
-      "bytes": 1070270,
-      "sha256": "74bf129d1acd5870e26617ff17581398acba04dbe9ef90ee36598d50072d2e45",
+      "bytes": 442646,
+      "sha256": "3f663f8f76a9074869b4aacbb095396329892477e5a0eb3b7663730c9285e4f9",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2758_3827.geojson",
-      "bytes": 2271830,
-      "sha256": "b3bef36d79715ae427c1a34521f6b5b5cd042ff62d711b17eed83dbaa7664f0c",
+      "bytes": 1178554,
+      "sha256": "cf012cb9d05a56035c681576d929b81ad5b267039d2bed9bf88af893441bf07e",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2758_3828.geojson",
-      "bytes": 2934641,
-      "sha256": "1b7fb9432df18eea9e464d8a68ec11f8b1bd080b12d0b2361be73293ad730a52",
+      "bytes": 1456238,
+      "sha256": "dc07f058f6750e9779c3344c78297a9ccf7fbb3251b06c3e99b5de7cc239b4ce",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2758_3829.geojson",
-      "bytes": 2449916,
-      "sha256": "80c7ebdf48277e712a8c6bae21b4f2b607224be95fab1ec2e64ff4c8dd7d7786",
+      "bytes": 817084,
+      "sha256": "77c0968fe6f9fff05bf2907c48d575c597d140421fc62ea243e062d911a769b6",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2758_3830.geojson",
-      "bytes": 2173868,
-      "sha256": "257b3ff1cb75b14207dcc74cb9ec6506aaf9088e7d0c2f721d44c2235f66c2c7",
+      "bytes": 1035777,
+      "sha256": "a58040e1187ed44b4e4748a2669e258a3970318b10f7f6ad2c7d16e46f5773e0",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2758_3831.geojson",
-      "bytes": 1934325,
-      "sha256": "e197fb725a784aa1c54f4126eda268e5833a7b6b19ccb882e57f82af68e8df37",
+      "bytes": 770377,
+      "sha256": "bdbb1707eb72ecef2a3d68a42d2a7b6838ee5866da4159eaf380e1d8b751526d",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2758_3832.geojson",
-      "bytes": 1659470,
-      "sha256": "71e2e449eb8cb8f020ec0329945c77ecb913d86f49fb4aa78ea391edfa61cb8f",
+      "bytes": 752494,
+      "sha256": "60febf74689d8ba4953225f5ca8332aef3abe2ad696ee54405d19617c2eec4c8",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2758_3833.geojson",
-      "bytes": 1923834,
-      "sha256": "009ac8bff282671e43963d0ceb7d5e0dcad0ebf5a8ab35e55768476de6934f25",
+      "bytes": 881988,
+      "sha256": "e6310f1f1ee019062a461c4400ba58c531425c66dcea7508846684f7f0e20088",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2758_3834.geojson",
-      "bytes": 1387498,
-      "sha256": "ee8bfff837348ac47f22201f9c4f38eb5bf0a0b0f78398ddb10638dc6d656302",
+      "bytes": 367955,
+      "sha256": "d9513e0fed9b7f993ded9804611e3e673b24dcda07885b45a1ca582d02edcbfd",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2758_3835.geojson",
-      "bytes": 2354761,
-      "sha256": "23f8bdadd41ec1640d4a3b962a5585570be30ade771623175c7f705f777f686c",
+      "bytes": 974236,
+      "sha256": "517c0712cad1d0bdd1e52e901e791b0466f50c142cb74bd6ff6a70c74e9570be",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2758_3836.geojson",
-      "bytes": 2416904,
-      "sha256": "7c475fde9cf9d80eee4c5f06aacc28e2ee656a97a8a50c98ddccc8d1a0d387e6",
+      "bytes": 1132975,
+      "sha256": "ea2d6701c7d36090abb6085ae2b73e6bd4b528797595f497e8425c53135b9cf9",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2758_3837.geojson",
-      "bytes": 2318817,
-      "sha256": "c61a39075cffd43b5446299536f98592be8f3e95643af7728612f58eb6319aad",
+      "bytes": 1005872,
+      "sha256": "b1080f04a9e66c419e44bc315db88eccf0a6fc43ec2db62d78a9c6e8cd34f816",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2758_3838.geojson",
-      "bytes": 1459039,
-      "sha256": "db646f07608b0ead1b17685d3362f8cef7dc64c2b2b8330d06549f08561ab8ab",
+      "bytes": 687491,
+      "sha256": "a5f4ada436a200dee5495523de1f7008bbb33745c3f7ab652d44240842e45cdd",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2759_3819.geojson",
-      "bytes": 589871,
-      "sha256": "02a8e9091dae83ac8f016bcc1b04124136284942819efa44c216daa35ea15916",
+      "bytes": 295421,
+      "sha256": "6c885063b9b3102270d13ec08686776b20c95806b6e0bc93c80e6a2efcf8e95d",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2759_3820.geojson",
-      "bytes": 2662291,
-      "sha256": "01baba9cc9d4098d2d2dc398bae042e95624c548bf2ef885c5c26723ea558fbd",
+      "bytes": 1121262,
+      "sha256": "2bb028f930702571140fe0c9f3a0154bc419a2bde209865c0af05cad930561da",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2759_3821.geojson",
-      "bytes": 1969634,
-      "sha256": "5b9d77a25b39de057e731a9efb361965e6f4c06fcdd7977c87932a0206b070f7",
+      "bytes": 886412,
+      "sha256": "13d27953b8e2d993f344b985ebea61444259f9c759075cef30884844eca89d44",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2759_3822.geojson",
-      "bytes": 285553,
-      "sha256": "f62d5afa39bf648c1483b237ddc21dd533ea775d90982fc94f95e6252f024f15",
+      "bytes": 191969,
+      "sha256": "45c7eaee32635945cb0a4af71828cee6f49329f65b50957fb057e5801e65e7f9",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2759_3823.geojson",
-      "bytes": 2011792,
-      "sha256": "2e7366722f0577aa0c16c6ccd18f337a91ab657f5f2f543a70ca4bf15c71fc11",
+      "bytes": 1110134,
+      "sha256": "ce4668c629c24c1f5a5f7b4c5a64c6b7026377603311181f62aa736be7d7172c",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2759_3824.geojson",
-      "bytes": 1512037,
-      "sha256": "6fcdbb76921d0a6ede2365d0689f8c84a6f99a4526cafd12e57d918d1a96e468",
+      "bytes": 617882,
+      "sha256": "e31c7aa6c64d2d06adc2301b1eaf6348790be1d282f9bff90ded38957cacb91d",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2759_3825.geojson",
-      "bytes": 2756502,
-      "sha256": "41bd9a90c46c55090ace157d95e94d1a2de076c5da9d507af4c6aceb4c74d381",
+      "bytes": 1311977,
+      "sha256": "c6a5e8c78ba05da333178b470fd098348dfea9d02c4f5fbdea7b205420f24573",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2759_3826.geojson",
-      "bytes": 2012688,
-      "sha256": "0dbbd4e4f076718bffc350133e224efae3f1e8eeede8cca0c6d8deee046b1469",
+      "bytes": 1167327,
+      "sha256": "bcf7cd6577fae408d99b01b5eda092a5c05dfaf2d3827199a14d82a66ec32ccc",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2759_3827.geojson",
-      "bytes": 2665559,
-      "sha256": "2fcddd34d3000eea2610716c7a99739e027ac8f7aa6706d86d6f3a84aef1072e",
+      "bytes": 1405363,
+      "sha256": "f35132226d7dc68f834c716734160140fb9b454b7b7b9a8254976247c8c56faf",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2759_3828.geojson",
-      "bytes": 2310272,
-      "sha256": "e9f15922207461629145f1c3fd6be6185cc05c37f3365ad1861f66fb8333a5a9",
+      "bytes": 1046302,
+      "sha256": "5cbfbcfee4713130ebab3c96af0fe4093fc2a13d78bb75e46223dafe253997e9",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2759_3829.geojson",
-      "bytes": 2182951,
-      "sha256": "8a3f4432b3ab9e8813071ca6943a0073f19d16b5b7cb9a161dfe12864602035f",
+      "bytes": 1166929,
+      "sha256": "dc25c7c9505ff8975fa1940db316c740ce74fe567af710e94b899817032fc00c",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2759_3830.geojson",
-      "bytes": 2060999,
-      "sha256": "0f8a33c5f6060bb53a1d99444486c56e6df53eb0607c2037cc6303d9b2c4cad2",
+      "bytes": 842330,
+      "sha256": "dddb583498a834bf02dbb5e2e1c9277538863c943fd8a5c58082025183b30149",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2759_3831.geojson",
-      "bytes": 1260074,
-      "sha256": "715b04ba56a18f610c4041566b739e2f218777995209c7af610b05e3cf1d58e4",
+      "bytes": 650435,
+      "sha256": "7141bcd26ffe22a41701a4a29ede269df8f77aaeebc417f25f4a67ab18f6d945",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2759_3832.geojson",
-      "bytes": 1090205,
-      "sha256": "5248be81961cf72c050bd0bb669c19d3ad9a4207096e165bfb657febae46427f",
+      "bytes": 482968,
+      "sha256": "e43ea83e40b4fa9f17aeaa9ff799dfa1c44ddc898a5196c7ea6ead92f7012116",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2759_3833.geojson",
-      "bytes": 1747715,
-      "sha256": "4158560de93bad4a9287659a4bb835c2e91ea30d807c678d6fdcf39f1bd3507b",
+      "bytes": 904141,
+      "sha256": "b5462a0df19f7c0f92884725c045ffac464feaffb1b0de5f24995321f171a282",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2759_3834.geojson",
-      "bytes": 989549,
-      "sha256": "58575c2820e6e7e190c087cd013703b50a304a6a90fbfd69143f395322a0c734",
+      "bytes": 611276,
+      "sha256": "c2177cbc11bb4eda7d8939173c8dbefc7513fe8cbeae25b7388e81543bb96138",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2759_3835.geojson",
-      "bytes": 1623209,
-      "sha256": "7a1bd6fa577486f168b72cd4f596971c8b53ed8c935cdae629ff73994bdcff5d",
+      "bytes": 831339,
+      "sha256": "d65a33b5afa1201991f8b74e81b8a46e62f2046920940635c872686aab404e94",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2759_3836.geojson",
-      "bytes": 2072280,
-      "sha256": "b88d22091a0e60c264b2acb33309d258dee73283e7fcaac288380c8490c79f49",
+      "bytes": 873071,
+      "sha256": "09834d2060b9ead4ca6a6cf21389a68c668be2ba0c0f5f977b0de7f950d49f2f",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2759_3837.geojson",
-      "bytes": 3454559,
-      "sha256": "dcf5e08ea5d63683d8cca434347a04061fe42613826a88d3226a58cecef1ac84",
+      "bytes": 1633363,
+      "sha256": "60ab7dcbe94879f9823b2482ff698bb1a339b7617f2ee07cb22fe63bd8288a44",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2759_3838.geojson",
-      "bytes": 2634310,
-      "sha256": "506234dddb3df95b3bdc83f20954aaa576ec55a64c8a78eea10f51a595ecad80",
+      "bytes": 1342844,
+      "sha256": "e05d90e51ac71567f7c3bf8ec24d6f4b580a3cea5ea03c80b3a3a3abab84992e",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2759_3839.geojson",
-      "bytes": 2278306,
-      "sha256": "f4efacedcc0179b7c676f505682993560783e3dcec7b2247c377572327a2ab92",
+      "bytes": 1169785,
+      "sha256": "44f20382c8641c00d7e8d0433fd910870b90db55695127d1b60732fb380a8225",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2759_3840.geojson",
-      "bytes": 3270540,
-      "sha256": "a2d4e35a5336d462ee65171c988464a7fb451a2c9680afa55c146e390c621392",
+      "bytes": 1558908,
+      "sha256": "691cd248274bce85b0c7b7555ae4cdff263a3371a71f3c4a7af23b2211f4c20e",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2759_3841.geojson",
-      "bytes": 1615520,
-      "sha256": "c0826b667591faf8887eeb0d6a9e2994e4c04d58fe3c7151e61096d377a554cc",
+      "bytes": 790708,
+      "sha256": "94b5122e0ac43201c3e764805eedd4797a98467fc26d0b2d4bbe9e3685452ae8",
+      "sourceId": "copernicus-urban-atlas"
+    },
+    {
+      "path": "processed/copernicus-urban-atlas/shards/2759_3842.geojson",
+      "bytes": 1218,
+      "sha256": "4d0546d58a65bfa7decfdd751212edecf74d679b10b81361cc82333c8781c2c7",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2760_3819.geojson",
-      "bytes": 908352,
-      "sha256": "38a2486295f6d457b9bd211bc140b21e10612f617ba2e070fa798e201ee558c7",
+      "bytes": 377173,
+      "sha256": "ca2c27f1920bf2534edbd137729dd241092749947575a3fe437c6abd62890cca",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2760_3820.geojson",
-      "bytes": 3847503,
-      "sha256": "ae75113b9090432be5000fd40800f5b7f653bef3536ed50adf0d1dddd0f7d268",
+      "bytes": 1781550,
+      "sha256": "6ec3da760d275af8a80ad2b79ba1e18830449f6d3b7fd80abdcc39b5d1b433b1",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2760_3821.geojson",
-      "bytes": 3968828,
-      "sha256": "2f9e6f47c4b2fb5c59cca56d053d778ab92f506d36dc3a4aeddf38d0bf29bab6",
+      "bytes": 1862015,
+      "sha256": "3b6ef3db314c4719dd782c69da74b15023f801deb3fcee84a4ea5e3cab149be8",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2760_3822.geojson",
-      "bytes": 1025819,
-      "sha256": "e82c643f28b6e71cca9a48dc3471e15410140def55fc5e25cd83a3798a7e4503",
+      "bytes": 478442,
+      "sha256": "4612fa266dca28b0cd9133b9d4d5b2b5c7165a3c4f6798e204a5ea491803960f",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2760_3823.geojson",
-      "bytes": 2655521,
-      "sha256": "9abb4325d27d529c2bc9db7476ade384a89a112b559e08d74b07fd33b186fafd",
+      "bytes": 1391759,
+      "sha256": "9d6fb67b27bdcbb162cbb9cfb53f3fbc53d2583d171d54d6a180c59f0ab2131d",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2760_3824.geojson",
-      "bytes": 3025251,
-      "sha256": "24f34c456cb4f9edec1db87cd1c3d223e80e4ed7275b890fce950123694ddc17",
+      "bytes": 1372269,
+      "sha256": "fb88d0125b79da8ef533d8aca71100206300607aa8b834d9e1f0db91793a2d85",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2760_3825.geojson",
-      "bytes": 1444953,
-      "sha256": "97727346a992c68e8c7432757e55b8718f70c6ad48aff24d0421316fdb108c70",
+      "bytes": 655745,
+      "sha256": "04ecb3528e1659ed37222230d902e55bc15f6399f1c9cafc33d3c21794141b9a",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2760_3826.geojson",
-      "bytes": 1964369,
-      "sha256": "518a5c5b03c674106418c002b9f61b14bdc8725b692e62d2c39bc6876edd51ad",
+      "bytes": 1156722,
+      "sha256": "a4ba5ea092ad11d78db960e152c03897b3f72334f59c13e36bb858d922c35066",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2760_3827.geojson",
-      "bytes": 1738234,
-      "sha256": "ca1228bbe39590b360f07dab9ed29b4f8ee158cab8b3223db64ce537a9e8915d",
+      "bytes": 781188,
+      "sha256": "1763214c2cc5221c6eccecfe45ec0f33b825be6c5b52599541ecaafb8bb2aa7d",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2760_3828.geojson",
-      "bytes": 728490,
-      "sha256": "8eb66b3830a2baecb7c7d54825b28c1fd67ef9c226141c08507984ab8e88f02e",
+      "bytes": 400963,
+      "sha256": "7100597321c0ebe25574c5339b4ada1e2becf95f63dda82f23ccdc0dc4adb425",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2760_3829.geojson",
-      "bytes": 1303243,
-      "sha256": "1330f5552b116fc8a7802f040b9e34d305a229601b47b23f0775eeb7cd855a0e",
+      "bytes": 534000,
+      "sha256": "fc280056af51fcdc184434bafdd7cc4f09708a21f2ffef44ecdefd35b412443c",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2760_3830.geojson",
-      "bytes": 1571139,
-      "sha256": "696e992fb8945cf0a0a21814cbddee51a96580a5cd5dc7a363f12e6b75d67ca8",
+      "bytes": 914220,
+      "sha256": "572824e62ffa36ade858483a778adafc67b9939d5a6a19b4da5782e711e3b6be",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2760_3831.geojson",
-      "bytes": 1754800,
-      "sha256": "31e071ea5120a6c17be331532f006ca6f6c90ace0d8bb36e11bfc1d55022840a",
+      "bytes": 1144282,
+      "sha256": "ca1b36597d84ddaf53c28ac6792edacf13136ec8c466e42047515d67310f0e0f",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2760_3832.geojson",
-      "bytes": 1498708,
-      "sha256": "640d9ff827dee8d2ad3cff0d3d0b8b91bad2dc5d10eeffb461ab618949bf299a",
+      "bytes": 865294,
+      "sha256": "b5e10b8f277390b6b6471ac6320be437ee0f0d5927d07be58874d083773d8d9b",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2760_3833.geojson",
-      "bytes": 1526338,
-      "sha256": "a81bec3284d5b47a50950d55456448b720d626956f3b3cec8d196dc705419374",
+      "bytes": 781037,
+      "sha256": "1cbcaa210684df4c38e3ca66831c1606d8fa879d0da8e83d9a7503b0abc0d812",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2760_3834.geojson",
-      "bytes": 1864515,
-      "sha256": "9ed9e4dd00df0d87bde07956772757d207353431f3b309cf00660c802ef1581f",
+      "bytes": 1056648,
+      "sha256": "caded0729dd507b3f14925caa00edd4f209efd1180a21c69ef1fa7ce9e22085e",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2760_3835.geojson",
-      "bytes": 989306,
-      "sha256": "695b91e056f3edc11e61e9bdada5c24a6310877ecc401738a341d825a8a84003",
+      "bytes": 438719,
+      "sha256": "954566cfdd8a4bd6298631e578f8483ec117452ba286b0e093230396dc5efc0e",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2760_3836.geojson",
-      "bytes": 1784942,
-      "sha256": "ecd78cdf583d08dcf6aa5d0f6720f963b966908fb1ebbc8714f1c086225be472",
+      "bytes": 841097,
+      "sha256": "642460fc2c10abc865f08b99eccc149c1d380de41b1bd2d6f534ebad863a0633",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2760_3837.geojson",
-      "bytes": 3203100,
-      "sha256": "376d4edbab45b980701a1945fdb2c07f9a3f3a60a3663acbf9e0dbe8a40f852f",
+      "bytes": 1455957,
+      "sha256": "039796489042adc43c10bdb3871f4a6908c350501d01db9bca8dcc499cf02839",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2760_3838.geojson",
-      "bytes": 3348230,
-      "sha256": "cc4855e2c5c8882d93709d6226965e90780591ae1341c24f78bc22f908cdccfe",
+      "bytes": 1401510,
+      "sha256": "057d97451fe315b273d01b8832807ce1830fae67f84345fc7f181ae92a90b3aa",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2760_3839.geojson",
-      "bytes": 4600243,
-      "sha256": "5875b3a53eaef8e3f4a35273520892e59e4dfb2c3cbfe1b6fd66de15fcfb6a9f",
+      "bytes": 2205097,
+      "sha256": "68274ffc1b5fb57ccd11b7a516cda0fef5c1516ebf4e8cfaed894b6df82a59a1",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2760_3840.geojson",
-      "bytes": 4350138,
-      "sha256": "9804af459da7a2fe3e32d2a852b40293a7af306f2978f9eddb136f5a273e11c8",
+      "bytes": 2069930,
+      "sha256": "9ccd36784e6f1a6bb39e6423e270ac2a97162ad5424f7dd97fa3398744412f5b",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2760_3841.geojson",
-      "bytes": 2928816,
-      "sha256": "d750ad1bc62ca33eb253591f686b1a59f1030139314454488bc2f4155ac94b8e",
+      "bytes": 1355571,
+      "sha256": "926d40d5c14de6066fcf01a8db2c96fa9b80280bb5174c86e5e5b187f2d5a9f0",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2761_3818.geojson",
-      "bytes": 29928,
-      "sha256": "b8e4d6b50e69948a7c80925becb2d30355a2e15efdb82bdcb3760b3b310d3ba1",
+      "bytes": 19448,
+      "sha256": "77584ac2d2bc5ec81b12273026ec705bac1e9fb1eb06fcb661b65105b33f0783",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2761_3819.geojson",
-      "bytes": 1079891,
-      "sha256": "77b9cb2c7f26919955c496fe7816fa9a92433c3c0c29e7b724ab2c29a64a76b3",
+      "bytes": 494847,
+      "sha256": "ad114b897238e43f664f202148143ae932d4f14dc2499f1b7cb4f2a82e709699",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2761_3820.geojson",
-      "bytes": 3462535,
-      "sha256": "4fc5916e80eb7f72c610dbdd73facc556c0b6271cc6296aef2223dbea634eb54",
+      "bytes": 1724153,
+      "sha256": "6447da847c54f4dd0802e631cd42959216c9512ec7557260422f365ecc6c1203",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2761_3821.geojson",
-      "bytes": 3931316,
-      "sha256": "25372aa2a7836de61a25df928c0006435c913ef212fa9dcba2a670c4de35871f",
+      "bytes": 1865962,
+      "sha256": "28267862fc4588d79e888baa4982674b75b449eb27718ea5d1aea3dc16f7b9b9",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2761_3822.geojson",
-      "bytes": 2292189,
-      "sha256": "b0e89d38d63cd4d44c134bcb70daccca7df9f8a1bfea501c522dc991d6a25343",
+      "bytes": 1328082,
+      "sha256": "7505e402a5186506a648a8acad087c828a23452cc2baa35d4fb65df93e6a4798",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2761_3823.geojson",
-      "bytes": 2410228,
-      "sha256": "0bd23d3bca87955f1bf443e1df28173eabb70dff3091cc67937c611852d1ac23",
+      "bytes": 1177693,
+      "sha256": "4a3f0f5800326cf45733e9339a72b0f445c79496a4d728573e10b3a4b6830c01",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2761_3824.geojson",
-      "bytes": 2386380,
-      "sha256": "19dcc1f35b863a0b9c865c1028020a151de89e21dcd7edeab9388984fc5a36de",
+      "bytes": 1263896,
+      "sha256": "1755133eb934da704d1bccd1e7170b5356f639d9a52fbace9f91457a8caba9cd",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2761_3825.geojson",
-      "bytes": 2482946,
-      "sha256": "d1304d4ebbe2cb89d574bedbd9097b901d8e9e556a6825393505a2846b877f21",
+      "bytes": 1236049,
+      "sha256": "1560aec0a9e137fc85265ffa32f2463151a5504ed7ef7213c4a373337b2c5848",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2761_3826.geojson",
-      "bytes": 1177196,
-      "sha256": "ad9eab3ac7f61ab6a8eaf4bf75f4b5cc02c3bc9bec85189396e29ca86a88af06",
+      "bytes": 614995,
+      "sha256": "170007b72506576b047b0274c430875bb61c431ed5d560b1709016f85eb07a95",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2761_3827.geojson",
-      "bytes": 1664486,
-      "sha256": "b1904a8462831941b2e20d6b80936d890893df1dbd2fb8a4996451adf5d5b029",
+      "bytes": 1039151,
+      "sha256": "9339a139c147517a7a6251ab7dbb2d869bbb66269ad920953f770204a234730a",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2761_3828.geojson",
-      "bytes": 1384573,
-      "sha256": "c67da9ce74b84c2df1aa54e3470cd283e25736bf954083b905f72f9fb770d627",
+      "bytes": 827851,
+      "sha256": "77219effb055f421cdb7186347b316a158b3666f795dd9ff9a69589fc958b68b",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2761_3829.geojson",
-      "bytes": 1277410,
-      "sha256": "72a5be9b4d733c33b3888265388f91ead91fc1bc60057f6773943fbf1020d478",
+      "bytes": 856370,
+      "sha256": "306f7bbeb185b7e4feff76193c960872702b21ff38ac0382c4e0c5b11b9bc3eb",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2761_3830.geojson",
-      "bytes": 2890341,
-      "sha256": "d458e3761b136ed65a78749b336e9432b626fcdafb73ca43810b313504e3b206",
+      "bytes": 1927717,
+      "sha256": "c78898d9e163c81b161328bce166f0f8a7569b90b37dbbe3ff7f756645635386",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2761_3831.geojson",
-      "bytes": 1405118,
-      "sha256": "5dbeca4f714a7fde612d73beea193846bdff509863179d302299ad4fda34698d",
+      "bytes": 859406,
+      "sha256": "bd5eeb8a65b2e65959a809a0c4e44771842807c0218df3ecc408d2d1d16b01aa",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2761_3832.geojson",
-      "bytes": 3138364,
-      "sha256": "ab963e9031dbb75baf1f3022f6e5d310ad77eb18239ce7ecd368d0c3e8ba64d2",
+      "bytes": 1909704,
+      "sha256": "9736933e92366e19e092515d9e9cdba88792b288745f1e168903ba124ca6d8b2",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2761_3833.geojson",
-      "bytes": 2865239,
-      "sha256": "44aacd7736932f923c07ecc5aceb55f3b1da5c44ded923734ae007b1674ee7a9",
+      "bytes": 1886491,
+      "sha256": "5e1b420ef947f895502b5502d3707dc3400ab897a197a5e250e2c3ee328aacb8",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2761_3834.geojson",
-      "bytes": 1538781,
-      "sha256": "1f74a907efbeee31b5f18f3b479ecaf054ee02f884f6ce4ce26110ccbc0748ec",
+      "bytes": 853345,
+      "sha256": "a560dcea2fd9edf5ab45c169de3340b6cf6bebfa1d07a1d01210857b03b1f1fc",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2761_3835.geojson",
-      "bytes": 1563490,
-      "sha256": "a83522af1da7b738aba3e202ff1eb5ca4e8745da41deaef5c1c227c40c9e537e",
+      "bytes": 882515,
+      "sha256": "d5e578aedfd08bd3fe1af1eca9e229756672f1abf46c3cf03b805eb8a81ef525",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2761_3836.geojson",
-      "bytes": 1805235,
-      "sha256": "883376c0e5c7d22b97136faf109648143a25226c30bd3f5456801738d33581ae",
+      "bytes": 999255,
+      "sha256": "f3f7947d687933b28e43e00e12c6f1d1b61b40b8ec4b2508167e469d0e1cd225",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2761_3837.geojson",
-      "bytes": 1720676,
-      "sha256": "71416d7583a34357cf4cca59bd1da1b2cf8e2a073fdf7816e035a643c1eb1152",
+      "bytes": 1015677,
+      "sha256": "0bfec5b76c03e9bf26410d4dce21d14eff7261019326ec8dc5bcf83c7a7a2938",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2761_3838.geojson",
-      "bytes": 2356765,
-      "sha256": "71fe1824d755103c6e7e8c541b89004f679ffaea377027012a9380c54774fe7a",
+      "bytes": 1032115,
+      "sha256": "cd5e14838b8713c9ba683d9cb7aac7e9c731d750eeb25108b74e2ff5bc885109",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2761_3839.geojson",
-      "bytes": 4985453,
-      "sha256": "0030ec47d529ec808c386949a03ef4018dc907b3cac0b1fb3698b52d85e45596",
+      "bytes": 2488329,
+      "sha256": "2291169676198267df0c70b0fcbeaf6d63c11abf9c69640993ca36794e2753d5",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2761_3840.geojson",
-      "bytes": 4131335,
-      "sha256": "9806c8b0970753f4ebadb8b63ae2ded9245f1faf79260c159fb8529622f26c92",
+      "bytes": 1937232,
+      "sha256": "11f6b70a3eae41d6de0e0b044d6e0c25512fc44ffdf91a3694668353595243cd",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2761_3841.geojson",
-      "bytes": 2101255,
-      "sha256": "88faf0b203e5fc1830e562c314f2c1f85c8b537076944b766fb5bfde6d8f3d54",
+      "bytes": 1024166,
+      "sha256": "4a8d956d2381b4541fd51fb64dc72169e023e2149c2fa35234020e419a604de9",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2762_3817.geojson",
-      "bytes": 43996,
-      "sha256": "f802f21f371e5a68b7248ff33de875e50a861f187d4d01b1f29beb445a6d9d2d",
+      "bytes": 29638,
+      "sha256": "09fb7e720681824300fdf0d5eee68e7536a59657711902f74cae4519718a888b",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2762_3818.geojson",
-      "bytes": 1458656,
-      "sha256": "95e01a025396f02284606dacaffe16d1055dac6bcd9b3bdba784a50baaff579e",
+      "bytes": 752910,
+      "sha256": "18ac0995f989d02e06eb63410ee1d9cdad5ba8b2688040997ab520e3b7af4d50",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2762_3819.geojson",
-      "bytes": 1960912,
-      "sha256": "b86d4a3c5965bbdbbc5d3c7a013764a76222be04b40bedd123a868113cbddda4",
+      "bytes": 912570,
+      "sha256": "0007d6651e12605ad803a93dba42945c93ad836d2de0dbab2465a59ce2da4a7c",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2762_3820.geojson",
-      "bytes": 2077622,
-      "sha256": "59a5bb3222ce9a93b4bbfd474282e2362da79072e891746e4417e62e60cbd75e",
+      "bytes": 1026555,
+      "sha256": "031777286be58b012f856c19645db1c753572f93cb2b892c5bce70ce1d5d2cd7",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2762_3821.geojson",
-      "bytes": 2385963,
-      "sha256": "792001e0ccb9d3e3f064dd5e198bdfd582b33719eed960d2849fd5779e0b8cb9",
+      "bytes": 1134253,
+      "sha256": "2f59e6938e1c2f01620e2856236a2e346486512a91db88ec0c8e23025b0a6f6b",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2762_3822.geojson",
-      "bytes": 1679297,
-      "sha256": "d082388fb619c5dfa5669408d953f791b7aa11d54fba0b99f736bc4b5cf1a66a",
+      "bytes": 737059,
+      "sha256": "75ad3a1269439947ef97c982d44a541a3f1a7ff067dbeb039b7ee67a014559a4",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2762_3823.geojson",
-      "bytes": 2291706,
-      "sha256": "63374eae5d948501c8a1bbbb19565414c0391a828af5e1371a5ba48045223396",
+      "bytes": 1219281,
+      "sha256": "3abee9509f3a2911723e5c89b089433581b0c6d79f7dfcf2f54e65c4d8a88028",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2762_3824.geojson",
-      "bytes": 1292887,
-      "sha256": "7ca885e0a37b348e335ae0f5fb6dc82775d23b9dbf7c7f8cad9c1a079af239d6",
+      "bytes": 601897,
+      "sha256": "521dc9e0e00ad3d2676bf52e30eda746993ab56fe278610a2795c27d2bab8683",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2762_3825.geojson",
-      "bytes": 1800449,
-      "sha256": "d3d8a2a441d0766a68b855ebfdb2eaca593f7a5f7741450282c88d39aa69e9e1",
+      "bytes": 1050761,
+      "sha256": "fafa280e08fc810eceec4cff20af9af2674eea4dabaaa39e3ac48eeeea9a3b57",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2762_3826.geojson",
-      "bytes": 1961938,
-      "sha256": "63bbf7607f06bf71adfdc2344dfb8fed0b0806c1b1d768649f859d34698f7d3d",
+      "bytes": 1077455,
+      "sha256": "22cfaadc5e5f188d14a81120f1ae5f2de968b428769e13cbb96cc6ee0cfde6dd",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2762_3827.geojson",
-      "bytes": 2340700,
-      "sha256": "9cda89f585227f55530bbe5e4e78f8940e6e618bea4ad4597c8a6d2d390eafc4",
+      "bytes": 1275746,
+      "sha256": "1cd2874a60697d9745962702439583b5bd7da056197d15c06869b2dd982cd879",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2762_3828.geojson",
-      "bytes": 2885223,
-      "sha256": "26e28d10fa469d21fb08bb0bdf5bbb990c3aed19f778aaf7c59639bf01301fa1",
+      "bytes": 1765136,
+      "sha256": "b4f8402c6e59002dc2ff0102bb10d1e83134a2acc19c3b871a2c00c0c80ab8a7",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2762_3829.geojson",
-      "bytes": 2467091,
-      "sha256": "3c4195bb9ad78cd9f760d08544ffef84f3367fdc363c0083d586261bbfb7b2ec",
+      "bytes": 1789549,
+      "sha256": "32bd910d9091d4b51de7084aecb75749aa2782c62985fd14e5c20f1e56bf77b8",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2762_3830.geojson",
-      "bytes": 3591549,
-      "sha256": "7d77cb79a160de60331ded58de9b6dc297e62508750761c0ab60cfae558b53b3",
+      "bytes": 2518015,
+      "sha256": "89a069a99e64a8a5d6964931b42a7795e7b9f6671bc4631e964effbfdfebb7f3",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2762_3831.geojson",
-      "bytes": 4434834,
-      "sha256": "111a10e68bec4d3816ea65d92261153cf4d5c6f41ec937aac9ab6ee9b5012307",
+      "bytes": 3036189,
+      "sha256": "9e6283d5f96d0a8d4408b502682e343aad423dbb1fe17243552d84cb59a5885c",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2762_3832.geojson",
-      "bytes": 3584582,
-      "sha256": "e1c70f66bf1ade17c71f73717003c0347ce0557e852b61b48f609f4eff761816",
+      "bytes": 2381015,
+      "sha256": "8e3cf66858c5dbf47b86f194e6d967690ea699c779b9e05bc7f96a365c3fc1f6",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2762_3833.geojson",
-      "bytes": 2559890,
-      "sha256": "2f8222f2f7d0ce35378320406177504cb8f6182695895e090acfe952d8669809",
+      "bytes": 1859148,
+      "sha256": "b99b01a727d202d64e0d683bd73eecc984556bbf5733648f4a6b542a55a68d95",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2762_3834.geojson",
-      "bytes": 2132425,
-      "sha256": "cdaab015548a8d22603f3b9cc65b9a4f3af51380961684a5e3a447bb2e747ebf",
+      "bytes": 1334238,
+      "sha256": "c43053b844b3186c4792f325ace99a424924d47999e18f292609cfef38976959",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2762_3835.geojson",
-      "bytes": 2071088,
-      "sha256": "36ecb61a0560073a99ad8c27dd65e78b36500ed73349e6d8eb56b3871e402521",
+      "bytes": 1221397,
+      "sha256": "fed7d10accf69f2f3cc4333c025c5cb9ff89c3d4bc9a517bef412ad4447e3c7e",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2762_3836.geojson",
-      "bytes": 1127092,
-      "sha256": "a7dbaab8c10405925622aa61e7a9b613b94fa00925e951889b328f0a4716bd14",
+      "bytes": 555660,
+      "sha256": "39b9d6520aadda0867385242bc8ef6314537a44d90b3961bed81df1cea51088b",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2762_3837.geojson",
-      "bytes": 325407,
-      "sha256": "2f109b7069bae8a4523418544270661017e9c08963bf1421ecd1915b95a4f49d",
+      "bytes": 204574,
+      "sha256": "8808fdb1c7b82e50bb134c449132a5f863b65b6d7d443447ec6a803fbf41d499",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2762_3838.geojson",
-      "bytes": 362122,
-      "sha256": "a930019a8cd90b5e94c40af780f07eb8e8e80ae25393c994ea2f8db79d2aba31",
+      "bytes": 44602,
+      "sha256": "f9fa9e06184de6629e461f597db402a4a7369e7aae4ce5471ee4989fd8c1a270",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2762_3839.geojson",
-      "bytes": 543364,
-      "sha256": "c483f74bb44810ddc6eaf2b14fa19f5a7dcce6a47e507a51f44179a2221073c7",
+      "bytes": 275714,
+      "sha256": "fd048cc26b8a8edb1c88c8b7d3d42f15339fb3a7ad6b1ed3235ebc5732e2d942",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2762_3840.geojson",
-      "bytes": 2820242,
-      "sha256": "08be587f7f07038ac7ba278cc0044d29575f8dffe9e29fdd6855c5f50c273ae0",
+      "bytes": 1455334,
+      "sha256": "5c7d3749031edfcedb4efcd732b9e9242913811d3c4756c101f3ce2a78bdc6d4",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2762_3841.geojson",
-      "bytes": 1737328,
-      "sha256": "fcff573e4aefb6c308263a9546c7c997304234b6f1f5fa085afc0cffbf0a6a66",
+      "bytes": 858186,
+      "sha256": "cb33437d7a993a0b1179890db711275dc161eb91069be0d04d08a7611e33acd6",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2762_3842.geojson",
-      "bytes": 926103,
-      "sha256": "8bfa98059faa571e105bf2350d4747964dcaffa4528aad6e2c12c503c54bb924",
+      "bytes": 409498,
+      "sha256": "9f2b4b0870bdd1ebc6550d050dbfb71e2f2f6fa64378403beb0079f5093e69e0",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2762_3843.geojson",
-      "bytes": 666659,
-      "sha256": "5ebf8b4f2db33c461a08a9a2669072e84f367b43b23250ed6b6fecc3c3c161aa",
+      "bytes": 261015,
+      "sha256": "f293de39b9760c55f933e4c90ec5bb199012b617fa3d8d266d8b91c6c88d4724",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2762_3844.geojson",
-      "bytes": 184612,
-      "sha256": "ac29a0891e52b7b4b6d9921f8e1aa15be53c8a3babe6807ef013c5c700e16f5b",
+      "bytes": 86616,
+      "sha256": "6d99720ec38cad3afdc3c4d7d3bc632eb28780a026c60c7046a33e9a818ca7bc",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2763_3818.geojson",
-      "bytes": 263751,
-      "sha256": "8b93edd2eb63bfddfd707c9ab2818020c864114ebb509134eaa32d124b92ffca",
+      "bytes": 169518,
+      "sha256": "c06b50f70ca4b4b5e7e5d7224d56946a302ae69f667ecfe9dc8a27973b9a3396",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2763_3819.geojson",
-      "bytes": 1567686,
-      "sha256": "32933938238404c7ec4740f07067c8ce7b303e092646078d853779e6c09fe5a7",
+      "bytes": 924053,
+      "sha256": "4709921bebb732a37279dbc216945b4141b9151eb92411731bcc022b25331cce",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2763_3820.geojson",
-      "bytes": 1029696,
-      "sha256": "c36258c658193dc5ac5af3730dd5394b83032215b932bc32bb507b47e64d4040",
+      "bytes": 447507,
+      "sha256": "954bc923e72ac27cf54a7c41db3638d88b71284e75ac19ba50d99bf9751edac4",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2763_3821.geojson",
-      "bytes": 1755198,
-      "sha256": "848384584217e372e5af412a8a702e6371aad20fbdac1b5579f4f321e3506323",
+      "bytes": 1035744,
+      "sha256": "66e5f66f87a880369ebef33d3aa4f6ca5532bf1f17126e6a87a81732a4de7428",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2763_3822.geojson",
-      "bytes": 1753986,
-      "sha256": "5dc58f86d930ac12cda17b130a308762f75a6b097b479d7908765b65ad01b3ed",
+      "bytes": 856601,
+      "sha256": "c7ae6e54374aa8b17b0a91991003a6c4817a4236008178efb752e2067c610c4c",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2763_3823.geojson",
-      "bytes": 1414476,
-      "sha256": "7b32dc21dfb05b13bae1b432c9c07ae1dc39376ca26145efb2e6d6229e8bf067",
+      "bytes": 722802,
+      "sha256": "3d2b6f100aef43a4ae9e01470fb23c5aea9f256821dec31fe4a0019abb44ba4f",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2763_3824.geojson",
-      "bytes": 2233039,
-      "sha256": "6059cbc1ceaaf1e560a8d4ffcc4a6940477c9f321d4baf57219be4e68759e717",
+      "bytes": 1261546,
+      "sha256": "5711c6b10ae34ec3e3f989f89b692635a8074e15bf4438ffa48c065d518d82f0",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2763_3825.geojson",
-      "bytes": 2329055,
-      "sha256": "02e6a263c181a8b207958783782c96e9ab0f4613076bd43b49c7c8a6e8a28e5e",
+      "bytes": 1361225,
+      "sha256": "43a50128046fde851fde37ce29df99d8b73ac6453fe2620a47d3d380ca3f6b5a",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2763_3826.geojson",
-      "bytes": 2440615,
-      "sha256": "e1874251337e9288db3a82c55517424e470a72d67774c79efdbe582925bc2007",
+      "bytes": 1519762,
+      "sha256": "1deb1b0527ce4c5a6d90f6193b3d18ad93cdea15c2498a931130ed2db923b012",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2763_3827.geojson",
-      "bytes": 3423813,
-      "sha256": "7392d542c2fc93d533d3ccacc98394642686d76fa6a3efc56723ef52f5a4204e",
+      "bytes": 1874722,
+      "sha256": "65cb9354c2a0c7ee930d9bd23392d47ef4badac13cb16375df0fc054672fb539",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2763_3828.geojson",
-      "bytes": 3092685,
-      "sha256": "3659fa95103f7fe7a8b99f210d6ddc9c874de14c34f69f570e86aef2d642a217",
+      "bytes": 1831858,
+      "sha256": "070d6e4a1567ac25f296fc79ef0e83b1f6da8aaa7821fe04b1efcd066fdedc64",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2763_3829.geojson",
-      "bytes": 2776740,
-      "sha256": "6b6190657b7b08c2810a2b63c1c5f29e9a0ce52fe75c784ee73a717780498f75",
+      "bytes": 1930760,
+      "sha256": "a50dd05c45ec90382f66d4db5c0dc3f9efd2617980614ea071725e9e3ae5c37d",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2763_3830.geojson",
-      "bytes": 3224611,
-      "sha256": "7c5a2180b8f08315b5fc9b298ec9f1fd6e1beb2052f2435bca834970f73a5f68",
+      "bytes": 2243939,
+      "sha256": "6bb69f351a91091df3a64231a134c71c0e9814c8f65173ec5912c2a025b60ee1",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2763_3831.geojson",
-      "bytes": 3763452,
-      "sha256": "ebd21402fbccf60d4a4f0eb11e6d9d4b4514737e7c0c5a783edf96dfbc895629",
+      "bytes": 2481134,
+      "sha256": "195ae944f7f143a06def186fa67b75ff58736a0bf4fcab1060a8d17b6d2e20fa",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2763_3832.geojson",
-      "bytes": 277948504,
-      "sha256": "5db0bb2cd09e34038e58e85b8bbd4cb8eeed9f810b5b812267ac6f60f8d240d0",
+      "bytes": 2073509,
+      "sha256": "319865282ea191a1f2b57941a30955e2f6519bd8affc58cb14890b9e1f179533",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2763_3833.geojson",
-      "bytes": 1860312,
-      "sha256": "28188a672204f1c66acf31a7c6720c34dbfe33cf278f559ff64d0c84c905b422",
+      "bytes": 983570,
+      "sha256": "f290fbff332bee0a5db0bf0c37d0eecfb32ed04954b232503f8a0ac12d66ca62",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2763_3834.geojson",
-      "bytes": 2039624,
-      "sha256": "756af4d33dc7ee5763a56d28d040994fcbd1fa27555680e21d692ca56dc1fec0",
+      "bytes": 1116266,
+      "sha256": "5b861c25a40d83fbd4263d85fd15820d1cf3346acb4491b5b139c04e0d6facca",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2763_3835.geojson",
-      "bytes": 2691451,
-      "sha256": "5a59358a9261487afae15939326dd15639b46d23f1bbd4127ea5f160fe7909d9",
+      "bytes": 1633738,
+      "sha256": "be1907a542924f47300b135f0c702da4f8248f718497e467086fe98acd36bd96",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2763_3836.geojson",
-      "bytes": 2606611,
-      "sha256": "8e6d2206aded6716e0a10213c5d4c13a2e1ddcd637aab39f3c26529c8864d64b",
+      "bytes": 1490683,
+      "sha256": "a32285535059fb9a45466f5728370013e79fb8e26c16ba15e515dd76bf367b6d",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2763_3837.geojson",
-      "bytes": 3055854,
-      "sha256": "c871dd2cf34a14172acd88178635c76b7ec0f17493dc9ff02b1f0b9caf708dfb",
+      "bytes": 1598123,
+      "sha256": "58d1118e704f7a08a9a81cb9ae4ef90e15bb47a931e53f73d24211bc21073b17",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2763_3838.geojson",
-      "bytes": 1881125,
-      "sha256": "04e7855b2e63d05f2a31da5052d43afdb1cbc90dc3591730686adb605d0a4c3c",
+      "bytes": 1016312,
+      "sha256": "86bff7e04fbb27af4b7d50e7483828356b59fed2d205ae7434f0255b5c2b73d1",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2763_3839.geojson",
-      "bytes": 2758643,
-      "sha256": "d379bcd65586220f041ebb0b4b9bec24179d14dc531383d1de8a7bacb8f7c089",
+      "bytes": 1539607,
+      "sha256": "8fa17060a1d3397b19ff1a2e4e1e5d2a8a01627a38d0c9c1d54aba30737866c9",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2763_3840.geojson",
-      "bytes": 3196199,
-      "sha256": "09da3683ab7394a2df44db888d8602ae58c2bd8384c0f3d180b7ee4b94c151e8",
+      "bytes": 1620286,
+      "sha256": "500a54feb257a82c1205be6bf2fe9497ab2f00e352a1a4d7ec701a6958255520",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2763_3841.geojson",
-      "bytes": 3239117,
-      "sha256": "e8b29930e035b49bc436599aa171bb1e4617897df8f2a03071d5e04ea45bd473",
+      "bytes": 1518802,
+      "sha256": "4b44cacd5fba27fc7bde67077a6b8a128e6290cd6d2ad08e7ccf012ec3ae9469",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2763_3842.geojson",
-      "bytes": 2812864,
-      "sha256": "34ae04858a54b4dc64afa6e49e41f8898a125b526d0f3f26d6b7711c4df3bf48",
+      "bytes": 1197484,
+      "sha256": "9d7a7d91acfa083626e4aa20dbbff1151fd6d4d2a122687a070ed85f89b61632",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2763_3843.geojson",
-      "bytes": 1319239,
-      "sha256": "ab6466f9f324b15a048dd93eaa5d06a33998326e7f2edb6a1b02334cf5b5e659",
+      "bytes": 790523,
+      "sha256": "c39171ff77ee0e05595cffaeb9813bee03e7c3af518997d9613eb82c593c41f4",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2763_3844.geojson",
-      "bytes": 184262,
-      "sha256": "68e31f0edd58dcaa7bfd3e77387a7ee5ee6c8dec516bef2b6a153bc0d6b77b76",
+      "bytes": 91612,
+      "sha256": "cc799a3aee97d3c0e223d64771999127bcaa5183471455301c6e7ba5e0edb1d5",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2763_3845.geojson",
-      "bytes": 16797,
-      "sha256": "5df296ef20b3a8895ab5300e5780715917917e0e058013c8eddd386765ef22f3",
+      "bytes": 10914,
+      "sha256": "6b91ef52f031853f0c5f66b218546bd017c5413fc45bf5310c853dd4e48308bb",
+      "sourceId": "copernicus-urban-atlas"
+    },
+    {
+      "path": "processed/copernicus-urban-atlas/shards/2764_3818.geojson",
+      "bytes": 10509,
+      "sha256": "552b40fc61e96d6ef328344a113e54dad43e152de57e8ee2637f53eda1f35cf8",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2764_3819.geojson",
-      "bytes": 873516,
-      "sha256": "c73104971ed2b0e4f785d07b791237be96c20c285517cca9a230e3691315c9e5",
+      "bytes": 505731,
+      "sha256": "da21b6e3c269e430572531319c32d77fe5cccf9f70310decd3b5031fcef1388f",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2764_3820.geojson",
-      "bytes": 472014,
-      "sha256": "97fce00aa7f289950eb8670becdfbd489981f962d0e5f70de3378288138bb8fe",
+      "bytes": 228003,
+      "sha256": "e1148da4c85fa877ed4b59a366b1f55133c4660cca604b1596f7a0eb1514ed81",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2764_3821.geojson",
-      "bytes": 1665146,
-      "sha256": "f28c97f62e454abf6c33f63848c59a5e0f324f24fdb4de0bf2579feb27e1951e",
+      "bytes": 804044,
+      "sha256": "1e3df024734d907a33463c5c2e7b8e2228e22de55961872c59bf19210ca53947",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2764_3822.geojson",
-      "bytes": 2416457,
-      "sha256": "773d9f0d692b789972344bbb5ce9bb0d1b6e5815fce129a9e5c74c0229d8f41b",
+      "bytes": 1102968,
+      "sha256": "b4c41a14dc7bdb427f632452916d0b917f9f639842ce41d8ce552f2ff9efe442",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2764_3823.geojson",
-      "bytes": 2351177,
-      "sha256": "851801a8784173040a06f862f07b58f381c009ccb856b8364a852ccee43c8700",
+      "bytes": 1318945,
+      "sha256": "da22e303b636387fd39bc8ae7c2dad7869e5ee3bfda39a2b282c06061eee988c",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2764_3824.geojson",
-      "bytes": 1739734,
-      "sha256": "45b336d18fe601bca94a32395843e8d6c7aed2cbf4cdd985c475d6dd7db30bdb",
+      "bytes": 874202,
+      "sha256": "a79310ee1b7f1fae2ada6ed1f082fe672ab97eb6f770aa9967d3f6f17ad0c5e0",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2764_3825.geojson",
-      "bytes": 3088361,
-      "sha256": "708c22d7ad01451e1b0adc39c288113731e291a88aecf666b1d17ff54b4e9c28",
+      "bytes": 1602337,
+      "sha256": "14580c844a8369f3887c1315f6fe0e0171eeb740fafb69808e809513d43dc9b9",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2764_3826.geojson",
-      "bytes": 3644682,
-      "sha256": "583bf445d9127f22ae5aaebce48e2e26cfd88bf7d7389eb2015aa33ee1abbceb",
+      "bytes": 1796067,
+      "sha256": "af47903e87d8e9418c6729844b658c1bcf7785429e9418d6623d928cfd3de401",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2764_3827.geojson",
-      "bytes": 3080045,
-      "sha256": "d2248ee9eb257072cd900808d19ba76ef637c9521694cbe9b9e049d041562ef9",
+      "bytes": 1550293,
+      "sha256": "946d6375e5e34dd4354006b6bb33a9b17fe06d20611c8cb8717c61124a33c7c3",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2764_3828.geojson",
-      "bytes": 2852934,
-      "sha256": "fd0b5d4923159b84f1bc04d29dc0c43de9254ace2b4c8dfddbc284a3f1326913",
+      "bytes": 1398563,
+      "sha256": "b72506acdb4b01cb7eb8049f3c2c35215bee9b80950d60526a5ff5708df57a37",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2764_3829.geojson",
-      "bytes": 2816433,
-      "sha256": "9b3b02a205ff6d2f779206570dee5aaa839a19efc1756642cbbf55f88f3b7133",
+      "bytes": 1730496,
+      "sha256": "36ca8abaab644d29bd6478a94d11f613ba8666945c7937c7cd47e9a368b1b3d2",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2764_3830.geojson",
-      "bytes": 2014504,
-      "sha256": "a75a6fada728e2c0d91904d183fc23bf77286db85ddb0c428bad60b7313986cd",
+      "bytes": 1167130,
+      "sha256": "bccbb677cc600ab020cb0adb9dba1b946bc495a467c1e6098a7892b6fca1d686",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2764_3831.geojson",
-      "bytes": 1565719,
-      "sha256": "c17d8a8aea1db33f309d23cd93a75772fd54f770682429a47cde5b22412588f2",
+      "bytes": 1040863,
+      "sha256": "8fe3353ac7b284a6e05494cce516805821c89360e1070cee2fdb3d84fb6f252c",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2764_3832.geojson",
-      "bytes": 2566992,
-      "sha256": "fbb0ecfea91409975b957236e2ca3df6b6887839290e0168323fc3dd4d978768",
+      "bytes": 1121978,
+      "sha256": "b5ac7d6b61532de23c8d6a691fc929944f11fc7a34b8f8411b01cb34fe03e3fd",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2764_3833.geojson",
-      "bytes": 2344993,
-      "sha256": "18a7bd4d1577c125a1508649c6a8a404bec6fadf3c1280de6d779762a6acf5c5",
+      "bytes": 1375572,
+      "sha256": "3fe32286297d03268ba2513ecad4fbed7045ee436233b3d56e1e811fbc798fe2",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2764_3834.geojson",
-      "bytes": 1051911,
-      "sha256": "3853912f79f2b4dfe82f891c036a867bcd2f65499c80f64332ef6d5e66652fe5",
+      "bytes": 433500,
+      "sha256": "3b82d188d9319103e0f4687e6e0f1b93098e9868f8e565d081700bcc8a3267f1",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2764_3835.geojson",
-      "bytes": 1483764,
-      "sha256": "4b20cea6c5c7823f1d48b9a31a89d43e9d70f4494f9e5db10f3c90df7b00184a",
+      "bytes": 769507,
+      "sha256": "42808b0568c3773bff013830c2d74542964f5ab228ce2a482c6cf9c222da3ba4",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2764_3836.geojson",
-      "bytes": 1903535,
-      "sha256": "218febae1790c5b313600f4897d5dd449c3f0f359c47ad1605548fce5ddc44dc",
+      "bytes": 931194,
+      "sha256": "9be036808111f70810844984ed19edfb5babce58e81a211474ff132acb7cc0f5",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2764_3837.geojson",
-      "bytes": 2459006,
-      "sha256": "f3156d2a26667a9867df6a8f65b7212cfa31e41507fea63430dd8997b1dab803",
+      "bytes": 1354460,
+      "sha256": "0798236a98252144a2eb93932be46be4025a73695443679bae188570336c0da1",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2764_3838.geojson",
-      "bytes": 2518565,
-      "sha256": "2c34915d49a5f25d0b008b290d721aa16961dcf5e2db88d575a7ae33e06cae04",
+      "bytes": 1287014,
+      "sha256": "dad417f3339474bfc7e5179fa6a7cc91724fe33bfdbb29a0f7531b1b71533892",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2764_3839.geojson",
-      "bytes": 1958694,
-      "sha256": "659736162674ab836f436e9e29338444e92c6d18692c871038157b09b6cbfbc2",
+      "bytes": 999983,
+      "sha256": "2204973c50f1683d4a30ab96f7eda44f7aee377513e789cdce503dc11bab3faa",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2764_3840.geojson",
-      "bytes": 3808414,
-      "sha256": "babf4553e58d4cbfa36704cd74c9142ad3b237f3893b8a7c2c362512643445a1",
+      "bytes": 1965827,
+      "sha256": "35ede5008c3f2485d0a1ee29b419ab65f2c66c284681b4fb979ebb6c96774b31",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2764_3841.geojson",
-      "bytes": 4346381,
-      "sha256": "670009d842a9fa23c5c9432c45c488175ffae5dd67f2b3b7ec9f4917bbc89541",
+      "bytes": 2249657,
+      "sha256": "5e8a768447cf604016b74be9c45ed867e3f73d065d6103c9cf78bc173ae2f3b8",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2764_3842.geojson",
-      "bytes": 4305004,
-      "sha256": "f1a43cf7dc0db7c1a984c949cb4004ce217d1ec58d0d831ea5de5aa4ec04ffb1",
+      "bytes": 2091957,
+      "sha256": "c9e78850fa65571368d7495cc0f1ec30e55b263c5d98079e89dd61c9d84c1d57",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2764_3843.geojson",
-      "bytes": 3751366,
-      "sha256": "beb7c31b7c24031196a1fd1cd68a9cc2a558cbeafdef6afb0a4e31bc3db59d41",
+      "bytes": 1635062,
+      "sha256": "49ac4f1d578f6a2fb32342adf0a8296a9fdeba5bff0d8cc95c8952796e3c0159",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2764_3844.geojson",
-      "bytes": 4300915,
-      "sha256": "e650d33efffe5fbf20774ac43da35093114caa13070ad88e371532fe1a519fd7",
+      "bytes": 1856497,
+      "sha256": "ecf40986b1cc0350398a911f3c46da1b0028f61f154f5066b7821aef35c9b475",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2764_3845.geojson",
-      "bytes": 2275281,
-      "sha256": "1b882a6177b6904f35f44db8ac8a22f0a723248850465d31fff01cfabe1fd400",
+      "bytes": 898648,
+      "sha256": "bb65e3a9a9369a9aa12c05c7ad8aee3ede214b67cc863bf6b0f50589242f40b4",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2764_3846.geojson",
-      "bytes": 4941,
-      "sha256": "2056dd16f6a832600fc6110e70303a01ad1d9cafc0279b66bbfcbdbfb05dfa5b",
+      "bytes": 4407,
+      "sha256": "97fcc18dd8515430b81371b25ec069f227af8247b72ba021128067e8ceee17c3",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2765_3818.geojson",
-      "bytes": 343387,
-      "sha256": "3bb258be3ac4da1a99d43b57d05353913396dd33ca2d7965ac532a1349318e22",
+      "bytes": 147616,
+      "sha256": "8b22a634fc65fb94bce90526523ecce3ad86c7ba3d6586562a226a0320028b7a",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2765_3819.geojson",
-      "bytes": 1736637,
-      "sha256": "81072323ef57fe0b6e6ecb470a34b0d00e5e1c6bae573a6a7ce2147886aae515",
+      "bytes": 1129829,
+      "sha256": "0d054fe4a73ed36bc887bfee18a67460e4e263ab42bb647231dc5865bfc425f4",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2765_3820.geojson",
-      "bytes": 1565355,
-      "sha256": "bebfac030afd56b6c8581800b79ee2fc00a961e5d45a66bf682e949e01791b4f",
+      "bytes": 747128,
+      "sha256": "1c69997dd91f7013a67e1f33317a3e6e6c6b19aa4487d66060919ca3fcc94a21",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2765_3821.geojson",
-      "bytes": 2103731,
-      "sha256": "32460cfe06cbba05d44d1fdf270ca8da62f97d5605d6756f7b8511503dd91ce5",
+      "bytes": 1017778,
+      "sha256": "1632a66011c5ea6994b351d5dee70d3234f874bce6aebff2ac3739e72286f75e",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2765_3822.geojson",
-      "bytes": 2147988,
-      "sha256": "302314edc5b0f6963223e24ff947f932bffedadf736c05c22574dcb8be549610",
+      "bytes": 873225,
+      "sha256": "fc502ab675477499bf0ae08ebfa7a19a24e0874cc47bef5dbe6d118d6ab88ce0",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2765_3823.geojson",
-      "bytes": 2254121,
-      "sha256": "0064e05dcbbb8b4a4b5ec851077539d38c6fb47929d64056610f6ee6dae63b5d",
+      "bytes": 1181316,
+      "sha256": "585e619f12f50365bfe03e9b448ba12e46b3fda54a4e97eb09970798590c2c7e",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2765_3824.geojson",
-      "bytes": 1950933,
-      "sha256": "7d8946c48d4b59ed039668d38d99502e6fc709d63df35f0f664c65f9f2d93c0b",
+      "bytes": 917585,
+      "sha256": "7ce61b54d16b9db751966c1f71143571066b957b8525ca91347eb7a094c36bcb",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2765_3825.geojson",
-      "bytes": 2272320,
-      "sha256": "f345073ecfd2b2e7158045bc5f4c266e27d5ec26699b93f97a67e04c4b6daf96",
+      "bytes": 951460,
+      "sha256": "0ea7c4e4d9bf43a96b6527bf478bb36fd566a4023903abe3eaabf153d1550a7d",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2765_3826.geojson",
-      "bytes": 1764033,
-      "sha256": "e897c1b7e8252ed208ffbca1ba4a9716075b32f3872f446b67eb60614dc5d543",
+      "bytes": 835899,
+      "sha256": "0b71e5eda5ed907a045f34ef7d595bd1f3696cdbbf6f971f26f9d8ecc905c951",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2765_3827.geojson",
-      "bytes": 2295087,
-      "sha256": "8ba3e68c43854ad3638bfc0a88f6d7b3b52a1f171eefffbb4b9d90e5e8a2cb17",
+      "bytes": 1103598,
+      "sha256": "deb586c9407d51318d54c1cc2664e1cef0e54b83bcc3e75722a2691f4bfb9c69",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2765_3828.geojson",
-      "bytes": 2876710,
-      "sha256": "046271da8874ca825ab0c5f8c33ce2b211e69a8878af024b1e292e5405d8c52f",
+      "bytes": 1650790,
+      "sha256": "0a0b402c92c58e6ad77f6fa55c341bd372d635c3ab37e837531fde6b80cb2cd8",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2765_3829.geojson",
-      "bytes": 2916345,
-      "sha256": "498d1bca496b595770ff8a7867db2f8ad08792cfc8c2f3e87bd395b26b1adf82",
+      "bytes": 1579755,
+      "sha256": "85a7ce7ef1e54ec9c62d566ba9ada16aac20a633f600805a5b9f119a55895e53",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2765_3830.geojson",
-      "bytes": 1799958,
-      "sha256": "831efd9832ecdb1e88cc885295a02bce2c5d3bee68f98f7418eeb2614712172f",
+      "bytes": 825681,
+      "sha256": "8c6a74aa5636ad094ba1aeb7066aae4f90ad8960953b09643f00a6deb9a6b48c",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2765_3831.geojson",
-      "bytes": 2284951,
-      "sha256": "2e6ed57ef05aaab66b65362e606e7d9f8b5537dd61d1ea196ec4fa12c5bec630",
+      "bytes": 1408867,
+      "sha256": "c904a939c44d5ab7a24ca80bad9191e989266a8bd0fb668aa60843534b2492f9",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2765_3832.geojson",
-      "bytes": 1555671,
-      "sha256": "e3cf9c35ede26052d1cda9285944a1ed321b5e84ac2aacd10137c2ee92d51118",
+      "bytes": 769680,
+      "sha256": "35e0065b8df285d1f66bd811faff49b49c2c8a9642af95e17f4f138283745bd9",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2765_3833.geojson",
-      "bytes": 1337773,
-      "sha256": "478a3f11689efc7193798573127715604a19e3ca6785ec6bab261281d7d1ccf4",
+      "bytes": 692076,
+      "sha256": "600fc27a9eb131cf7c75e87b1c4fec3c5792d8342545a5b24edf00c6f4e00c23",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2765_3834.geojson",
-      "bytes": 1298422,
-      "sha256": "88eddf83bd6cbd516d67c66b16f327ec1720cbf29a62fee1e67d5b8e960b70cc",
+      "bytes": 534508,
+      "sha256": "7bc1e14b32e5eb247fb8bc88c5d43cd26451e9d40945ef284cd0d310d9a4376a",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2765_3835.geojson",
-      "bytes": 1916443,
-      "sha256": "93d2e25036b01b2fa846570ff52c50abc657fbfd7781acd65759920224a8460d",
+      "bytes": 954508,
+      "sha256": "f49a207849beca0043b5b3bd832fe49996c4c9ff859ebf11c75b1c388c3e1606",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2765_3836.geojson",
-      "bytes": 2722842,
-      "sha256": "c428369af73e7dec3b0c16c361304d5883f725f46c4ebcd58aa6330cf3066b5e",
+      "bytes": 1138969,
+      "sha256": "e972585ded7be79b55187914f22f5df44e90a0be93593d1fc647d9829f6ecc68",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2765_3837.geojson",
-      "bytes": 2087182,
-      "sha256": "ce85c0efa8e7bf1f814645ab837921befbe69a718acd58968e1a745673cacf0f",
+      "bytes": 1034838,
+      "sha256": "ff2e94f8a402b574cf0d0a3b5e181f5ff0b7a4ca0b91a81ed2a2a98a215012a0",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2765_3838.geojson",
-      "bytes": 2060050,
-      "sha256": "c21a6543a49fe3f5bded510acf7628f2af79efa927cdad419c1264d97b6a5a4f",
+      "bytes": 1117289,
+      "sha256": "15e44fd6129c7e489bd05c9de63c4404b327307dc3180ee83ea1df75c785d935",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2765_3839.geojson",
-      "bytes": 2009261,
-      "sha256": "96d69fbb7b53e5568b76a58f5dfd014ff8a7b1a4149827e6060e9ea7a1093eef",
+      "bytes": 1042059,
+      "sha256": "9b6ef1928059ffe9bce6b6477e3ccc51c4a268be1d3b0ab71b01149a1d346e5e",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2765_3840.geojson",
-      "bytes": 3026431,
-      "sha256": "9b3e56dcb640a3ed6392ae20ecd6bbe5113dcd4701fa52eaecd26c9a4f531985",
+      "bytes": 1499324,
+      "sha256": "ce071455179da4d63af8f72be12b4ab4bffbef67e4240c27031071d69c44faac",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2765_3841.geojson",
-      "bytes": 3053280,
-      "sha256": "df7b1435f00893ac90e7c881d7a47ca90a438b49cea6d0ce1b354bf77576e32d",
+      "bytes": 1345950,
+      "sha256": "e4e8e42038611c336e424bdeb18f2a9418a47b8bddbd8a4c1ba89d9e1b406d16",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2765_3842.geojson",
-      "bytes": 3592999,
-      "sha256": "d53b50b67cc6d8169d74a915b51d0354f50ad3dbd17806a3c4382899469cba5c",
+      "bytes": 1761750,
+      "sha256": "f4ac41a09f1490eae71a5add9974957908da75b90971244c1e2dec5650b6a59f",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2765_3843.geojson",
-      "bytes": 4292045,
-      "sha256": "ef791d6c669f784d822761d4ba80e5959decf3aed9265db2d79d61ddc1ebca60",
+      "bytes": 2149778,
+      "sha256": "8d15109ca4d305e8a5f2ae317a8fda46df614fc1c8d8a7d1bbd950d37e34d03f",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2765_3844.geojson",
-      "bytes": 3682499,
-      "sha256": "9c70ced4e3d46b4e674457b2b006c657f3ab59ae82e28d5c620a9072a78a8203",
+      "bytes": 1693015,
+      "sha256": "3a881260490be8605b2e823f99bbe01a28c42d00e8443d6ffade5cee2ef2167a",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2765_3845.geojson",
-      "bytes": 2800392,
-      "sha256": "dac2f91694679d92fb9a97cde40ee659dcd0d35451e4291beea849e733d1166e",
+      "bytes": 1296428,
+      "sha256": "94a3641451e1cc86e6b021b61f568798c609586c820c66d0f9148d73c0b8c0a2",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2765_3846.geojson",
-      "bytes": 659512,
-      "sha256": "ed66cbe6e2da3791e80d31b844a25efca0f1fc821a367b1a79471f1b8cb91d59",
+      "bytes": 311371,
+      "sha256": "c4322b36f673194a6e4ebfba6cdc479edbf2891af0748c8a6321cc2667aff21e",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2766_3820.geojson",
-      "bytes": 1287,
-      "sha256": "490ed6fabf1665adc9a2fde745c2b8600db3db324c6962f956262aded0b081d2",
+      "bytes": 3494,
+      "sha256": "0b0d3ffb834e2342f4e8ec80c2ed45cef4e453dfdcc3a5dd82038ce3f42b4727",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2766_3821.geojson",
-      "bytes": 590550,
-      "sha256": "dbb8c2b42cf66047ccfe906918ef8f98d038bb86295055f938b85fab3b4fe513",
+      "bytes": 288941,
+      "sha256": "dbd8e58c0205306cbb9fd985cb394bc93237b84c81576f097647fd1b617076b6",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2766_3822.geojson",
-      "bytes": 1058835,
-      "sha256": "c66bf10e92b7803656a86391017325e1fd2faf39fc796341cab4d4db42262082",
+      "bytes": 473838,
+      "sha256": "d2aa29c5b476aa84c03fe26a0084dc42ad1e25a21630ee7d4f52f72f236b5dc7",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2766_3823.geojson",
-      "bytes": 1734404,
-      "sha256": "668d7735331b09e81369fbc47e21ca378b822a6f25b1276e3cf5227aee75569f",
+      "bytes": 859806,
+      "sha256": "b7c70e8429657c8ac44d61f6a065d3ba2fc9fdc8d54ec711a5ace07c8d078fee",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2766_3824.geojson",
-      "bytes": 2057021,
-      "sha256": "ff45ef2be17a8ddc97f91ffc71019a420fc70bc72329165967b69d1fe1727a23",
+      "bytes": 976668,
+      "sha256": "48889ab9e16e15bf4e6b3cee38b94ac90d97543e78f0bb586740addaad94af0f",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2766_3825.geojson",
-      "bytes": 2115484,
-      "sha256": "05155277800d1fdb1e89d1572b3d5815c57dbbcc373e60bd1b13ae56c255e644",
+      "bytes": 1048738,
+      "sha256": "fdba8d667b7d4fc63fd73d42e7a6b8142116d7b4eb0123f0dd69f3f0410e651f",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2766_3826.geojson",
-      "bytes": 2514881,
-      "sha256": "ba8e686d191873e54275d31295adcae9ff06f21fb5e30f3604cde5710d82baec",
+      "bytes": 1118431,
+      "sha256": "d317c4281714935c397737aebde38fc4fb9301b39a59ffd29b9156d9acc0bd57",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2766_3827.geojson",
-      "bytes": 2148560,
-      "sha256": "fb57ea11b39904adefea3cf427cecf7131243e21a5e684291240f3ccff9ec519",
+      "bytes": 1086452,
+      "sha256": "ef987c130a65be1881a0bd68f4d202435dcf9a47b26ea21a26133c21896299cd",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2766_3828.geojson",
-      "bytes": 1937886,
-      "sha256": "3824ca3a48b89e0010714d8223d3dd7c98dd8395ba2406cc452611f42227598b",
+      "bytes": 1008294,
+      "sha256": "a23e0964868142a25635ff6b4dbe029e2a149bda373dc931e72ac1422d3923c2",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2766_3829.geojson",
-      "bytes": 2091665,
-      "sha256": "95c929374193281178cde92d1c810b72a0a6d4f710692a23266cb84497607670",
+      "bytes": 1042431,
+      "sha256": "6cc67b157a78ec7ba6368213fc3ad67d26f38bfa99e6aab8d908843f38f98988",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2766_3830.geojson",
-      "bytes": 1671522,
-      "sha256": "d6fbdfe3fb5941b85745dae2823a4b35dc39cb455a730777afc6006ead675216",
+      "bytes": 686172,
+      "sha256": "e0492dc310e2c423835900a1bf24f6b63b1111e6424fbebe35cc306cad57ff42",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2766_3831.geojson",
-      "bytes": 1960477,
-      "sha256": "3cb6e4595bd166a8ef24a71df9d5eae05f5b3f2c36a70e896bf715dd46bd6c7a",
+      "bytes": 998498,
+      "sha256": "9c1813696aa81be181cdefb3a91eef29461592d804e95d1ad03b3032e4f6a589",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2766_3832.geojson",
-      "bytes": 1889422,
-      "sha256": "9c6cd75f3c06154edbc1bbf4060372ab490e17ed4bd4adc471e010613ebea196",
+      "bytes": 934011,
+      "sha256": "0c7c3dca4162fcdd766110cac48960b4ed6ed07e63e4dcc9a1c31363e8ad793e",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2766_3833.geojson",
-      "bytes": 2139301,
-      "sha256": "270da366c5d53acd65ecd8ad55aad121d00d64bc067214e96dccfcce77081203",
+      "bytes": 1157534,
+      "sha256": "d2b3b2b4f5fd01c38d191b144e1087afbe01f1a72838b64e248d00db144a822a",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2766_3834.geojson",
-      "bytes": 1951880,
-      "sha256": "995fd0dcfee573ba75e4141417ea2d167677cb816e893e2c3dba23915e8e2edf",
+      "bytes": 1139440,
+      "sha256": "dbfe01cfcad50f8b020206781f27ef87eaaaae107c9fbb0d69d14d1bc690e5c7",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2766_3835.geojson",
-      "bytes": 1564020,
-      "sha256": "01771f8802a589c473a35378e67473ac9d091d9a34944db748f28d2f501c6606",
+      "bytes": 803527,
+      "sha256": "33f6db5bd9d29956e13f465eb1b202ae5e90e3aac0d87b57d5684c603b4403dc",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2766_3836.geojson",
-      "bytes": 2102782,
-      "sha256": "46a1b049b490cc4e5c1d2fdf0db1f6d14142e7660264d62cf0b8ee1b54c2ce10",
+      "bytes": 1042967,
+      "sha256": "7ecb20ac1831ddda3f545901845205753998c40e66b2484872965a8cb9b63062",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2766_3837.geojson",
-      "bytes": 1628689,
-      "sha256": "ba975038b897ac8a1cf9a19e7bc317777068bfd18e856868bc968acea9f17f62",
+      "bytes": 971381,
+      "sha256": "4ee0cb0e9e6c967ba488c4f28009bf348f3b2e77a6d9615f0a7288d0803cefe4",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2766_3838.geojson",
-      "bytes": 3398874,
-      "sha256": "4984b8a082c081deb3a8f40afe35e8b567236ecf8b7403ef72cf0cccbb716c9b",
+      "bytes": 1924493,
+      "sha256": "d6200b2c4b1db36b1ba1aaea9d11f955811241c40e7662188dd9cbd256a34804",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2766_3839.geojson",
-      "bytes": 1532396,
-      "sha256": "c30072b45d7eac5cbc2dea4d59b52da5c1e29edb965546d40ff6fc5d824a3959",
+      "bytes": 747332,
+      "sha256": "a31ba844f157e6f5aa37f718e3bb55ab666cf4599a40e325916d4f3c196cbdf0",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2766_3840.geojson",
-      "bytes": 1763910,
-      "sha256": "fefa209c302fa82c11adbee2f57ed11dcaa186b76167da06ce1716686b332366",
+      "bytes": 872413,
+      "sha256": "1f8b2ce48e80def5b8b4c6c3fe6d3bad0ee4c18c82f6957b9cd7ef2a6dc3be7b",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2766_3841.geojson",
-      "bytes": 1281752,
-      "sha256": "3f184c48c5a093f71338b0da6fff157bc9c70f1154609d09c95e94224805fbd7",
+      "bytes": 639711,
+      "sha256": "9de061712efb8b64d0a2464ec1cc876dc2b9ff75bdb75f71a0120dfcd3984163",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2766_3842.geojson",
-      "bytes": 673129,
-      "sha256": "657bd39984e0e0b084b8dda888983c0ed9e142265d403fd1c11810b214853305",
+      "bytes": 354316,
+      "sha256": "c01b38f8f61d5fa65cde18a011fc3793725edc93f612dd75e316ebe0bf6c0950",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2766_3843.geojson",
-      "bytes": 1544183,
-      "sha256": "e290660791e098c717f5395f1823ca2e6eaba703ca2fc50f7669abd256297ee5",
+      "bytes": 728261,
+      "sha256": "47ab4bf1b8eeaf21a90b6049dfb15a9f7204cfe61c3bc1e885854899eb27f96c",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2766_3844.geojson",
-      "bytes": 1310867,
-      "sha256": "c410655f94a84d7cc88cb5f124e91519b0a7b2304399615a7f6683d7372cd14b",
+      "bytes": 588027,
+      "sha256": "0ef6cc494db39218f6b86173bdfb3581c7b98bf90afcf070830f247a6efc0b00",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2766_3845.geojson",
-      "bytes": 61141,
-      "sha256": "28ca498b3e80e0166a20af9c8ca2e973592a2d56650167db2964f4b4458626bf",
+      "bytes": 38490,
+      "sha256": "990974b220db1a17fad8dce587fc1ce076f5a5bcfbd1c5a72d05b5801e4e7a56",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2767_3821.geojson",
-      "bytes": 137816,
-      "sha256": "01748bb301a4dec86ad8cb8e9d98b68b348d67af7efa6c7a74e003aa39b7fd16",
+      "bytes": 69397,
+      "sha256": "aa2daaf5c9cb4c51d7ae0caa920ffa0e8b70d5d04e0bbc9944a2ccb62840e702",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2767_3822.geojson",
-      "bytes": 1594239,
-      "sha256": "9a6fb1c76015e021ca8f04759b5ed27ae93c183cc953ec654cac12313bd8dccd",
+      "bytes": 689361,
+      "sha256": "4c89cfb0d661424200661bf63c74efea3e8eec416668a4e27db614454b169bb1",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2767_3823.geojson",
-      "bytes": 2731320,
-      "sha256": "95f43188cbe25337da929578a5c868c21b75ea2e8cbee7e7c14e29a32357f9c3",
+      "bytes": 1227735,
+      "sha256": "113f9f3b06b1c3e6870463f296e15cf20133b501ad9c50e048bf7e6a6e2c15de",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2767_3824.geojson",
-      "bytes": 2746521,
-      "sha256": "0407709ecbc5709abc62e3f62ad0064f68fd1bab40410fa0b7bff44381efbcb8",
+      "bytes": 1214255,
+      "sha256": "d2a422bd05ef3269015eb95594ca3817f878adb2b7626ce17841a896e9bad5e5",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2767_3825.geojson",
-      "bytes": 3148056,
-      "sha256": "83a21530157b643f1fcfb09d7a893db922fb84cc5cdfa8cacc247d6f36c770dc",
+      "bytes": 1524147,
+      "sha256": "9703c4132eaa60cf11d99755ac873fb3259c09f99e56ca34da621f23ffbe3e6d",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2767_3826.geojson",
-      "bytes": 2197550,
-      "sha256": "a427baf4dca7c52cef1f0bbc9c191dbbf32845a961be493426c028e159460719",
+      "bytes": 1011040,
+      "sha256": "e69162fd619e39351b16ee14d04a70e90627b9b82336c3fffc1047ecda8ee247",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2767_3827.geojson",
-      "bytes": 2406907,
-      "sha256": "ff292e473f922c2b766f191b75eaf9b010ca9dbdcdf4f1c50611d7da80a454c6",
+      "bytes": 1166286,
+      "sha256": "3e4019b0e7efc279060e2c42e6d624d2b404d3c8dc2dbcf5575359672a339548",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2767_3828.geojson",
-      "bytes": 2973964,
-      "sha256": "199972942622fbeb908c0977b57c3ea30a38ee96c0c6f4dedb0ba9dbee73fab4",
+      "bytes": 1438081,
+      "sha256": "b99e78acfb71cc73c5b3cf823c183b582e8dba2c3baaad66809e66eeeba55eec",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2767_3829.geojson",
-      "bytes": 2073820,
-      "sha256": "bef58267c7ec066d5d826de33713a4a126af1a91d969e7384ce260939af447be",
+      "bytes": 1014842,
+      "sha256": "d4e0764cda3313d31dc604981555bf919d27e8e6b74ea048df4b89c6861021b8",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2767_3830.geojson",
-      "bytes": 1492909,
-      "sha256": "bae29cb64a2e6bed2b5edbb452ae052803890d01af3239ad86b9f143a729bbe5",
+      "bytes": 829561,
+      "sha256": "706eb2512ba58421166fc5bc6a21f29f25dc9ef4ea5fe7d7b9e4b5622d61e2e6",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2767_3831.geojson",
-      "bytes": 1954187,
-      "sha256": "2c2a62018d947122554675daa083be8a193da0474e31734f5ee3012a9d9cf354",
+      "bytes": 994675,
+      "sha256": "573926adc36a93d2254158fa7700be63cc8ff6eaffcd6c43faa60ed662a3160b",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2767_3832.geojson",
-      "bytes": 1575575,
-      "sha256": "da4d7d7b269c55ca97831ed20b0eba513b1d08f4da0dc3761429d535001cbd1c",
+      "bytes": 786957,
+      "sha256": "186c329f4f5d9398dd3828c42b7392b2006b6b16d689dcaac6d089bba3691dc5",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2767_3833.geojson",
-      "bytes": 3603429,
-      "sha256": "f026bba9934fa048a9bf11aa5b9afedef02ced94385ecf2c9d45150efd1c2dbb",
+      "bytes": 1432219,
+      "sha256": "524e194756d69a030bd0370ae52048ed3329ac8192791e16978bcb261b2b0f82",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2767_3834.geojson",
-      "bytes": 3030312,
-      "sha256": "daa8d97179f72a9aef26e070d0f7a1cf2d88c2979fd28fff8dd2d4121dda5657",
+      "bytes": 1590914,
+      "sha256": "a28d9bd6cc7c0bcd3874e00c0bb186a46fc7e9bc273263778c871a88084cc9f5",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2767_3835.geojson",
-      "bytes": 2563042,
-      "sha256": "3f2816b57c10ae5c16c94ca980724bdc621e5c7148d17784693be0b1986692be",
+      "bytes": 1451561,
+      "sha256": "1d1c21d62a6f7e1cbe85b0d29691686d7019f78344b9a8416b946bb9faa14c4d",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2767_3836.geojson",
-      "bytes": 2449711,
-      "sha256": "e414bd86586d294097a976c9c0ed65fd0e24be617a513fa35503835b60391b86",
+      "bytes": 973995,
+      "sha256": "e0e120f7b7beb5561670751b3ad86122fcdfd0671be8185ab0cc3efea4d0ed4b",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2767_3837.geojson",
-      "bytes": 2562271,
-      "sha256": "797db41358af585686348f2d4a744798ebbd7aa8e28b1c43e6ac37143059359f",
+      "bytes": 1136421,
+      "sha256": "53c1037176711e766365b04fcd7c127a90444435d5b62e11ae18ff326cec3d89",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2767_3838.geojson",
-      "bytes": 321383,
-      "sha256": "f9a68832416740eb142e08485f98e54d4c883c1994c421a26a884a4cc527eac6",
+      "bytes": 140165,
+      "sha256": "fd7bead04e2db88814d3c431bf8f3f5c74a1426fa66752ee137f1f6f945a7971",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2767_3841.geojson",
-      "bytes": 436998,
-      "sha256": "abc0e5356ce82a2b2dc0097c53430c9e9dafb73da2ed660b59b4338b8e104a3f",
+      "bytes": 169722,
+      "sha256": "14caf45b4761aada5f5ea888000e7f582571f9ad31c125e850b66ea266ff592d",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2768_3822.geojson",
-      "bytes": 14768,
-      "sha256": "19c2e653837ea9a637f64db418511ddb52f5d1a080f66f3eb91bbb01cefbc6ce",
+      "bytes": 28539,
+      "sha256": "cd704eda8cc84dfaccc21ca3f611d53f4d177845b2ba01d43e9c96a43c9240c1",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2768_3823.geojson",
-      "bytes": 821299,
-      "sha256": "2e8b829d762e51a0defbe6f1cbbc03dd5626e32556261f98818b27bf40aa55d8",
+      "bytes": 428794,
+      "sha256": "249667cc23414b7439fe7a6a62c0e05264eea0d910d37d5915901cd9e088a748",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2768_3824.geojson",
-      "bytes": 2868949,
-      "sha256": "272c3816140a772f58448a2978b1ad598e66fd5e6ac9ec09ed4b5bad06daf77c",
+      "bytes": 1133757,
+      "sha256": "831022e031fa6ed11698cd9fdff418fc910908b06223f1b0ef01d4fe29f4801b",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2768_3825.geojson",
-      "bytes": 2732733,
-      "sha256": "1b37abc5d663b5d636e90df40efab862b4ba24b51b34942b341b74b0cdd6bc3b",
+      "bytes": 1089016,
+      "sha256": "d67e70fc61e702b53f9b890e589790a49168f5915fc8a8cd2f8510efeeb9b2d5",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2768_3826.geojson",
-      "bytes": 2078968,
-      "sha256": "c0e8c21739a7d7cb91e842d2fabff431262ac7c6e2604ae170410750040af553",
+      "bytes": 991063,
+      "sha256": "2b98580c3727f8e7a1959ae7849b1320ea7445d5a1b27f96e9fb9d2420398c4f",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2768_3827.geojson",
-      "bytes": 2619679,
-      "sha256": "dd21a161c2c2cab8096da79a02fdcad2feb79c6bf7eaefd38d84030ec9031593",
+      "bytes": 1151917,
+      "sha256": "6d958f299a16506aa256b415c08653b70f2f8b847fe590c70f7e74fb2eb5d581",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2768_3828.geojson",
-      "bytes": 2156183,
-      "sha256": "9fd71823dacee552839812411ccd971e876061e10d352b3627ceefb79201bc94",
+      "bytes": 947124,
+      "sha256": "c6c18005168b961d5814831b85fce9a17d7d7fe69da734a49b57153ce1e4c307",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2768_3829.geojson",
-      "bytes": 3069606,
-      "sha256": "bd5a1df12173c7b96cffef34a902122c04c29633a10d7790bab9ee2bc0333144",
+      "bytes": 1507443,
+      "sha256": "c09fed5cd8fa868d8c366aa0eb7d2a7aac3f717f73a54223083d931c480ba2d8",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2768_3830.geojson",
-      "bytes": 2436992,
-      "sha256": "89d193daafdbf0efb12e901d95d7e565d628038737beb434f736a8f0de137bdf",
+      "bytes": 1038285,
+      "sha256": "a30e39f2e35433df03683b99efe53f9d176a37b665baec90ca0e8723019eb3a9",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2768_3831.geojson",
-      "bytes": 1970589,
-      "sha256": "7a7dc0a8ae94121a592202ed1c47d60cb95a9e6926933c390e4fd1ad39a5d5cf",
+      "bytes": 1041209,
+      "sha256": "f4be2ff9e725d43955c6cecf84c1b134f6800796cbf306c05177c865040e8e2a",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2768_3832.geojson",
-      "bytes": 3018947,
-      "sha256": "4be10d14f2521e081f395079c927c15e563583ba9d82109ae1958ab89ef1f496",
+      "bytes": 1252470,
+      "sha256": "ca5a3ee1daaa4ed260bf2634ed7940a908e6507278566a58be39da9ab8e878fb",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2768_3833.geojson",
-      "bytes": 2101177,
-      "sha256": "03d1f61e076d48582c57518f19992d448452e5edd4bbb67822b09bf752694b8c",
+      "bytes": 1024786,
+      "sha256": "5f70b0b2130cf3afa75aa3895b8c446b269550bb6a831b2136323aeeb204dcbb",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2768_3834.geojson",
-      "bytes": 3785488,
-      "sha256": "325560cb05308f354c2a8dba06101d84f75974ba28a2ce272770705d191a0257",
+      "bytes": 1869217,
+      "sha256": "51432c09a7c12b6426ed5a629626b322613f69ab5de2c92d9c483f89fd25226e",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2768_3835.geojson",
-      "bytes": 3056453,
-      "sha256": "7355e138cec62162a6d06856664042d3eed4cebeb4da729af64d325ec421b3f4",
+      "bytes": 1628132,
+      "sha256": "2a17a20cc24b12e0c49a0f79f9f6fce8c7fc12d3486e7523918e8aa8a006055f",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2768_3836.geojson",
-      "bytes": 2122851,
-      "sha256": "9c771c31719dd41abec4689b5e3c823aca4735c5e64cb145f8d85dd24c1976f4",
+      "bytes": 975274,
+      "sha256": "24d2f64b1b71c158b09970a3ae119477edd4d3d25d09176bc4c366df61e295e9",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2768_3837.geojson",
-      "bytes": 2367992,
-      "sha256": "2e599bd9882c5de7459c60399e112fc676c9ea057a4f188467cc209c324bd12f",
+      "bytes": 1161921,
+      "sha256": "b5ae1a179655230663d17ac3bd4b1c7a663fc27b1840fa0df82c452ddc56dcbb",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2768_3838.geojson",
-      "bytes": 355761,
-      "sha256": "9a49e3d2f32e3b0dc7e422a2253699f7d63dd649f9cbc40777a96076a9fdd461",
+      "bytes": 196313,
+      "sha256": "1d5ae93f1fe1d0ddb54536df78deeece2facfaffc1273a36aed4d98055c7a484",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2768_3839.geojson",
-      "bytes": 352008,
-      "sha256": "384fd3092b5bea82625cbbfad7e42e1e56066290c282bfe8dbed6adef7a0c49e",
+      "bytes": 166589,
+      "sha256": "65e925d3fbd7aa90ffb2205479821a1a365423ac323b1c088be65f774ee15be0",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2768_3840.geojson",
-      "bytes": 463360,
-      "sha256": "859d4a5b78c838e1e6eeb272e5e5fff1c53963972ee85594d7cc09c7a65a7f87",
+      "bytes": 209030,
+      "sha256": "c4e67b096090950c508e138ae3542bac9fed412521f92e2e8b0e279a59d76a73",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2769_3823.geojson",
-      "bytes": 63679,
-      "sha256": "a1bce2a1c99e9ba1adf9c6bda50925ed3175eee60347164030410b224dd73767",
+      "bytes": 32091,
+      "sha256": "167a3251bf87f785ab418e1a34cfb3eb759eaf2507fb0d391f7801293c604f69",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2769_3824.geojson",
-      "bytes": 1431020,
-      "sha256": "0ff34d68fb9c23ed749694a0af2524299b7680da5cf31fbb6aa4e2c57e30a527",
+      "bytes": 676426,
+      "sha256": "2fb3d7536a567738dfdb1c02e0fcfbde9b59bdefe892ad4f03a112f95e49fe39",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2769_3825.geojson",
-      "bytes": 853334,
-      "sha256": "da5ebe7eaceadc6cd1285be0f46928fac720ef593ec9bd1b4b1ab37bb7698c42",
+      "bytes": 495802,
+      "sha256": "bf1ce5036df5201e69370908553b54fc69b4ee54a0d2b113382c07a3937a6211",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2769_3826.geojson",
-      "bytes": 2572095,
-      "sha256": "64b82f741b39c4a6ffe5f44023f763bdd0007fb700e64c0234f1b6a3b0b87e9b",
+      "bytes": 1001695,
+      "sha256": "8ffd081d55c4bb741c408de8c97e2d635cef7d07c1315a9959034339709820f0",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2769_3827.geojson",
-      "bytes": 2782077,
-      "sha256": "bd97f5e596efff64897073e24ae3353679e930c2be88a8c1a62c9f03d02a92d8",
+      "bytes": 998431,
+      "sha256": "f491d93b26c73a51c0026ef49e83174930d0fac816f08c825962175f2c891aae",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2769_3828.geojson",
-      "bytes": 2610916,
-      "sha256": "bde107824c003c298619e4cd6a250fed62de5c0c17b4fd42bd1616b9594bde9e",
+      "bytes": 970899,
+      "sha256": "485f418303ccad5c03b9e2eb14b75f1c874701f18cf184b54a1cede6453e7535",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2769_3829.geojson",
-      "bytes": 3288540,
-      "sha256": "d559b2d34eec8ff59c08e4215357fa0b660d2ea24aa742af67bc17493ccb03c9",
+      "bytes": 1334785,
+      "sha256": "27903c0c4c9b42c75daa90d9820999aa09f290c4d94ef29949e96b0912310c9a",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2769_3830.geojson",
-      "bytes": 2496926,
-      "sha256": "428adeceb7a3d62dd6ad0fd71c5bc179070dc726bc0b765c7cee4d9df0c94836",
+      "bytes": 1061063,
+      "sha256": "7731f698b9f3840c0ace992a901803f8782f06801d863e28c25957a49144e9d4",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2769_3831.geojson",
-      "bytes": 2710182,
-      "sha256": "16e53f6d0e22d31cde9a177dce02cf33205bfa23891789fb3061361668023fd2",
+      "bytes": 1190235,
+      "sha256": "eb70ff0d04c3aba9daeae52fc6f311ee32ab4c8e1a06a1bccd5283a70136d55d",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2769_3832.geojson",
-      "bytes": 3288854,
-      "sha256": "036a2aa3573d9e3a7dd411cd489d046aad7c16335a2278b5bb760823ccb0dbe9",
+      "bytes": 1260053,
+      "sha256": "f0565ea8daae418ca18bc79339ff55aa44676bd3bb35abd610a17632826b77cd",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2769_3833.geojson",
-      "bytes": 2135891,
-      "sha256": "78ae22e64d0420cc6992d3f3c72703f4ea8d5a22cf183e2a99effb00517adb9e",
+      "bytes": 999101,
+      "sha256": "f053072556cc55715a4e3c9ed559387afb9bb43c78e1b4e2b46e3819ef65c00b",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2769_3834.geojson",
-      "bytes": 2573061,
-      "sha256": "7506844bfe79ac31c310333f795ee1dbfa41056f182956f75be431582b3e5c0e",
+      "bytes": 1129677,
+      "sha256": "e29731e6f8f569f26db08eadfd1337c3e7767b939ced95a4f7033cd1bff3b491",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2769_3835.geojson",
-      "bytes": 1962479,
-      "sha256": "7645745c50771f788c52a27922fb06bbdc1af7e53726cbc6fcf6cde1a2ca7a24",
+      "bytes": 1122725,
+      "sha256": "10b15e000aed748394a51f5a1bb719bdfd2b7453663fbda5c7dbf00d85c8eaf0",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2769_3836.geojson",
-      "bytes": 2388455,
-      "sha256": "53e3c0d9da00fb8a6cdc5ffdd78c974c1d54700500a6ef063aa954f956cb0ce5",
+      "bytes": 1192837,
+      "sha256": "b1b67c5360f80bccbf2e3c54489540fe66717ae2aa4c30aa2990c99965e132a8",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2769_3837.geojson",
-      "bytes": 2287028,
-      "sha256": "38a4481eed0bb965df2786d8d958b6f8f6155712df33217240bcc0a79f9b4c9e",
+      "bytes": 972262,
+      "sha256": "eaf07c33dbc9a697a31cb2954683985842e9c85d05a9f1cba3587632185f74d5",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2769_3838.geojson",
-      "bytes": 3319235,
-      "sha256": "d88bb9f105b987b4a8b4569bfff6159d30765236675ba5aa1e03cb919355b2c0",
+      "bytes": 1942381,
+      "sha256": "251fb2447d0025ff199db23dd9549515eea685a3ce0d77b16580e3f65864886d",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2769_3839.geojson",
-      "bytes": 1449790,
-      "sha256": "9473852ff4dfd2299d713b26d483deaceb76c1473b2788d51d33ccb0708a539a",
+      "bytes": 799253,
+      "sha256": "72aeac7f7000006159deeab6d663e7fab7c4d7f32e04fbb62c40cfaa675a5aa7",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2769_3840.geojson",
-      "bytes": 144109,
-      "sha256": "f3384520278a012e4877a448bc3504527461a32715b472fd909868cfc2b56924",
+      "bytes": 97635,
+      "sha256": "cd2fbc0da340e79382dab5fada7e9b5abbb4bf5f97152136b6969bffb4e38709",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2770_3826.geojson",
-      "bytes": 675933,
-      "sha256": "1b4d2f22fe21f34b60a42bbe26757af656367e38d2b2ab1c0e28cc2f29f62850",
+      "bytes": 278989,
+      "sha256": "7dae4d97a9f1b8a0a05410301f5ae95794291cd508a22c85abc5ba3b0c51484b",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2770_3827.geojson",
-      "bytes": 2246016,
-      "sha256": "8e24ff30faf8d3e80544e0081dfb37d625fa24c6c5cf27ac4a64a1d2d4b122be",
+      "bytes": 834234,
+      "sha256": "ae4a48e86f2c790271b543213ab144a1eb61fca8ffc0f02415d9992f7c9fb667",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2770_3828.geojson",
-      "bytes": 3262983,
-      "sha256": "1bc12cf9624a27e949bab666523a606e73e263d6073be67df8e6e7072f044ccd",
+      "bytes": 1239208,
+      "sha256": "80a62600b8e69452d6960e00152d802f362961da6287472fb65ade6256c767f5",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2770_3829.geojson",
-      "bytes": 3309261,
-      "sha256": "86ef834087462c741b3dfc5f6560f47e3ed056e44ffb088e068474c56bfce38f",
+      "bytes": 1489056,
+      "sha256": "3ce00fc777ce9c393ec9e1ce59e474579cf9aeffaad89c8ee142b68c1721aa34",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2770_3830.geojson",
-      "bytes": 3175815,
-      "sha256": "05127b3d0feb7979367bf99f650e114df198b234cc1d215df43857eba61e0ace",
+      "bytes": 1573929,
+      "sha256": "359c223c68c58e00dec7a7f5143d8db1feed7c169f0eae78b93befd8e47674e6",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2770_3831.geojson",
-      "bytes": 3714837,
-      "sha256": "8cd99cf7cf9382e90475180563426f03f8af326c606d8c3f81816aa275f66ff4",
+      "bytes": 1401115,
+      "sha256": "e89909388bd475717f86a7ebadaba0d93c67c3e8ac8846f990fadb568490a275",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2770_3832.geojson",
-      "bytes": 4110656,
-      "sha256": "f0bf78f6e669a30b4e7c3cad00a5e6b6450167c3da04e15a884d99fda81c15a7",
+      "bytes": 1698146,
+      "sha256": "d0c729629faed4ab0e220256815c0f5a6f42ad859e74a1002d3d40a8dd995241",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2770_3833.geojson",
-      "bytes": 1472217,
-      "sha256": "823b08ebda96db43e8efd2a9bbc2529d65ee17cff64e539d36448092ed95285f",
+      "bytes": 631459,
+      "sha256": "a92ee48e998eee3e8b1179a4ab860643ef1f355571992c8a59067999ed1b6a38",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2770_3834.geojson",
-      "bytes": 887301,
-      "sha256": "93dacd2d35c7aed36f2e7039c7cd6a2adb5d519cc1b1d145e8097ad92d64c84e",
+      "bytes": 444150,
+      "sha256": "eb99d782ceecba6d0c1d7b4b0f0a7ee7f026995da96634ccd7c8d8b27fa90cfb",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2770_3835.geojson",
-      "bytes": 549241,
-      "sha256": "7fac1cd14abde17b75ca2b65fed0ae09700b79f5c1deb1c23eaf87ce76036c51",
+      "bytes": 321324,
+      "sha256": "b2dc00df31109329c8db80eb91df3ba5a9c18c1a6ddb952968bb9d562cbb043b",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2770_3836.geojson",
-      "bytes": 185918,
-      "sha256": "fdf813136b8f928e05fe7c3c9bbd3d9f0a83cc068e9e475b12a21dc00fe1e59a",
+      "bytes": 113060,
+      "sha256": "adc0c7fdc2e74f6e450a3b87d8ecee24c00a08d1c10db2fc749024a412b4f2dc",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2770_3837.geojson",
-      "bytes": 1349648,
-      "sha256": "ba009df0f7591e604c4cb57a481b15f72fd6e5708b6981f30f630ba7de95e54e",
+      "bytes": 684647,
+      "sha256": "d6c64edc950d6a0af16cc2560baa51bd84c7a20d6ee214353154d83bc283e574",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2770_3838.geojson",
-      "bytes": 1153975,
-      "sha256": "a001e4e3d05ba9ef057776bb44b10791cb1aeb2e4eefd316d8008f14186a563e",
+      "bytes": 577164,
+      "sha256": "fc1bc245552aa371f29d01131dd7eebb9d5282870ef3fcb61ef0e4c7b2eb4fb7",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2770_3839.geojson",
-      "bytes": 390751,
-      "sha256": "1f5e2ae3c9500414d20b7f2ec0a59a534d586d797722a22b05715416adf43a09",
+      "bytes": 201219,
+      "sha256": "506d1dc3fed3498c0b9ed5ed6db4e937bfa790e9259134bd2a907037321bef53",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2771_3827.geojson",
-      "bytes": 353802,
-      "sha256": "442a8bf289bc4ce730cc12cded4dfeb39e7d8cebe801fb46aa825ca57dd618ee",
+      "bytes": 102348,
+      "sha256": "e3266854d3e26696ea35652beb4d258753470f6674a3aea8e86c43f067881eaa",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2771_3828.geojson",
-      "bytes": 1842106,
-      "sha256": "f8910e64ed3d5d93b1a26833930a3a1c2144d00578e396f710960a5b16bd7bde",
+      "bytes": 652155,
+      "sha256": "290451065c71e4276baf003c0be0796c0dd9523bece81a9bf71c9bedf18818bf",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2771_3829.geojson",
-      "bytes": 2202141,
-      "sha256": "caa0c1b7f2b6f31174514dffe4cb77d743ed3aa933f087071e52a775dd3ccfce",
+      "bytes": 775807,
+      "sha256": "659d08318c12c1596c025dd0c77b524b32fa2771a12b3b2e725730546929ff2a",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2771_3830.geojson",
-      "bytes": 3786945,
-      "sha256": "c9721c6acce8b1eb2c07b3b76965bcb3667715c63884a73751803ca9d525f1eb",
+      "bytes": 1425254,
+      "sha256": "0565c2c287c67c3391a87fe61c6064feeeb3df55542ba83c9b812d581c67c480",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2771_3831.geojson",
-      "bytes": 4034687,
-      "sha256": "62d486f33faf6eefbe9241f0c7372f9ef9de9afc524462cfcf4596a2fbe174a0",
+      "bytes": 1304733,
+      "sha256": "2c6fcddbfb560183d74872796798987481135e9aca38d8e9b434553d1b1bf7df",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2771_3832.geojson",
-      "bytes": 4863208,
-      "sha256": "5e99ee7084d06b37929c5ebca6ba0a7f21832f6ca23e891ce217849e35c176c6",
+      "bytes": 1679617,
+      "sha256": "5b1ed2a9ce0fc77394bc63b512104f0a8b4147a8c57629f9d4c1708188345ceb",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2771_3833.geojson",
-      "bytes": 3261440,
-      "sha256": "59e1aba91a9d4bff7057e33829934526ca739c87596bf800b02212488e0435ae",
+      "bytes": 1136449,
+      "sha256": "366eb5033ea0cd51c4a0539b1734b3c6d86e24e0e2cb141826880f394e4d78d2",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2771_3834.geojson",
-      "bytes": 60498,
-      "sha256": "87ab7c149a27cbdd2d5bfc92b2b2bf0c83612fbb11a258208f9e060df8900f3d",
+      "bytes": 53883,
+      "sha256": "3ebed790f777ab4ee1337aa4ac13a88ef62e4d693c5e0b423cc3c781f4880fce",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2771_3837.geojson",
-      "bytes": 136537,
-      "sha256": "984c1923de902a8efb166446967dcd4562399869619f83cd9fa18d2d3c944c13",
+      "bytes": 51259,
+      "sha256": "7ca405c86c8868fccd884e88c17e4c2325748aa3dd5ce3f3457350cba220bd68",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2771_3838.geojson",
-      "bytes": 206080,
-      "sha256": "a657d9639ecef3dda3a281aac60b9e868a3b118a4d280fca88f44ea657e3f66a",
+      "bytes": 59664,
+      "sha256": "164939a290335e1385ae221cb4e23882adc233d67ea563bdc4f90792db9578bd",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2772_3829.geojson",
-      "bytes": 39216,
-      "sha256": "31a84d52a8c285d107d662d516fd6b730b62d4c5c9c8676d46d71790962e32c4",
+      "bytes": 35970,
+      "sha256": "e2d3da7afcd2230aa56a17a77ca4ff78ab11f3b768b18586bcf49eb4bc9fdd22",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2772_3830.geojson",
-      "bytes": 2349843,
-      "sha256": "c1ae962a8b60bc57ccc83d82d2e5587698fd3486ab9f0e189b3cdbe7715b8529",
+      "bytes": 843825,
+      "sha256": "6f02f55520080d510e3e5fc944d1a27c3d9cbe13e8a025ddc4e61008f4925c79",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2772_3831.geojson",
-      "bytes": 4217836,
-      "sha256": "0d444f74f2e51f2bcc685ae73e048c77fc46768c9a49567c313824e11ed10d4b",
+      "bytes": 1531384,
+      "sha256": "dc2f1025e5c67b6e310bcafbf1ccc1cd43fc2fa7ab05fb3c3d47cff2e741fcb6",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2772_3832.geojson",
-      "bytes": 5604137,
-      "sha256": "113127c471ab7c233ade580bb0516513a959956cbb9d2837cea2ade4143dcb24",
+      "bytes": 1798981,
+      "sha256": "896d8e25efba4b84aa6642e9a5b4e8f9b72615aa0ff54f1c9c460a3ac9f16090",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2772_3833.geojson",
-      "bytes": 2786057,
-      "sha256": "aba244c3aaa7be35be8779a44ca8677e6e71cd98f20797fd4bbdabbf47783cf7",
+      "bytes": 947856,
+      "sha256": "03802e80088cf783363fe2c1461a95fca82a26176750627e904c0bc5bab02675",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2772_3834.geojson",
-      "bytes": 10569,
-      "sha256": "969183c742772138aac08a60379caa7351ff160b13ffd4cbcb283c13413895a2",
+      "bytes": 11906,
+      "sha256": "ac3c09754674fcfd3ca8302d2a27d8c5cd3266e45d893adff7e013bb927e5542",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2773_3831.geojson",
-      "bytes": 45178,
-      "sha256": "28bec3932f8dc8106682b14c50998c658b62078fe76a68cd8ed49ada1eada755",
+      "bytes": 26629,
+      "sha256": "810d7791d73e810dd3f993fdd4f08ffdc9233290a084462b9894e809258282c3",
       "sourceId": "copernicus-urban-atlas"
     },
     {
       "path": "processed/copernicus-urban-atlas/shards/2773_3832.geojson",
-      "bytes": 269568,
-      "sha256": "3263973276cfaf0c88ed181eb2d59cad67f6a098228afeb1b25b7ec1f350dd8a",
+      "bytes": 113405,
+      "sha256": "e2f614e3788b9cf8b7fd66f236e9b324abb7184ed2b71d80414519ca65709e86",
       "sourceId": "copernicus-urban-atlas"
     },
     {
@@ -86459,8 +86558,32 @@
     },
     {
       "path": "processed/overture-buildings/index.json",
-      "bytes": 46799,
-      "sha256": "3d04b67674f2213e4549fe545dde2b99d6c69f58fa80fe6fceb85e971c51212c",
+      "bytes": 49285,
+      "sha256": "babd7e13a139587b8b71cc1d8f5a59555715a055355d3e533aae8d21d4972920",
+      "sourceId": "overture-buildings"
+    },
+    {
+      "path": "processed/overture-buildings/shards/6892_9605.geojson",
+      "bytes": 1389290,
+      "sha256": "68567798254090f95222bbe9314fd05375ed080fd0eec1e0292872aafdf7d387",
+      "sourceId": "overture-buildings"
+    },
+    {
+      "path": "processed/overture-buildings/shards/6892_9606.geojson",
+      "bytes": 2034673,
+      "sha256": "941684a7a6c53a7bf1fd563bfb979a2e97edfce0564eedcf99e759ff7651b9b7",
+      "sourceId": "overture-buildings"
+    },
+    {
+      "path": "processed/overture-buildings/shards/6893_9605.geojson",
+      "bytes": 370195,
+      "sha256": "69e9468dee067a5d34720344e2a2723ff3abbe717e4a2f37bd0768f2d1ab4d30",
+      "sourceId": "overture-buildings"
+    },
+    {
+      "path": "processed/overture-buildings/shards/6893_9606.geojson",
+      "bytes": 295103,
+      "sha256": "ec055f28c495bf4677dca56f68cc0123154338a4ade9352c51ba84c411050e69",
       "sourceId": "overture-buildings"
     },
     {
@@ -87536,10 +87659,22 @@
       "bytes": 2705,
       "sha256": "d29b9d83abffe21e44bd27f03f54e31728fa4f59720a489b12d372b115c1c79c",
       "sourceId": "overture-buildings"
+    },
+    {
+      "path": "processed/overture-buildings/shards/7005_9433.geojson",
+      "bytes": 3813992,
+      "sha256": "b3b39d95081ff679960adf28f7a3d4534bb6fe437d58146559f3356ad56949f4",
+      "sourceId": "overture-buildings"
+    },
+    {
+      "path": "processed/overture-buildings/shards/7005_9434.geojson",
+      "bytes": 3924463,
+      "sha256": "34a677e41dbdd2af8e9b71e8f7307f3083c1c84612399370e93ad6f74f16b9e1",
+      "sourceId": "overture-buildings"
     }
   ],
   "totals": {
-    "assets": 9363,
-    "bytes": 2209160321
+    "assets": 9377,
+    "bytes": 1583124437
   }
 }

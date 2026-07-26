@@ -1,0 +1,2447 @@
+{
+  "schema": "uca-semantic-city-coverage/1.0",
+  "releaseId": "uca-data-f2908a8e5313e3aa",
+  "releaseDigest": "f2908a8e5313e3aa3a70738d637889c18d82a877c43bd1b520835a6e7a13a6ae",
+  "policy": {
+    "schema": "uca-semantic-city-coverage-policy/1.0",
+    "referenceDate": "2026-07-26",
+    "analysisRadiusMeters": 1000,
+    "geometryValidityMethod": "Structural WGS84 validation: supported type, finite/ranged coordinates, closed non-zero polygon rings, and non-degenerate lines.",
+    "coverageMethod": "Exact polygon intersection of present delivery cells with official BKG municipality and GISCO FUA geometry; Urban Atlas thematic coverage sums clipped classified polygons after feature de-duplication.",
+    "limitations": [
+      "Delivery coverage measures the indexed area addressable through present assets; it does not infer feature completeness inside a cell.",
+      "Point and line sources report delivery percentages for evidence only and are gated by exact analytical intersection, attributes, classes, and freshness instead.",
+      "Urban Atlas is a mutually exclusive land-cover classification; its thematic coverage sums clipped feature areas and clamps the result at 100 percent. A future source that permits overlaps needs an explicit dissolve policy.",
+      "Polygon structural validation does not replace a topology engine that reports every possible OGC validity defect."
+    ]
+  },
+  "summary": {
+    "status": "blocked",
+    "cities": 3,
+    "citiesPassing": 1,
+    "sourceCityPairs": 18,
+    "availabilityPassing": 17,
+    "semanticPassing": 14,
+    "semanticFailing": 4,
+    "promotionPassing": 14,
+    "promotionFailing": 4
+  },
+  "cities": [
+    {
+      "id": "munich",
+      "label": "Munich centre",
+      "point": {
+        "lat": 48.13613,
+        "lon": 11.58082
+      },
+      "contexts": {
+        "municipality": {
+          "type": "municipality",
+          "expectedId": "09162",
+          "status": "pass",
+          "geometryType": "Polygon",
+          "areaSquareKilometres": 311.213
+        },
+        "fua": {
+          "type": "fua",
+          "expectedId": "DE003F",
+          "status": "pass",
+          "geometryType": "Polygon",
+          "areaSquareKilometres": 5607.296
+        }
+      },
+      "status": "pass",
+      "sources": [
+        {
+          "sourceId": "bkg-geobasis",
+          "sourceVersion": "2026-05-10",
+          "availability": {
+            "status": "available",
+            "footprintContainment": "inside",
+            "method": "exact-point-in-feature"
+          },
+          "releaseContract": {
+            "indexAssetDeclared": true,
+            "byteSizeMatches": true,
+            "sha256Matches": true,
+            "sourceVersionMatches": true
+          },
+          "promotionStatus": "pass",
+          "semanticQuality": {
+            "status": "pass",
+            "featureProfile": {
+              "featureCount": 2,
+              "validGeometryCount": 2,
+              "geometryValidityPercent": 100,
+              "requiredAttributeCompletenessPercent": 100,
+              "sourceVersionConsistencyPercent": 100,
+              "distinctClasses": [
+                "Freistaat",
+                "Kreisfreie Stadt"
+              ]
+            },
+            "coverage": {
+              "municipality": {
+                "deliveryPercent": 100
+              },
+              "fua": {
+                "deliveryPercent": 100
+              }
+            },
+            "freshness": {
+              "pass": true,
+              "observed": 77,
+              "expected": "0..730 days",
+              "method": "Age in whole UTC days between sourceVersion date and policy referenceDate."
+            },
+            "checks": [
+              {
+                "id": "release-contract-alignment",
+                "pass": true,
+                "severity": "critical",
+                "confidence": "high",
+                "observed": {
+                  "indexAssetDeclared": true,
+                  "byteSizeMatches": true,
+                  "sha256Matches": true,
+                  "sourceVersionMatches": true
+                },
+                "expected": "declared index path, matching bytes/SHA-256, and matching sourceVersion",
+                "method": "Prevents semantic evidence from being attributed to a stale immutable release manifest."
+              },
+              {
+                "id": "non-empty-analytical-intersection",
+                "pass": true,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 2,
+                "expected": ">= 1",
+                "method": "Exact feature intersection with the 1000 m regression context."
+              },
+              {
+                "id": "geometry-validity",
+                "pass": true,
+                "severity": "critical",
+                "confidence": "high",
+                "observed": 100,
+                "expected": ">= 100%",
+                "method": "2/2 intersecting features have structurally valid WGS84 geometry."
+              },
+              {
+                "id": "required-attribute-completeness",
+                "pass": true,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 100,
+                "expected": ">= 100%",
+                "method": "Required properties: GEN, BEZ, ARS, AGS, sourceId, sourceVersion."
+              },
+              {
+                "id": "source-version-consistency",
+                "pass": true,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 100,
+                "expected": "100%",
+                "method": "Intersecting feature sourceVersion values must match the release sourceVersion."
+              },
+              {
+                "id": "expected-class-coverage",
+                "pass": true,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 2,
+                "expected": ">= 1",
+                "method": "Distinct non-empty BEZ values in the regression context."
+              },
+              {
+                "id": "source-freshness",
+                "pass": true,
+                "severity": "medium",
+                "confidence": "high",
+                "observed": 77,
+                "expected": "0..730 days",
+                "method": "Age in whole UTC days between sourceVersion date and policy referenceDate."
+              },
+              {
+                "id": "delivery-coverage-municipality",
+                "pass": true,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 100,
+                "expected": ">= 99%",
+                "method": "Share of official context geometry intersected by present indexed delivery cells."
+              },
+              {
+                "id": "delivery-coverage-fua",
+                "pass": true,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 100,
+                "expected": ">= 99%",
+                "method": "Share of official context geometry intersected by present indexed delivery cells."
+              }
+            ],
+            "failedChecks": [],
+            "highestFailureSeverity": null
+          }
+        },
+        {
+          "sourceId": "copernicus-urban-atlas",
+          "sourceVersion": "2021",
+          "availability": {
+            "status": "available",
+            "footprintContainment": "inside",
+            "method": "1-km-query-window"
+          },
+          "releaseContract": {
+            "indexAssetDeclared": true,
+            "byteSizeMatches": true,
+            "sha256Matches": true,
+            "sourceVersionMatches": true
+          },
+          "promotionStatus": "pass",
+          "semanticQuality": {
+            "status": "pass",
+            "featureProfile": {
+              "featureCount": 339,
+              "validGeometryCount": 339,
+              "geometryValidityPercent": 100,
+              "requiredAttributeCompletenessPercent": 100,
+              "sourceVersionConsistencyPercent": 100,
+              "distinctClasses": [
+                "11100",
+                "11210",
+                "11220",
+                "12100",
+                "12220",
+                "14110",
+                "14130",
+                "14200",
+                "50000"
+              ]
+            },
+            "coverage": {
+              "municipality": {
+                "deliveryPercent": 100,
+                "thematicPercent": 100
+              },
+              "fua": {
+                "deliveryPercent": 100
+              }
+            },
+            "freshness": {
+              "pass": true,
+              "observed": 2021,
+              "expected": ">= 2021",
+              "method": "Reference year parsed from sourceVersion."
+            },
+            "checks": [
+              {
+                "id": "release-contract-alignment",
+                "pass": true,
+                "severity": "critical",
+                "confidence": "high",
+                "observed": {
+                  "indexAssetDeclared": true,
+                  "byteSizeMatches": true,
+                  "sha256Matches": true,
+                  "sourceVersionMatches": true
+                },
+                "expected": "declared index path, matching bytes/SHA-256, and matching sourceVersion",
+                "method": "Prevents semantic evidence from being attributed to a stale immutable release manifest."
+              },
+              {
+                "id": "non-empty-analytical-intersection",
+                "pass": true,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 339,
+                "expected": ">= 1",
+                "method": "Exact feature intersection with the 1000 m regression context."
+              },
+              {
+                "id": "geometry-validity",
+                "pass": true,
+                "severity": "critical",
+                "confidence": "high",
+                "observed": 100,
+                "expected": ">= 100%",
+                "method": "339/339 intersecting features have structurally valid WGS84 geometry."
+              },
+              {
+                "id": "required-attribute-completeness",
+                "pass": true,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 100,
+                "expected": ">= 100%",
+                "method": "Required properties: country, fua_name, fua_code, code_2021, class_2021, identifier, sourceId, sourceVersion."
+              },
+              {
+                "id": "source-version-consistency",
+                "pass": true,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 100,
+                "expected": "100%",
+                "method": "Intersecting feature sourceVersion values must match the release sourceVersion."
+              },
+              {
+                "id": "expected-class-coverage",
+                "pass": true,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 9,
+                "expected": ">= 4",
+                "method": "Distinct non-empty code_2021 values in the regression context."
+              },
+              {
+                "id": "source-freshness",
+                "pass": true,
+                "severity": "medium",
+                "confidence": "high",
+                "observed": 2021,
+                "expected": ">= 2021",
+                "method": "Reference year parsed from sourceVersion."
+              },
+              {
+                "id": "delivery-coverage-municipality",
+                "pass": true,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 100,
+                "expected": ">= 95%",
+                "method": "Share of official context geometry intersected by present indexed delivery cells."
+              },
+              {
+                "id": "delivery-coverage-fua",
+                "pass": true,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 100,
+                "expected": ">= 90%",
+                "method": "Share of official context geometry intersected by present indexed delivery cells."
+              },
+              {
+                "id": "thematic-coverage-municipality",
+                "pass": true,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 100,
+                "expected": ">= 90%",
+                "method": "Share of official context geometry covered by dissolved, valid thematic polygons."
+              }
+            ],
+            "failedChecks": [],
+            "highestFailureSeverity": null
+          }
+        },
+        {
+          "sourceId": "eurostat-gisco-fua",
+          "sourceVersion": "GISCO Urban Audit 2024",
+          "availability": {
+            "status": "available",
+            "footprintContainment": "inside",
+            "method": "exact-point-in-feature"
+          },
+          "releaseContract": {
+            "indexAssetDeclared": true,
+            "byteSizeMatches": true,
+            "sha256Matches": true,
+            "sourceVersionMatches": true
+          },
+          "promotionStatus": "pass",
+          "semanticQuality": {
+            "status": "pass",
+            "featureProfile": {
+              "featureCount": 1,
+              "validGeometryCount": 1,
+              "geometryValidityPercent": 100,
+              "requiredAttributeCompletenessPercent": 100,
+              "sourceVersionConsistencyPercent": 100,
+              "distinctClasses": [
+                "DE"
+              ]
+            },
+            "coverage": {
+              "municipality": {
+                "deliveryPercent": 100
+              },
+              "fua": {
+                "deliveryPercent": 100
+              }
+            },
+            "freshness": {
+              "pass": true,
+              "observed": 2024,
+              "expected": ">= 2024",
+              "method": "Reference year parsed from sourceVersion."
+            },
+            "checks": [
+              {
+                "id": "release-contract-alignment",
+                "pass": true,
+                "severity": "critical",
+                "confidence": "high",
+                "observed": {
+                  "indexAssetDeclared": true,
+                  "byteSizeMatches": true,
+                  "sha256Matches": true,
+                  "sourceVersionMatches": true
+                },
+                "expected": "declared index path, matching bytes/SHA-256, and matching sourceVersion",
+                "method": "Prevents semantic evidence from being attributed to a stale immutable release manifest."
+              },
+              {
+                "id": "non-empty-analytical-intersection",
+                "pass": true,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 1,
+                "expected": ">= 1",
+                "method": "Exact feature intersection with the 1000 m regression context."
+              },
+              {
+                "id": "geometry-validity",
+                "pass": true,
+                "severity": "critical",
+                "confidence": "high",
+                "observed": 100,
+                "expected": ">= 100%",
+                "method": "1/1 intersecting features have structurally valid WGS84 geometry."
+              },
+              {
+                "id": "required-attribute-completeness",
+                "pass": true,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 100,
+                "expected": ">= 100%",
+                "method": "Required properties: fua_id, fua_name, country, sourceId, sourceVersion, source_year."
+              },
+              {
+                "id": "source-version-consistency",
+                "pass": true,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 100,
+                "expected": "100%",
+                "method": "Intersecting feature sourceVersion values must match the release sourceVersion."
+              },
+              {
+                "id": "expected-class-coverage",
+                "pass": true,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 1,
+                "expected": ">= 1",
+                "method": "Distinct non-empty country values in the regression context."
+              },
+              {
+                "id": "source-freshness",
+                "pass": true,
+                "severity": "medium",
+                "confidence": "high",
+                "observed": 2024,
+                "expected": ">= 2024",
+                "method": "Reference year parsed from sourceVersion."
+              },
+              {
+                "id": "delivery-coverage-municipality",
+                "pass": true,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 100,
+                "expected": ">= 99%",
+                "method": "Share of official context geometry intersected by present indexed delivery cells."
+              },
+              {
+                "id": "delivery-coverage-fua",
+                "pass": true,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 100,
+                "expected": ">= 99%",
+                "method": "Share of official context geometry intersected by present indexed delivery cells."
+              }
+            ],
+            "failedChecks": [],
+            "highestFailureSeverity": null
+          }
+        },
+        {
+          "sourceId": "gtfs-de-local-transit",
+          "sourceVersion": "2026-05-12",
+          "availability": {
+            "status": "available",
+            "footprintContainment": "inside",
+            "method": "1-km-query-window"
+          },
+          "releaseContract": {
+            "indexAssetDeclared": true,
+            "byteSizeMatches": true,
+            "sha256Matches": true,
+            "sourceVersionMatches": true
+          },
+          "promotionStatus": "pass",
+          "semanticQuality": {
+            "status": "pass",
+            "featureProfile": {
+              "featureCount": 132,
+              "validGeometryCount": 132,
+              "geometryValidityPercent": 100,
+              "requiredAttributeCompletenessPercent": 100,
+              "sourceVersionConsistencyPercent": 100,
+              "distinctClasses": [
+                "station",
+                "transit"
+              ]
+            },
+            "coverage": {
+              "municipality": {
+                "deliveryPercent": 100
+              },
+              "fua": {
+                "deliveryPercent": 100
+              }
+            },
+            "freshness": {
+              "pass": true,
+              "observed": 75,
+              "expected": "0..365 days",
+              "method": "Age in whole UTC days between sourceVersion date and policy referenceDate."
+            },
+            "checks": [
+              {
+                "id": "release-contract-alignment",
+                "pass": true,
+                "severity": "critical",
+                "confidence": "high",
+                "observed": {
+                  "indexAssetDeclared": true,
+                  "byteSizeMatches": true,
+                  "sha256Matches": true,
+                  "sourceVersionMatches": true
+                },
+                "expected": "declared index path, matching bytes/SHA-256, and matching sourceVersion",
+                "method": "Prevents semantic evidence from being attributed to a stale immutable release manifest."
+              },
+              {
+                "id": "non-empty-analytical-intersection",
+                "pass": true,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 132,
+                "expected": ">= 1",
+                "method": "Exact feature intersection with the 1000 m regression context."
+              },
+              {
+                "id": "geometry-validity",
+                "pass": true,
+                "severity": "critical",
+                "confidence": "high",
+                "observed": 100,
+                "expected": ">= 100%",
+                "method": "132/132 intersecting features have structurally valid WGS84 geometry."
+              },
+              {
+                "id": "required-attribute-completeness",
+                "pass": true,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 100,
+                "expected": ">= 100%",
+                "method": "Required properties: sourceId, sourceVersion, provider, feed, stop_id, stop_name, transportMode."
+              },
+              {
+                "id": "source-version-consistency",
+                "pass": true,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 100,
+                "expected": "100%",
+                "method": "Intersecting feature sourceVersion values must match the release sourceVersion."
+              },
+              {
+                "id": "expected-class-coverage",
+                "pass": true,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 2,
+                "expected": ">= 1",
+                "method": "Distinct non-empty transportMode values in the regression context."
+              },
+              {
+                "id": "source-freshness",
+                "pass": true,
+                "severity": "medium",
+                "confidence": "high",
+                "observed": 75,
+                "expected": "0..365 days",
+                "method": "Age in whole UTC days between sourceVersion date and policy referenceDate."
+              }
+            ],
+            "failedChecks": [],
+            "highestFailureSeverity": null
+          }
+        },
+        {
+          "sourceId": "gtfs-de-local-transit-lines",
+          "sourceVersion": "2026-05-20",
+          "availability": {
+            "status": "available",
+            "footprintContainment": "inside",
+            "method": "1-km-query-window"
+          },
+          "releaseContract": {
+            "indexAssetDeclared": true,
+            "byteSizeMatches": true,
+            "sha256Matches": true,
+            "sourceVersionMatches": true
+          },
+          "promotionStatus": "pass",
+          "semanticQuality": {
+            "status": "pass",
+            "featureProfile": {
+              "featureCount": 68,
+              "validGeometryCount": 68,
+              "geometryValidityPercent": 100,
+              "requiredAttributeCompletenessPercent": 100,
+              "sourceVersionConsistencyPercent": 100,
+              "distinctClasses": [
+                "bus",
+                "subway",
+                "tram"
+              ]
+            },
+            "coverage": {
+              "municipality": {
+                "deliveryPercent": 100
+              },
+              "fua": {
+                "deliveryPercent": 100
+              }
+            },
+            "freshness": {
+              "pass": true,
+              "observed": 67,
+              "expected": "0..365 days",
+              "method": "Age in whole UTC days between sourceVersion date and policy referenceDate."
+            },
+            "checks": [
+              {
+                "id": "release-contract-alignment",
+                "pass": true,
+                "severity": "critical",
+                "confidence": "high",
+                "observed": {
+                  "indexAssetDeclared": true,
+                  "byteSizeMatches": true,
+                  "sha256Matches": true,
+                  "sourceVersionMatches": true
+                },
+                "expected": "declared index path, matching bytes/SHA-256, and matching sourceVersion",
+                "method": "Prevents semantic evidence from being attributed to a stale immutable release manifest."
+              },
+              {
+                "id": "non-empty-analytical-intersection",
+                "pass": true,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 68,
+                "expected": ">= 1",
+                "method": "Exact feature intersection with the 1000 m regression context."
+              },
+              {
+                "id": "geometry-validity",
+                "pass": true,
+                "severity": "critical",
+                "confidence": "high",
+                "observed": 100,
+                "expected": ">= 100%",
+                "method": "68/68 intersecting features have structurally valid WGS84 geometry."
+              },
+              {
+                "id": "required-attribute-completeness",
+                "pass": true,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 100,
+                "expected": ">= 100%",
+                "method": "Required properties: sourceId, sourceVersion, provider, feed, route_id, route_type, trip_id, transportMode."
+              },
+              {
+                "id": "source-version-consistency",
+                "pass": true,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 100,
+                "expected": "100%",
+                "method": "Intersecting feature sourceVersion values must match the release sourceVersion."
+              },
+              {
+                "id": "expected-class-coverage",
+                "pass": true,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 3,
+                "expected": ">= 1",
+                "method": "Distinct non-empty transportMode values in the regression context."
+              },
+              {
+                "id": "source-freshness",
+                "pass": true,
+                "severity": "medium",
+                "confidence": "high",
+                "observed": 67,
+                "expected": "0..365 days",
+                "method": "Age in whole UTC days between sourceVersion date and policy referenceDate."
+              }
+            ],
+            "failedChecks": [],
+            "highestFailureSeverity": null
+          }
+        },
+        {
+          "sourceId": "overture-buildings",
+          "sourceVersion": "2026-05-17-munich+2026-05-18+2026-05-29",
+          "availability": {
+            "status": "available",
+            "footprintContainment": "inside",
+            "method": "1-km-query-window"
+          },
+          "releaseContract": {
+            "indexAssetDeclared": true,
+            "byteSizeMatches": true,
+            "sha256Matches": true,
+            "sourceVersionMatches": true
+          },
+          "promotionStatus": "pass",
+          "semanticQuality": {
+            "status": "pass",
+            "featureProfile": {
+              "featureCount": 3694,
+              "validGeometryCount": 3694,
+              "geometryValidityPercent": 100,
+              "requiredAttributeCompletenessPercent": 100,
+              "sourceVersionConsistencyPercent": 100,
+              "distinctClasses": [
+                "building"
+              ]
+            },
+            "coverage": {
+              "municipality": {
+                "deliveryPercent": 98.0276
+              },
+              "fua": {
+                "deliveryPercent": 10.5461
+              }
+            },
+            "freshness": {
+              "pass": true,
+              "observed": 70,
+              "expected": "0..730 days",
+              "method": "Age in whole UTC days between sourceVersion date and policy referenceDate."
+            },
+            "checks": [
+              {
+                "id": "release-contract-alignment",
+                "pass": true,
+                "severity": "critical",
+                "confidence": "high",
+                "observed": {
+                  "indexAssetDeclared": true,
+                  "byteSizeMatches": true,
+                  "sha256Matches": true,
+                  "sourceVersionMatches": true
+                },
+                "expected": "declared index path, matching bytes/SHA-256, and matching sourceVersion",
+                "method": "Prevents semantic evidence from being attributed to a stale immutable release manifest."
+              },
+              {
+                "id": "non-empty-analytical-intersection",
+                "pass": true,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 3694,
+                "expected": ">= 1",
+                "method": "Exact feature intersection with the 1000 m regression context."
+              },
+              {
+                "id": "geometry-validity",
+                "pass": true,
+                "severity": "critical",
+                "confidence": "high",
+                "observed": 100,
+                "expected": ">= 100%",
+                "method": "3694/3694 intersecting features have structurally valid WGS84 geometry."
+              },
+              {
+                "id": "required-attribute-completeness",
+                "pass": true,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 100,
+                "expected": ">= 100%",
+                "method": "Required properties: sourceId, sourceVersion, label, licenseMode."
+              },
+              {
+                "id": "source-version-consistency",
+                "pass": true,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 100,
+                "expected": "100%",
+                "method": "Intersecting feature sourceVersion values must match the release sourceVersion."
+              },
+              {
+                "id": "expected-class-coverage",
+                "pass": true,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 1,
+                "expected": ">= 1",
+                "method": "Distinct non-empty label values in the regression context."
+              },
+              {
+                "id": "source-freshness",
+                "pass": true,
+                "severity": "medium",
+                "confidence": "high",
+                "observed": 70,
+                "expected": "0..730 days",
+                "method": "Age in whole UTC days between sourceVersion date and policy referenceDate."
+              },
+              {
+                "id": "delivery-coverage-municipality",
+                "pass": true,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 98.0276,
+                "expected": ">= 95%",
+                "method": "Share of official context geometry intersected by present indexed delivery cells."
+              }
+            ],
+            "failedChecks": [],
+            "highestFailureSeverity": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "frankfurt",
+      "label": "Frankfurt am Main centre",
+      "point": {
+        "lat": 50.11092,
+        "lon": 8.68213
+      },
+      "contexts": {
+        "municipality": {
+          "type": "municipality",
+          "expectedId": "06412",
+          "status": "pass",
+          "geometryType": "Polygon",
+          "areaSquareKilometres": 247.799
+        },
+        "fua": {
+          "type": "fua",
+          "expectedId": "DE005F",
+          "status": "pass",
+          "geometryType": "Polygon",
+          "areaSquareKilometres": 3391.59
+        }
+      },
+      "status": "fail",
+      "sources": [
+        {
+          "sourceId": "bkg-geobasis",
+          "sourceVersion": "2026-05-10",
+          "availability": {
+            "status": "available",
+            "footprintContainment": "inside",
+            "method": "exact-point-in-feature"
+          },
+          "releaseContract": {
+            "indexAssetDeclared": true,
+            "byteSizeMatches": true,
+            "sha256Matches": true,
+            "sourceVersionMatches": true
+          },
+          "promotionStatus": "pass",
+          "semanticQuality": {
+            "status": "pass",
+            "featureProfile": {
+              "featureCount": 2,
+              "validGeometryCount": 2,
+              "geometryValidityPercent": 100,
+              "requiredAttributeCompletenessPercent": 100,
+              "sourceVersionConsistencyPercent": 100,
+              "distinctClasses": [
+                "Kreisfreie Stadt",
+                "Land"
+              ]
+            },
+            "coverage": {
+              "municipality": {
+                "deliveryPercent": 100
+              },
+              "fua": {
+                "deliveryPercent": 100
+              }
+            },
+            "freshness": {
+              "pass": true,
+              "observed": 77,
+              "expected": "0..730 days",
+              "method": "Age in whole UTC days between sourceVersion date and policy referenceDate."
+            },
+            "checks": [
+              {
+                "id": "release-contract-alignment",
+                "pass": true,
+                "severity": "critical",
+                "confidence": "high",
+                "observed": {
+                  "indexAssetDeclared": true,
+                  "byteSizeMatches": true,
+                  "sha256Matches": true,
+                  "sourceVersionMatches": true
+                },
+                "expected": "declared index path, matching bytes/SHA-256, and matching sourceVersion",
+                "method": "Prevents semantic evidence from being attributed to a stale immutable release manifest."
+              },
+              {
+                "id": "non-empty-analytical-intersection",
+                "pass": true,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 2,
+                "expected": ">= 1",
+                "method": "Exact feature intersection with the 1000 m regression context."
+              },
+              {
+                "id": "geometry-validity",
+                "pass": true,
+                "severity": "critical",
+                "confidence": "high",
+                "observed": 100,
+                "expected": ">= 100%",
+                "method": "2/2 intersecting features have structurally valid WGS84 geometry."
+              },
+              {
+                "id": "required-attribute-completeness",
+                "pass": true,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 100,
+                "expected": ">= 100%",
+                "method": "Required properties: GEN, BEZ, ARS, AGS, sourceId, sourceVersion."
+              },
+              {
+                "id": "source-version-consistency",
+                "pass": true,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 100,
+                "expected": "100%",
+                "method": "Intersecting feature sourceVersion values must match the release sourceVersion."
+              },
+              {
+                "id": "expected-class-coverage",
+                "pass": true,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 2,
+                "expected": ">= 1",
+                "method": "Distinct non-empty BEZ values in the regression context."
+              },
+              {
+                "id": "source-freshness",
+                "pass": true,
+                "severity": "medium",
+                "confidence": "high",
+                "observed": 77,
+                "expected": "0..730 days",
+                "method": "Age in whole UTC days between sourceVersion date and policy referenceDate."
+              },
+              {
+                "id": "delivery-coverage-municipality",
+                "pass": true,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 100,
+                "expected": ">= 99%",
+                "method": "Share of official context geometry intersected by present indexed delivery cells."
+              },
+              {
+                "id": "delivery-coverage-fua",
+                "pass": true,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 100,
+                "expected": ">= 99%",
+                "method": "Share of official context geometry intersected by present indexed delivery cells."
+              }
+            ],
+            "failedChecks": [],
+            "highestFailureSeverity": null
+          }
+        },
+        {
+          "sourceId": "copernicus-urban-atlas",
+          "sourceVersion": "2021",
+          "availability": {
+            "status": "empty",
+            "footprintContainment": "outside",
+            "method": "1-km-query-window"
+          },
+          "releaseContract": {
+            "indexAssetDeclared": true,
+            "byteSizeMatches": true,
+            "sha256Matches": true,
+            "sourceVersionMatches": true
+          },
+          "promotionStatus": "fail",
+          "semanticQuality": {
+            "status": "fail",
+            "featureProfile": {
+              "featureCount": 0,
+              "validGeometryCount": 0,
+              "geometryValidityPercent": 0,
+              "requiredAttributeCompletenessPercent": 0,
+              "sourceVersionConsistencyPercent": 0,
+              "distinctClasses": []
+            },
+            "coverage": {
+              "municipality": {
+                "deliveryPercent": 0,
+                "thematicPercent": 0
+              },
+              "fua": {
+                "deliveryPercent": 0
+              }
+            },
+            "freshness": {
+              "pass": true,
+              "observed": 2021,
+              "expected": ">= 2021",
+              "method": "Reference year parsed from sourceVersion."
+            },
+            "checks": [
+              {
+                "id": "release-contract-alignment",
+                "pass": true,
+                "severity": "critical",
+                "confidence": "high",
+                "observed": {
+                  "indexAssetDeclared": true,
+                  "byteSizeMatches": true,
+                  "sha256Matches": true,
+                  "sourceVersionMatches": true
+                },
+                "expected": "declared index path, matching bytes/SHA-256, and matching sourceVersion",
+                "method": "Prevents semantic evidence from being attributed to a stale immutable release manifest."
+              },
+              {
+                "id": "non-empty-analytical-intersection",
+                "pass": false,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 0,
+                "expected": ">= 1",
+                "method": "Exact feature intersection with the 1000 m regression context."
+              },
+              {
+                "id": "geometry-validity",
+                "pass": false,
+                "severity": "critical",
+                "confidence": "high",
+                "observed": 0,
+                "expected": ">= 100%",
+                "method": "0/0 intersecting features have structurally valid WGS84 geometry."
+              },
+              {
+                "id": "required-attribute-completeness",
+                "pass": false,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 0,
+                "expected": ">= 100%",
+                "method": "Required properties: country, fua_name, fua_code, code_2021, class_2021, identifier, sourceId, sourceVersion."
+              },
+              {
+                "id": "source-version-consistency",
+                "pass": false,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 0,
+                "expected": "100%",
+                "method": "Intersecting feature sourceVersion values must match the release sourceVersion."
+              },
+              {
+                "id": "expected-class-coverage",
+                "pass": false,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 0,
+                "expected": ">= 4",
+                "method": "Distinct non-empty code_2021 values in the regression context."
+              },
+              {
+                "id": "source-freshness",
+                "pass": true,
+                "severity": "medium",
+                "confidence": "high",
+                "observed": 2021,
+                "expected": ">= 2021",
+                "method": "Reference year parsed from sourceVersion."
+              },
+              {
+                "id": "delivery-coverage-municipality",
+                "pass": false,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 0,
+                "expected": ">= 95%",
+                "method": "Share of official context geometry intersected by present indexed delivery cells."
+              },
+              {
+                "id": "delivery-coverage-fua",
+                "pass": false,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 0,
+                "expected": ">= 90%",
+                "method": "Share of official context geometry intersected by present indexed delivery cells."
+              },
+              {
+                "id": "thematic-coverage-municipality",
+                "pass": false,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 0,
+                "expected": ">= 90%",
+                "method": "Share of official context geometry covered by dissolved, valid thematic polygons."
+              }
+            ],
+            "failedChecks": [
+              "non-empty-analytical-intersection",
+              "geometry-validity",
+              "required-attribute-completeness",
+              "source-version-consistency",
+              "expected-class-coverage",
+              "delivery-coverage-municipality",
+              "delivery-coverage-fua",
+              "thematic-coverage-municipality"
+            ],
+            "highestFailureSeverity": "critical"
+          }
+        },
+        {
+          "sourceId": "eurostat-gisco-fua",
+          "sourceVersion": "GISCO Urban Audit 2024",
+          "availability": {
+            "status": "available",
+            "footprintContainment": "inside",
+            "method": "exact-point-in-feature"
+          },
+          "releaseContract": {
+            "indexAssetDeclared": true,
+            "byteSizeMatches": true,
+            "sha256Matches": true,
+            "sourceVersionMatches": true
+          },
+          "promotionStatus": "pass",
+          "semanticQuality": {
+            "status": "pass",
+            "featureProfile": {
+              "featureCount": 1,
+              "validGeometryCount": 1,
+              "geometryValidityPercent": 100,
+              "requiredAttributeCompletenessPercent": 100,
+              "sourceVersionConsistencyPercent": 100,
+              "distinctClasses": [
+                "DE"
+              ]
+            },
+            "coverage": {
+              "municipality": {
+                "deliveryPercent": 100
+              },
+              "fua": {
+                "deliveryPercent": 100
+              }
+            },
+            "freshness": {
+              "pass": true,
+              "observed": 2024,
+              "expected": ">= 2024",
+              "method": "Reference year parsed from sourceVersion."
+            },
+            "checks": [
+              {
+                "id": "release-contract-alignment",
+                "pass": true,
+                "severity": "critical",
+                "confidence": "high",
+                "observed": {
+                  "indexAssetDeclared": true,
+                  "byteSizeMatches": true,
+                  "sha256Matches": true,
+                  "sourceVersionMatches": true
+                },
+                "expected": "declared index path, matching bytes/SHA-256, and matching sourceVersion",
+                "method": "Prevents semantic evidence from being attributed to a stale immutable release manifest."
+              },
+              {
+                "id": "non-empty-analytical-intersection",
+                "pass": true,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 1,
+                "expected": ">= 1",
+                "method": "Exact feature intersection with the 1000 m regression context."
+              },
+              {
+                "id": "geometry-validity",
+                "pass": true,
+                "severity": "critical",
+                "confidence": "high",
+                "observed": 100,
+                "expected": ">= 100%",
+                "method": "1/1 intersecting features have structurally valid WGS84 geometry."
+              },
+              {
+                "id": "required-attribute-completeness",
+                "pass": true,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 100,
+                "expected": ">= 100%",
+                "method": "Required properties: fua_id, fua_name, country, sourceId, sourceVersion, source_year."
+              },
+              {
+                "id": "source-version-consistency",
+                "pass": true,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 100,
+                "expected": "100%",
+                "method": "Intersecting feature sourceVersion values must match the release sourceVersion."
+              },
+              {
+                "id": "expected-class-coverage",
+                "pass": true,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 1,
+                "expected": ">= 1",
+                "method": "Distinct non-empty country values in the regression context."
+              },
+              {
+                "id": "source-freshness",
+                "pass": true,
+                "severity": "medium",
+                "confidence": "high",
+                "observed": 2024,
+                "expected": ">= 2024",
+                "method": "Reference year parsed from sourceVersion."
+              },
+              {
+                "id": "delivery-coverage-municipality",
+                "pass": true,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 100,
+                "expected": ">= 99%",
+                "method": "Share of official context geometry intersected by present indexed delivery cells."
+              },
+              {
+                "id": "delivery-coverage-fua",
+                "pass": true,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 100,
+                "expected": ">= 99%",
+                "method": "Share of official context geometry intersected by present indexed delivery cells."
+              }
+            ],
+            "failedChecks": [],
+            "highestFailureSeverity": null
+          }
+        },
+        {
+          "sourceId": "gtfs-de-local-transit",
+          "sourceVersion": "2026-05-12",
+          "availability": {
+            "status": "available",
+            "footprintContainment": "inside",
+            "method": "1-km-query-window"
+          },
+          "releaseContract": {
+            "indexAssetDeclared": true,
+            "byteSizeMatches": true,
+            "sha256Matches": true,
+            "sourceVersionMatches": true
+          },
+          "promotionStatus": "pass",
+          "semanticQuality": {
+            "status": "pass",
+            "featureProfile": {
+              "featureCount": 92,
+              "validGeometryCount": 92,
+              "geometryValidityPercent": 100,
+              "requiredAttributeCompletenessPercent": 100,
+              "sourceVersionConsistencyPercent": 100,
+              "distinctClasses": [
+                "station",
+                "transit"
+              ]
+            },
+            "coverage": {
+              "municipality": {
+                "deliveryPercent": 100
+              },
+              "fua": {
+                "deliveryPercent": 100
+              }
+            },
+            "freshness": {
+              "pass": true,
+              "observed": 75,
+              "expected": "0..365 days",
+              "method": "Age in whole UTC days between sourceVersion date and policy referenceDate."
+            },
+            "checks": [
+              {
+                "id": "release-contract-alignment",
+                "pass": true,
+                "severity": "critical",
+                "confidence": "high",
+                "observed": {
+                  "indexAssetDeclared": true,
+                  "byteSizeMatches": true,
+                  "sha256Matches": true,
+                  "sourceVersionMatches": true
+                },
+                "expected": "declared index path, matching bytes/SHA-256, and matching sourceVersion",
+                "method": "Prevents semantic evidence from being attributed to a stale immutable release manifest."
+              },
+              {
+                "id": "non-empty-analytical-intersection",
+                "pass": true,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 92,
+                "expected": ">= 1",
+                "method": "Exact feature intersection with the 1000 m regression context."
+              },
+              {
+                "id": "geometry-validity",
+                "pass": true,
+                "severity": "critical",
+                "confidence": "high",
+                "observed": 100,
+                "expected": ">= 100%",
+                "method": "92/92 intersecting features have structurally valid WGS84 geometry."
+              },
+              {
+                "id": "required-attribute-completeness",
+                "pass": true,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 100,
+                "expected": ">= 100%",
+                "method": "Required properties: sourceId, sourceVersion, provider, feed, stop_id, stop_name, transportMode."
+              },
+              {
+                "id": "source-version-consistency",
+                "pass": true,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 100,
+                "expected": "100%",
+                "method": "Intersecting feature sourceVersion values must match the release sourceVersion."
+              },
+              {
+                "id": "expected-class-coverage",
+                "pass": true,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 2,
+                "expected": ">= 1",
+                "method": "Distinct non-empty transportMode values in the regression context."
+              },
+              {
+                "id": "source-freshness",
+                "pass": true,
+                "severity": "medium",
+                "confidence": "high",
+                "observed": 75,
+                "expected": "0..365 days",
+                "method": "Age in whole UTC days between sourceVersion date and policy referenceDate."
+              }
+            ],
+            "failedChecks": [],
+            "highestFailureSeverity": null
+          }
+        },
+        {
+          "sourceId": "gtfs-de-local-transit-lines",
+          "sourceVersion": "2026-05-20",
+          "availability": {
+            "status": "available",
+            "footprintContainment": "inside",
+            "method": "1-km-query-window"
+          },
+          "releaseContract": {
+            "indexAssetDeclared": true,
+            "byteSizeMatches": true,
+            "sha256Matches": true,
+            "sourceVersionMatches": true
+          },
+          "promotionStatus": "pass",
+          "semanticQuality": {
+            "status": "pass",
+            "featureProfile": {
+              "featureCount": 59,
+              "validGeometryCount": 59,
+              "geometryValidityPercent": 100,
+              "requiredAttributeCompletenessPercent": 100,
+              "sourceVersionConsistencyPercent": 100,
+              "distinctClasses": [
+                "bus",
+                "subway",
+                "tram"
+              ]
+            },
+            "coverage": {
+              "municipality": {
+                "deliveryPercent": 100
+              },
+              "fua": {
+                "deliveryPercent": 100
+              }
+            },
+            "freshness": {
+              "pass": true,
+              "observed": 67,
+              "expected": "0..365 days",
+              "method": "Age in whole UTC days between sourceVersion date and policy referenceDate."
+            },
+            "checks": [
+              {
+                "id": "release-contract-alignment",
+                "pass": true,
+                "severity": "critical",
+                "confidence": "high",
+                "observed": {
+                  "indexAssetDeclared": true,
+                  "byteSizeMatches": true,
+                  "sha256Matches": true,
+                  "sourceVersionMatches": true
+                },
+                "expected": "declared index path, matching bytes/SHA-256, and matching sourceVersion",
+                "method": "Prevents semantic evidence from being attributed to a stale immutable release manifest."
+              },
+              {
+                "id": "non-empty-analytical-intersection",
+                "pass": true,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 59,
+                "expected": ">= 1",
+                "method": "Exact feature intersection with the 1000 m regression context."
+              },
+              {
+                "id": "geometry-validity",
+                "pass": true,
+                "severity": "critical",
+                "confidence": "high",
+                "observed": 100,
+                "expected": ">= 100%",
+                "method": "59/59 intersecting features have structurally valid WGS84 geometry."
+              },
+              {
+                "id": "required-attribute-completeness",
+                "pass": true,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 100,
+                "expected": ">= 100%",
+                "method": "Required properties: sourceId, sourceVersion, provider, feed, route_id, route_type, trip_id, transportMode."
+              },
+              {
+                "id": "source-version-consistency",
+                "pass": true,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 100,
+                "expected": "100%",
+                "method": "Intersecting feature sourceVersion values must match the release sourceVersion."
+              },
+              {
+                "id": "expected-class-coverage",
+                "pass": true,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 3,
+                "expected": ">= 1",
+                "method": "Distinct non-empty transportMode values in the regression context."
+              },
+              {
+                "id": "source-freshness",
+                "pass": true,
+                "severity": "medium",
+                "confidence": "high",
+                "observed": 67,
+                "expected": "0..365 days",
+                "method": "Age in whole UTC days between sourceVersion date and policy referenceDate."
+              }
+            ],
+            "failedChecks": [],
+            "highestFailureSeverity": null
+          }
+        },
+        {
+          "sourceId": "overture-buildings",
+          "sourceVersion": "2026-05-17-munich+2026-05-18+2026-05-29",
+          "availability": {
+            "status": "available",
+            "footprintContainment": "inside",
+            "method": "1-km-query-window"
+          },
+          "releaseContract": {
+            "indexAssetDeclared": true,
+            "byteSizeMatches": true,
+            "sha256Matches": true,
+            "sourceVersionMatches": true
+          },
+          "promotionStatus": "fail",
+          "semanticQuality": {
+            "status": "fail",
+            "featureProfile": {
+              "featureCount": 3464,
+              "validGeometryCount": 3464,
+              "geometryValidityPercent": 100,
+              "requiredAttributeCompletenessPercent": 100,
+              "sourceVersionConsistencyPercent": 100,
+              "distinctClasses": [
+                "building"
+              ]
+            },
+            "coverage": {
+              "municipality": {
+                "deliveryPercent": 2.5651
+              },
+              "fua": {
+                "deliveryPercent": 0.1872
+              }
+            },
+            "freshness": {
+              "pass": true,
+              "observed": 70,
+              "expected": "0..730 days",
+              "method": "Age in whole UTC days between sourceVersion date and policy referenceDate."
+            },
+            "checks": [
+              {
+                "id": "release-contract-alignment",
+                "pass": true,
+                "severity": "critical",
+                "confidence": "high",
+                "observed": {
+                  "indexAssetDeclared": true,
+                  "byteSizeMatches": true,
+                  "sha256Matches": true,
+                  "sourceVersionMatches": true
+                },
+                "expected": "declared index path, matching bytes/SHA-256, and matching sourceVersion",
+                "method": "Prevents semantic evidence from being attributed to a stale immutable release manifest."
+              },
+              {
+                "id": "non-empty-analytical-intersection",
+                "pass": true,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 3464,
+                "expected": ">= 1",
+                "method": "Exact feature intersection with the 1000 m regression context."
+              },
+              {
+                "id": "geometry-validity",
+                "pass": true,
+                "severity": "critical",
+                "confidence": "high",
+                "observed": 100,
+                "expected": ">= 100%",
+                "method": "3464/3464 intersecting features have structurally valid WGS84 geometry."
+              },
+              {
+                "id": "required-attribute-completeness",
+                "pass": true,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 100,
+                "expected": ">= 100%",
+                "method": "Required properties: sourceId, sourceVersion, label, licenseMode."
+              },
+              {
+                "id": "source-version-consistency",
+                "pass": true,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 100,
+                "expected": "100%",
+                "method": "Intersecting feature sourceVersion values must match the release sourceVersion."
+              },
+              {
+                "id": "expected-class-coverage",
+                "pass": true,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 1,
+                "expected": ">= 1",
+                "method": "Distinct non-empty label values in the regression context."
+              },
+              {
+                "id": "source-freshness",
+                "pass": true,
+                "severity": "medium",
+                "confidence": "high",
+                "observed": 70,
+                "expected": "0..730 days",
+                "method": "Age in whole UTC days between sourceVersion date and policy referenceDate."
+              },
+              {
+                "id": "delivery-coverage-municipality",
+                "pass": false,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 2.5651,
+                "expected": ">= 95%",
+                "method": "Share of official context geometry intersected by present indexed delivery cells."
+              }
+            ],
+            "failedChecks": [
+              "delivery-coverage-municipality"
+            ],
+            "highestFailureSeverity": "high"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rosenheim",
+      "label": "Rosenheim centre",
+      "point": {
+        "lat": 47.85637,
+        "lon": 12.12247
+      },
+      "contexts": {
+        "municipality": {
+          "type": "municipality",
+          "expectedId": "09163",
+          "status": "pass",
+          "geometryType": "Polygon",
+          "areaSquareKilometres": 36.919
+        },
+        "fua": {
+          "type": "fua",
+          "expectedId": "DE066F",
+          "status": "pass",
+          "geometryType": "Polygon",
+          "areaSquareKilometres": 569.194
+        }
+      },
+      "status": "fail",
+      "sources": [
+        {
+          "sourceId": "bkg-geobasis",
+          "sourceVersion": "2026-05-10",
+          "availability": {
+            "status": "available",
+            "footprintContainment": "inside",
+            "method": "exact-point-in-feature"
+          },
+          "releaseContract": {
+            "indexAssetDeclared": true,
+            "byteSizeMatches": true,
+            "sha256Matches": true,
+            "sourceVersionMatches": true
+          },
+          "promotionStatus": "pass",
+          "semanticQuality": {
+            "status": "pass",
+            "featureProfile": {
+              "featureCount": 3,
+              "validGeometryCount": 3,
+              "geometryValidityPercent": 100,
+              "requiredAttributeCompletenessPercent": 100,
+              "sourceVersionConsistencyPercent": 100,
+              "distinctClasses": [
+                "Freistaat",
+                "Kreisfreie Stadt",
+                "Landkreis"
+              ]
+            },
+            "coverage": {
+              "municipality": {
+                "deliveryPercent": 100
+              },
+              "fua": {
+                "deliveryPercent": 99.9924
+              }
+            },
+            "freshness": {
+              "pass": true,
+              "observed": 77,
+              "expected": "0..730 days",
+              "method": "Age in whole UTC days between sourceVersion date and policy referenceDate."
+            },
+            "checks": [
+              {
+                "id": "release-contract-alignment",
+                "pass": true,
+                "severity": "critical",
+                "confidence": "high",
+                "observed": {
+                  "indexAssetDeclared": true,
+                  "byteSizeMatches": true,
+                  "sha256Matches": true,
+                  "sourceVersionMatches": true
+                },
+                "expected": "declared index path, matching bytes/SHA-256, and matching sourceVersion",
+                "method": "Prevents semantic evidence from being attributed to a stale immutable release manifest."
+              },
+              {
+                "id": "non-empty-analytical-intersection",
+                "pass": true,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 3,
+                "expected": ">= 1",
+                "method": "Exact feature intersection with the 1000 m regression context."
+              },
+              {
+                "id": "geometry-validity",
+                "pass": true,
+                "severity": "critical",
+                "confidence": "high",
+                "observed": 100,
+                "expected": ">= 100%",
+                "method": "3/3 intersecting features have structurally valid WGS84 geometry."
+              },
+              {
+                "id": "required-attribute-completeness",
+                "pass": true,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 100,
+                "expected": ">= 100%",
+                "method": "Required properties: GEN, BEZ, ARS, AGS, sourceId, sourceVersion."
+              },
+              {
+                "id": "source-version-consistency",
+                "pass": true,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 100,
+                "expected": "100%",
+                "method": "Intersecting feature sourceVersion values must match the release sourceVersion."
+              },
+              {
+                "id": "expected-class-coverage",
+                "pass": true,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 3,
+                "expected": ">= 1",
+                "method": "Distinct non-empty BEZ values in the regression context."
+              },
+              {
+                "id": "source-freshness",
+                "pass": true,
+                "severity": "medium",
+                "confidence": "high",
+                "observed": 77,
+                "expected": "0..730 days",
+                "method": "Age in whole UTC days between sourceVersion date and policy referenceDate."
+              },
+              {
+                "id": "delivery-coverage-municipality",
+                "pass": true,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 100,
+                "expected": ">= 99%",
+                "method": "Share of official context geometry intersected by present indexed delivery cells."
+              },
+              {
+                "id": "delivery-coverage-fua",
+                "pass": true,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 99.9924,
+                "expected": ">= 99%",
+                "method": "Share of official context geometry intersected by present indexed delivery cells."
+              }
+            ],
+            "failedChecks": [],
+            "highestFailureSeverity": null
+          }
+        },
+        {
+          "sourceId": "copernicus-urban-atlas",
+          "sourceVersion": "2021",
+          "availability": {
+            "status": "available",
+            "footprintContainment": "inside",
+            "method": "1-km-query-window"
+          },
+          "releaseContract": {
+            "indexAssetDeclared": true,
+            "byteSizeMatches": true,
+            "sha256Matches": true,
+            "sourceVersionMatches": true
+          },
+          "promotionStatus": "fail",
+          "semanticQuality": {
+            "status": "fail",
+            "featureProfile": {
+              "featureCount": 192,
+              "validGeometryCount": 192,
+              "geometryValidityPercent": 100,
+              "requiredAttributeCompletenessPercent": 100,
+              "sourceVersionConsistencyPercent": 100,
+              "distinctClasses": [
+                "11100",
+                "11210",
+                "11220",
+                "11230",
+                "12100",
+                "12220",
+                "12230",
+                "13400",
+                "14110",
+                "14200",
+                "23000",
+                "31000",
+                "50000"
+              ]
+            },
+            "coverage": {
+              "municipality": {
+                "deliveryPercent": 65.1964,
+                "thematicPercent": 10.8352
+              },
+              "fua": {
+                "deliveryPercent": 8.2616
+              }
+            },
+            "freshness": {
+              "pass": true,
+              "observed": 2021,
+              "expected": ">= 2021",
+              "method": "Reference year parsed from sourceVersion."
+            },
+            "checks": [
+              {
+                "id": "release-contract-alignment",
+                "pass": true,
+                "severity": "critical",
+                "confidence": "high",
+                "observed": {
+                  "indexAssetDeclared": true,
+                  "byteSizeMatches": true,
+                  "sha256Matches": true,
+                  "sourceVersionMatches": true
+                },
+                "expected": "declared index path, matching bytes/SHA-256, and matching sourceVersion",
+                "method": "Prevents semantic evidence from being attributed to a stale immutable release manifest."
+              },
+              {
+                "id": "non-empty-analytical-intersection",
+                "pass": true,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 192,
+                "expected": ">= 1",
+                "method": "Exact feature intersection with the 1000 m regression context."
+              },
+              {
+                "id": "geometry-validity",
+                "pass": true,
+                "severity": "critical",
+                "confidence": "high",
+                "observed": 100,
+                "expected": ">= 100%",
+                "method": "192/192 intersecting features have structurally valid WGS84 geometry."
+              },
+              {
+                "id": "required-attribute-completeness",
+                "pass": true,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 100,
+                "expected": ">= 100%",
+                "method": "Required properties: country, fua_name, fua_code, code_2021, class_2021, identifier, sourceId, sourceVersion."
+              },
+              {
+                "id": "source-version-consistency",
+                "pass": true,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 100,
+                "expected": "100%",
+                "method": "Intersecting feature sourceVersion values must match the release sourceVersion."
+              },
+              {
+                "id": "expected-class-coverage",
+                "pass": true,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 13,
+                "expected": ">= 4",
+                "method": "Distinct non-empty code_2021 values in the regression context."
+              },
+              {
+                "id": "source-freshness",
+                "pass": true,
+                "severity": "medium",
+                "confidence": "high",
+                "observed": 2021,
+                "expected": ">= 2021",
+                "method": "Reference year parsed from sourceVersion."
+              },
+              {
+                "id": "delivery-coverage-municipality",
+                "pass": false,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 65.1964,
+                "expected": ">= 95%",
+                "method": "Share of official context geometry intersected by present indexed delivery cells."
+              },
+              {
+                "id": "delivery-coverage-fua",
+                "pass": false,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 8.2616,
+                "expected": ">= 90%",
+                "method": "Share of official context geometry intersected by present indexed delivery cells."
+              },
+              {
+                "id": "thematic-coverage-municipality",
+                "pass": false,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 10.8352,
+                "expected": ">= 90%",
+                "method": "Share of official context geometry covered by dissolved, valid thematic polygons."
+              }
+            ],
+            "failedChecks": [
+              "delivery-coverage-municipality",
+              "delivery-coverage-fua",
+              "thematic-coverage-municipality"
+            ],
+            "highestFailureSeverity": "high"
+          }
+        },
+        {
+          "sourceId": "eurostat-gisco-fua",
+          "sourceVersion": "GISCO Urban Audit 2024",
+          "availability": {
+            "status": "available",
+            "footprintContainment": "inside",
+            "method": "exact-point-in-feature"
+          },
+          "releaseContract": {
+            "indexAssetDeclared": true,
+            "byteSizeMatches": true,
+            "sha256Matches": true,
+            "sourceVersionMatches": true
+          },
+          "promotionStatus": "pass",
+          "semanticQuality": {
+            "status": "pass",
+            "featureProfile": {
+              "featureCount": 1,
+              "validGeometryCount": 1,
+              "geometryValidityPercent": 100,
+              "requiredAttributeCompletenessPercent": 100,
+              "sourceVersionConsistencyPercent": 100,
+              "distinctClasses": [
+                "DE"
+              ]
+            },
+            "coverage": {
+              "municipality": {
+                "deliveryPercent": 100
+              },
+              "fua": {
+                "deliveryPercent": 100
+              }
+            },
+            "freshness": {
+              "pass": true,
+              "observed": 2024,
+              "expected": ">= 2024",
+              "method": "Reference year parsed from sourceVersion."
+            },
+            "checks": [
+              {
+                "id": "release-contract-alignment",
+                "pass": true,
+                "severity": "critical",
+                "confidence": "high",
+                "observed": {
+                  "indexAssetDeclared": true,
+                  "byteSizeMatches": true,
+                  "sha256Matches": true,
+                  "sourceVersionMatches": true
+                },
+                "expected": "declared index path, matching bytes/SHA-256, and matching sourceVersion",
+                "method": "Prevents semantic evidence from being attributed to a stale immutable release manifest."
+              },
+              {
+                "id": "non-empty-analytical-intersection",
+                "pass": true,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 1,
+                "expected": ">= 1",
+                "method": "Exact feature intersection with the 1000 m regression context."
+              },
+              {
+                "id": "geometry-validity",
+                "pass": true,
+                "severity": "critical",
+                "confidence": "high",
+                "observed": 100,
+                "expected": ">= 100%",
+                "method": "1/1 intersecting features have structurally valid WGS84 geometry."
+              },
+              {
+                "id": "required-attribute-completeness",
+                "pass": true,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 100,
+                "expected": ">= 100%",
+                "method": "Required properties: fua_id, fua_name, country, sourceId, sourceVersion, source_year."
+              },
+              {
+                "id": "source-version-consistency",
+                "pass": true,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 100,
+                "expected": "100%",
+                "method": "Intersecting feature sourceVersion values must match the release sourceVersion."
+              },
+              {
+                "id": "expected-class-coverage",
+                "pass": true,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 1,
+                "expected": ">= 1",
+                "method": "Distinct non-empty country values in the regression context."
+              },
+              {
+                "id": "source-freshness",
+                "pass": true,
+                "severity": "medium",
+                "confidence": "high",
+                "observed": 2024,
+                "expected": ">= 2024",
+                "method": "Reference year parsed from sourceVersion."
+              },
+              {
+                "id": "delivery-coverage-municipality",
+                "pass": true,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 100,
+                "expected": ">= 99%",
+                "method": "Share of official context geometry intersected by present indexed delivery cells."
+              },
+              {
+                "id": "delivery-coverage-fua",
+                "pass": true,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 100,
+                "expected": ">= 99%",
+                "method": "Share of official context geometry intersected by present indexed delivery cells."
+              }
+            ],
+            "failedChecks": [],
+            "highestFailureSeverity": null
+          }
+        },
+        {
+          "sourceId": "gtfs-de-local-transit",
+          "sourceVersion": "2026-05-12",
+          "availability": {
+            "status": "available",
+            "footprintContainment": "inside",
+            "method": "1-km-query-window"
+          },
+          "releaseContract": {
+            "indexAssetDeclared": true,
+            "byteSizeMatches": true,
+            "sha256Matches": true,
+            "sourceVersionMatches": true
+          },
+          "promotionStatus": "pass",
+          "semanticQuality": {
+            "status": "pass",
+            "featureProfile": {
+              "featureCount": 109,
+              "validGeometryCount": 109,
+              "geometryValidityPercent": 100,
+              "requiredAttributeCompletenessPercent": 100,
+              "sourceVersionConsistencyPercent": 100,
+              "distinctClasses": [
+                "station",
+                "transit"
+              ]
+            },
+            "coverage": {
+              "municipality": {
+                "deliveryPercent": 100
+              },
+              "fua": {
+                "deliveryPercent": 100
+              }
+            },
+            "freshness": {
+              "pass": true,
+              "observed": 75,
+              "expected": "0..365 days",
+              "method": "Age in whole UTC days between sourceVersion date and policy referenceDate."
+            },
+            "checks": [
+              {
+                "id": "release-contract-alignment",
+                "pass": true,
+                "severity": "critical",
+                "confidence": "high",
+                "observed": {
+                  "indexAssetDeclared": true,
+                  "byteSizeMatches": true,
+                  "sha256Matches": true,
+                  "sourceVersionMatches": true
+                },
+                "expected": "declared index path, matching bytes/SHA-256, and matching sourceVersion",
+                "method": "Prevents semantic evidence from being attributed to a stale immutable release manifest."
+              },
+              {
+                "id": "non-empty-analytical-intersection",
+                "pass": true,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 109,
+                "expected": ">= 1",
+                "method": "Exact feature intersection with the 1000 m regression context."
+              },
+              {
+                "id": "geometry-validity",
+                "pass": true,
+                "severity": "critical",
+                "confidence": "high",
+                "observed": 100,
+                "expected": ">= 100%",
+                "method": "109/109 intersecting features have structurally valid WGS84 geometry."
+              },
+              {
+                "id": "required-attribute-completeness",
+                "pass": true,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 100,
+                "expected": ">= 100%",
+                "method": "Required properties: sourceId, sourceVersion, provider, feed, stop_id, stop_name, transportMode."
+              },
+              {
+                "id": "source-version-consistency",
+                "pass": true,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 100,
+                "expected": "100%",
+                "method": "Intersecting feature sourceVersion values must match the release sourceVersion."
+              },
+              {
+                "id": "expected-class-coverage",
+                "pass": true,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 2,
+                "expected": ">= 1",
+                "method": "Distinct non-empty transportMode values in the regression context."
+              },
+              {
+                "id": "source-freshness",
+                "pass": true,
+                "severity": "medium",
+                "confidence": "high",
+                "observed": 75,
+                "expected": "0..365 days",
+                "method": "Age in whole UTC days between sourceVersion date and policy referenceDate."
+              }
+            ],
+            "failedChecks": [],
+            "highestFailureSeverity": null
+          }
+        },
+        {
+          "sourceId": "gtfs-de-local-transit-lines",
+          "sourceVersion": "2026-05-20",
+          "availability": {
+            "status": "available",
+            "footprintContainment": "inside",
+            "method": "1-km-query-window"
+          },
+          "releaseContract": {
+            "indexAssetDeclared": true,
+            "byteSizeMatches": true,
+            "sha256Matches": true,
+            "sourceVersionMatches": true
+          },
+          "promotionStatus": "pass",
+          "semanticQuality": {
+            "status": "pass",
+            "featureProfile": {
+              "featureCount": 41,
+              "validGeometryCount": 41,
+              "geometryValidityPercent": 100,
+              "requiredAttributeCompletenessPercent": 100,
+              "sourceVersionConsistencyPercent": 100,
+              "distinctClasses": [
+                "bus"
+              ]
+            },
+            "coverage": {
+              "municipality": {
+                "deliveryPercent": 100
+              },
+              "fua": {
+                "deliveryPercent": 100
+              }
+            },
+            "freshness": {
+              "pass": true,
+              "observed": 67,
+              "expected": "0..365 days",
+              "method": "Age in whole UTC days between sourceVersion date and policy referenceDate."
+            },
+            "checks": [
+              {
+                "id": "release-contract-alignment",
+                "pass": true,
+                "severity": "critical",
+                "confidence": "high",
+                "observed": {
+                  "indexAssetDeclared": true,
+                  "byteSizeMatches": true,
+                  "sha256Matches": true,
+                  "sourceVersionMatches": true
+                },
+                "expected": "declared index path, matching bytes/SHA-256, and matching sourceVersion",
+                "method": "Prevents semantic evidence from being attributed to a stale immutable release manifest."
+              },
+              {
+                "id": "non-empty-analytical-intersection",
+                "pass": true,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 41,
+                "expected": ">= 1",
+                "method": "Exact feature intersection with the 1000 m regression context."
+              },
+              {
+                "id": "geometry-validity",
+                "pass": true,
+                "severity": "critical",
+                "confidence": "high",
+                "observed": 100,
+                "expected": ">= 100%",
+                "method": "41/41 intersecting features have structurally valid WGS84 geometry."
+              },
+              {
+                "id": "required-attribute-completeness",
+                "pass": true,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 100,
+                "expected": ">= 100%",
+                "method": "Required properties: sourceId, sourceVersion, provider, feed, route_id, route_type, trip_id, transportMode."
+              },
+              {
+                "id": "source-version-consistency",
+                "pass": true,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 100,
+                "expected": "100%",
+                "method": "Intersecting feature sourceVersion values must match the release sourceVersion."
+              },
+              {
+                "id": "expected-class-coverage",
+                "pass": true,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 1,
+                "expected": ">= 1",
+                "method": "Distinct non-empty transportMode values in the regression context."
+              },
+              {
+                "id": "source-freshness",
+                "pass": true,
+                "severity": "medium",
+                "confidence": "high",
+                "observed": 67,
+                "expected": "0..365 days",
+                "method": "Age in whole UTC days between sourceVersion date and policy referenceDate."
+              }
+            ],
+            "failedChecks": [],
+            "highestFailureSeverity": null
+          }
+        },
+        {
+          "sourceId": "overture-buildings",
+          "sourceVersion": "2026-05-17-munich+2026-05-18+2026-05-29",
+          "availability": {
+            "status": "available",
+            "footprintContainment": "inside",
+            "method": "1-km-query-window"
+          },
+          "releaseContract": {
+            "indexAssetDeclared": true,
+            "byteSizeMatches": true,
+            "sha256Matches": true,
+            "sourceVersionMatches": true
+          },
+          "promotionStatus": "fail",
+          "semanticQuality": {
+            "status": "fail",
+            "featureProfile": {
+              "featureCount": 2635,
+              "validGeometryCount": 2635,
+              "geometryValidityPercent": 100,
+              "requiredAttributeCompletenessPercent": 100,
+              "sourceVersionConsistencyPercent": 100,
+              "distinctClasses": [
+                "building"
+              ]
+            },
+            "coverage": {
+              "municipality": {
+                "deliveryPercent": 33.4792
+              },
+              "fua": {
+                "deliveryPercent": 2.3404
+              }
+            },
+            "freshness": {
+              "pass": true,
+              "observed": 70,
+              "expected": "0..730 days",
+              "method": "Age in whole UTC days between sourceVersion date and policy referenceDate."
+            },
+            "checks": [
+              {
+                "id": "release-contract-alignment",
+                "pass": true,
+                "severity": "critical",
+                "confidence": "high",
+                "observed": {
+                  "indexAssetDeclared": true,
+                  "byteSizeMatches": true,
+                  "sha256Matches": true,
+                  "sourceVersionMatches": true
+                },
+                "expected": "declared index path, matching bytes/SHA-256, and matching sourceVersion",
+                "method": "Prevents semantic evidence from being attributed to a stale immutable release manifest."
+              },
+              {
+                "id": "non-empty-analytical-intersection",
+                "pass": true,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 2635,
+                "expected": ">= 1",
+                "method": "Exact feature intersection with the 1000 m regression context."
+              },
+              {
+                "id": "geometry-validity",
+                "pass": true,
+                "severity": "critical",
+                "confidence": "high",
+                "observed": 100,
+                "expected": ">= 100%",
+                "method": "2635/2635 intersecting features have structurally valid WGS84 geometry."
+              },
+              {
+                "id": "required-attribute-completeness",
+                "pass": true,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 100,
+                "expected": ">= 100%",
+                "method": "Required properties: sourceId, sourceVersion, label, licenseMode."
+              },
+              {
+                "id": "source-version-consistency",
+                "pass": true,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 100,
+                "expected": "100%",
+                "method": "Intersecting feature sourceVersion values must match the release sourceVersion."
+              },
+              {
+                "id": "expected-class-coverage",
+                "pass": true,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 1,
+                "expected": ">= 1",
+                "method": "Distinct non-empty label values in the regression context."
+              },
+              {
+                "id": "source-freshness",
+                "pass": true,
+                "severity": "medium",
+                "confidence": "high",
+                "observed": 70,
+                "expected": "0..730 days",
+                "method": "Age in whole UTC days between sourceVersion date and policy referenceDate."
+              },
+              {
+                "id": "delivery-coverage-municipality",
+                "pass": false,
+                "severity": "high",
+                "confidence": "high",
+                "observed": 33.4792,
+                "expected": ">= 95%",
+                "method": "Share of official context geometry intersected by present indexed delivery cells."
+              }
+            ],
+            "failedChecks": [
+              "delivery-coverage-municipality"
+            ],
+            "highestFailureSeverity": "high"
+          }
+        }
+      ]
+    }
+  ]
+}

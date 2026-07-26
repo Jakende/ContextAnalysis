@@ -1,8 +1,8 @@
 # Geodata release contract
 
 The UI and canonical geodata can be deployed independently. Development keeps
-the existing same-origin behavior (`/data`). Production may point the browser at
-an immutable release root:
+the existing same-origin behavior (`/data`). Production must point a slim UI
+build at an explicit immutable release root:
 
 ```text
 VITE_GEODATA_BASE_URL=https://static.example.org/uca-geodata/uca-data-<digest>
@@ -14,20 +14,29 @@ public browser configuration, not a credential. `UCA_INCLUDE_GEODATA=false`
 omits `public/data/processed/` from the Vite artifact; the default remains
 `true` so local development and existing deployments are unchanged. Generated
 point caches and their mutable cache manifest are excluded in both modes.
+A slim build fails unless the URL uses HTTPS, has no credentials/query/fragment,
+and ends with the manifest-shaped `uca-data-<16 hex>` release ID. Its root
+contains a machine-readable `data-release-pin.json` so promotion checks do not
+need to search minified JavaScript.
 
 ## Build and verify a release
 
 ```bash
 npm run release:data-manifest
 npm run test:data-release
-UCA_INCLUDE_GEODATA=false npm run build
+UCA_INCLUDE_GEODATA=false \
+VITE_GEODATA_BASE_URL=https://static.example.org/uca-geodata/uca-data-<digest> \
+npm run build
 ```
 
 When `dist/` sits on a synced filesystem and cannot be emptied reliably, stage
 the build in a fresh explicit directory without changing artifact contents:
 
 ```bash
-UCA_INCLUDE_GEODATA=false UCA_OUT_DIR=/private/tmp/uca-ui-dist npm run build
+UCA_INCLUDE_GEODATA=false \
+VITE_GEODATA_BASE_URL=https://static.example.org/uca-geodata/uca-data-<digest> \
+UCA_OUT_DIR=/private/tmp/uca-ui-dist \
+npm run build
 ```
 
 Do not point `UCA_OUT_DIR` at a shared or broad directory; Vite owns the selected
@@ -74,6 +83,50 @@ the UI with the new `VITE_GEODATA_BASE_URL`. This lets app releases reuse
 unchanged geodata and prevents the multi-gigabyte data tree from being recopied
 with every UI deployment.
 
+## Provider-neutral deployment handoff
+
+After choosing the target release URL and UI origin, create a non-publishing
+control-plane handoff:
+
+```bash
+npm run release:data-stage -- \
+  --out-dir=/private/tmp/uca-data-deployment \
+  --release-url=https://static.example.org/uca-geodata/uca-data-f2908a8e5313e3aa \
+  --ui-origin=https://app.example.org
+```
+
+The command first runs the full release validator, including SHA-256 checks by
+default. It then writes only five small control files:
+
+- `deployment-contract.json` binds the release digest, URL, source tree, and UI
+  build environment;
+- `http-policy.json` declares immutable caching, exact-origin CORS, GET/HEAD,
+  and byte-range requirements;
+- `rollback.json` requires retained releases and UI-only repinning;
+- `ui-production.env` carries the two public build values;
+- `README.md` provides the manual provider handoff.
+
+The handoff is deliberately outside `public/data`, contains no payload copy,
+credentials, provider command, or publish authorization, and refuses a nonempty
+output directory. It cannot upload the 1,583,124,437-byte release by itself. Publication
+requires a separately chosen provider-specific command and credentials.
+
+After the provider-specific upload and slim UI build, verify the handoff and UI
+pin together:
+
+```bash
+npm run validate:data-deployment -- \
+  --stage-dir=/private/tmp/uca-data-deployment \
+  --ui-dist=/private/tmp/uca-ui-dist
+```
+
+This check fails if the UI pin differs from the data manifest, if the HTTP/CORS
+or rollback policy weakens, if publish authority or credentials appear, or if
+the handoff looks large enough to contain copied payload data. Validate the
+deployed endpoint separately with provider credentials removed: the manifest
+and representative assets must return the declared CORS/cache headers, HEAD
+support, and a successful byte-range response before promotion.
+
 ## City regression gate
 
 `cityGate` deliberately separates two questions that the earlier point-only
@@ -114,3 +167,23 @@ Current footprint limitations are part of the machine-readable manifest:
 - The footprint records valid declared index cells even if a referenced asset is
   missing. The inventory and point probe expose that missing delivery asset
   separately instead of silently shrinking the declared source extent.
+
+## Semantic city coverage
+
+The immutable manifest proves delivery inventory and point-probe availability;
+it does not certify that delivered features are analytically fit. The separate
+semantic gate is documented in
+[`data-quality/semantic-city-coverage.md`](data-quality/semantic-city-coverage.md).
+
+```bash
+npm run test:semantic-coverage
+npm run release:semantic-coverage
+npm run test:semantic-coverage:release
+```
+
+The generated `docs/data-quality/semantic-city-coverage.json` binds its results
+to the immutable release digest and a versioned policy. It reports official
+municipality/FUA delivery percentages, exact 1 km analytical intersections,
+geometry validity, required-property completeness, source-version consistency,
+freshness, and expected class coverage. Availability, semantic quality, and
+promotion status remain separate machine-readable fields.

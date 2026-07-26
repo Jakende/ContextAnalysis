@@ -1,0 +1,816 @@
+{
+  "schema": "uca-data-access-profile/1.0",
+  "releaseId": "uca-data-f2908a8e5313e3aa",
+  "releaseDigest": "f2908a8e5313e3aa3a70738d637889c18d82a877c43bd1b520835a6e7a13a6ae",
+  "measurement": {
+    "method": "Deterministic request and byte profile from the immutable shard indexes and manifest. It measures the browser payload implied by bbox selection; it does not estimate network latency.",
+    "contexts": [
+      {
+        "radiusMeters": 1000,
+        "diameterMeters": 2000
+      },
+      {
+        "radiusMeters": 2500,
+        "diameterMeters": 5000
+      }
+    ],
+    "thresholds": {
+      "maxRequestsPerObservation": 16,
+      "maxTransferBytesPerObservation": 25000000,
+      "maxSingleShardBytes": 8000000
+    }
+  },
+  "summary": {
+    "status": "pass",
+    "observations": 24,
+    "available": 22,
+    "empty": 2,
+    "thresholdFailures": 0,
+    "maximumRequests": 6,
+    "maximumTransferBytes": 24301541,
+    "maximumSingleShardBytes": 5689846
+  },
+  "decision": {
+    "currentFormat": "bbox-indexed-sharded-geojson",
+    "status": "retain",
+    "rule": "Retain static sharded GeoJSON while every representative observation stays within the request, transfer, and shard-size thresholds. If exact polygon/line analysis remains above threshold after geometry clipping and shard compaction, move that analytical source to an indexed spatial API or another exact range-readable vector format; PMTiles remains a display path, not evidence for exact metrics.",
+    "failingSourceIds": []
+  },
+  "observations": [
+    {
+      "cityId": "munich",
+      "sourceId": "copernicus-urban-atlas",
+      "sourceVersion": "2021",
+      "role": "exact-polygon-analysis",
+      "requestedRadiusMeters": 1000,
+      "effectiveRadiusMeters": 1000,
+      "queryBbox": [
+        11.567359393375904,
+        48.12714688825009,
+        11.594280606624094,
+        48.145113111749914
+      ],
+      "status": "available",
+      "selectedShards": 1,
+      "declaredRecords": 1127,
+      "transferBytes": 3036189,
+      "maximumShardBytes": 3036189,
+      "thresholdStatus": "pass",
+      "failedThresholds": [],
+      "payloads": [
+        {
+          "path": "processed/copernicus-urban-atlas/shards/2762_3831.geojson",
+          "bytes": 3036189,
+          "declaredRecords": 1127
+        }
+      ]
+    },
+    {
+      "cityId": "munich",
+      "sourceId": "overture-buildings",
+      "sourceVersion": "2026-05-17-munich+2026-05-18+2026-05-29",
+      "role": "exact-polygon-analysis",
+      "requestedRadiusMeters": 1000,
+      "effectiveRadiusMeters": 1000,
+      "queryBbox": [
+        11.567359393375904,
+        48.12714688825009,
+        11.594280606624094,
+        48.145113111749914
+      ],
+      "status": "available",
+      "selectedShards": 4,
+      "declaredRecords": 11312,
+      "transferBytes": 17657209,
+      "maximumShardBytes": 5689846,
+      "thresholdStatus": "pass",
+      "failedThresholds": [],
+      "payloads": [
+        {
+          "path": "processed/overture-buildings/shards/6906_9578.geojson",
+          "bytes": 5497007,
+          "declaredRecords": 3550
+        },
+        {
+          "path": "processed/overture-buildings/shards/6906_9579.geojson",
+          "bytes": 4144382,
+          "declaredRecords": 2686
+        },
+        {
+          "path": "processed/overture-buildings/shards/6907_9578.geojson",
+          "bytes": 5689846,
+          "declaredRecords": 3656
+        },
+        {
+          "path": "processed/overture-buildings/shards/6907_9579.geojson",
+          "bytes": 2325974,
+          "declaredRecords": 1420
+        }
+      ]
+    },
+    {
+      "cityId": "munich",
+      "sourceId": "gtfs-de-local-transit",
+      "sourceVersion": "2026-05-12",
+      "role": "point-analysis",
+      "requestedRadiusMeters": 1000,
+      "effectiveRadiusMeters": 1000,
+      "queryBbox": [
+        11.567359393375904,
+        48.12714688825009,
+        11.594280606624094,
+        48.145113111749914
+      ],
+      "status": "available",
+      "selectedShards": 1,
+      "declaredRecords": 4454,
+      "transferBytes": 2546449,
+      "maximumShardBytes": 2546449,
+      "thresholdStatus": "pass",
+      "failedThresholds": [],
+      "payloads": [
+        {
+          "path": "processed/gtfs-stops/shards/552_766.geojson",
+          "bytes": 2546449,
+          "declaredRecords": 4454
+        }
+      ]
+    },
+    {
+      "cityId": "munich",
+      "sourceId": "gtfs-de-local-transit-lines",
+      "sourceVersion": "2026-05-20",
+      "role": "line-analysis",
+      "requestedRadiusMeters": 1000,
+      "effectiveRadiusMeters": 1000,
+      "queryBbox": [
+        11.567359393375904,
+        48.12714688825009,
+        11.594280606624094,
+        48.145113111749914
+      ],
+      "status": "available",
+      "selectedShards": 1,
+      "declaredRecords": 329,
+      "transferBytes": 638915,
+      "maximumShardBytes": 638915,
+      "thresholdStatus": "pass",
+      "failedThresholds": [],
+      "payloads": [
+        {
+          "path": "processed/gtfs-lines/shards/552_766.geojson",
+          "bytes": 638915,
+          "declaredRecords": 329
+        }
+      ]
+    },
+    {
+      "cityId": "munich",
+      "sourceId": "copernicus-urban-atlas",
+      "sourceVersion": "2021",
+      "role": "exact-polygon-analysis",
+      "requestedRadiusMeters": 2500,
+      "effectiveRadiusMeters": 2500,
+      "queryBbox": [
+        11.547168483439762,
+        48.113672220625226,
+        11.614471516560236,
+        48.15858777937478
+      ],
+      "status": "available",
+      "selectedShards": 6,
+      "declaredRecords": 5593,
+      "transferBytes": 14733801,
+      "maximumShardBytes": 3036189,
+      "thresholdStatus": "pass",
+      "failedThresholds": [],
+      "payloads": [
+        {
+          "path": "processed/copernicus-urban-atlas/shards/2762_3830.geojson",
+          "bytes": 2518015,
+          "declaredRecords": 990
+        },
+        {
+          "path": "processed/copernicus-urban-atlas/shards/2762_3831.geojson",
+          "bytes": 3036189,
+          "declaredRecords": 1127
+        },
+        {
+          "path": "processed/copernicus-urban-atlas/shards/2762_3832.geojson",
+          "bytes": 2381015,
+          "declaredRecords": 949
+        },
+        {
+          "path": "processed/copernicus-urban-atlas/shards/2763_3830.geojson",
+          "bytes": 2243939,
+          "declaredRecords": 878
+        },
+        {
+          "path": "processed/copernicus-urban-atlas/shards/2763_3831.geojson",
+          "bytes": 2481134,
+          "declaredRecords": 952
+        },
+        {
+          "path": "processed/copernicus-urban-atlas/shards/2763_3832.geojson",
+          "bytes": 2073509,
+          "declaredRecords": 697
+        }
+      ]
+    },
+    {
+      "cityId": "munich",
+      "sourceId": "overture-buildings",
+      "sourceVersion": "2026-05-17-munich+2026-05-18+2026-05-29",
+      "role": "exact-polygon-analysis",
+      "requestedRadiusMeters": 2500,
+      "effectiveRadiusMeters": 1500,
+      "queryBbox": [
+        11.560629090063857,
+        48.12265533237514,
+        11.601010909936141,
+        48.149604667624864
+      ],
+      "status": "available",
+      "selectedShards": 6,
+      "declaredRecords": 15506,
+      "transferBytes": 24301541,
+      "maximumShardBytes": 5689846,
+      "thresholdStatus": "pass",
+      "failedThresholds": [],
+      "payloads": [
+        {
+          "path": "processed/overture-buildings/shards/6906_9578.geojson",
+          "bytes": 5497007,
+          "declaredRecords": 3550
+        },
+        {
+          "path": "processed/overture-buildings/shards/6906_9579.geojson",
+          "bytes": 4144382,
+          "declaredRecords": 2686
+        },
+        {
+          "path": "processed/overture-buildings/shards/6906_9580.geojson",
+          "bytes": 3257716,
+          "declaredRecords": 2069
+        },
+        {
+          "path": "processed/overture-buildings/shards/6907_9578.geojson",
+          "bytes": 5689846,
+          "declaredRecords": 3656
+        },
+        {
+          "path": "processed/overture-buildings/shards/6907_9579.geojson",
+          "bytes": 2325974,
+          "declaredRecords": 1420
+        },
+        {
+          "path": "processed/overture-buildings/shards/6907_9580.geojson",
+          "bytes": 3386616,
+          "declaredRecords": 2125
+        }
+      ]
+    },
+    {
+      "cityId": "munich",
+      "sourceId": "gtfs-de-local-transit",
+      "sourceVersion": "2026-05-12",
+      "role": "point-analysis",
+      "requestedRadiusMeters": 2500,
+      "effectiveRadiusMeters": 2500,
+      "queryBbox": [
+        11.547168483439762,
+        48.113672220625226,
+        11.614471516560236,
+        48.15858777937478
+      ],
+      "status": "available",
+      "selectedShards": 1,
+      "declaredRecords": 4454,
+      "transferBytes": 2546449,
+      "maximumShardBytes": 2546449,
+      "thresholdStatus": "pass",
+      "failedThresholds": [],
+      "payloads": [
+        {
+          "path": "processed/gtfs-stops/shards/552_766.geojson",
+          "bytes": 2546449,
+          "declaredRecords": 4454
+        }
+      ]
+    },
+    {
+      "cityId": "munich",
+      "sourceId": "gtfs-de-local-transit-lines",
+      "sourceVersion": "2026-05-20",
+      "role": "line-analysis",
+      "requestedRadiusMeters": 2500,
+      "effectiveRadiusMeters": 2500,
+      "queryBbox": [
+        11.547168483439762,
+        48.113672220625226,
+        11.614471516560236,
+        48.15858777937478
+      ],
+      "status": "available",
+      "selectedShards": 1,
+      "declaredRecords": 329,
+      "transferBytes": 638915,
+      "maximumShardBytes": 638915,
+      "thresholdStatus": "pass",
+      "failedThresholds": [],
+      "payloads": [
+        {
+          "path": "processed/gtfs-lines/shards/552_766.geojson",
+          "bytes": 638915,
+          "declaredRecords": 329
+        }
+      ]
+    },
+    {
+      "cityId": "frankfurt",
+      "sourceId": "copernicus-urban-atlas",
+      "sourceVersion": "2021",
+      "role": "exact-polygon-analysis",
+      "requestedRadiusMeters": 1000,
+      "effectiveRadiusMeters": 1000,
+      "queryBbox": [
+        8.66812241534259,
+        50.10193688825009,
+        8.69613758465741,
+        50.11990311174991
+      ],
+      "status": "empty",
+      "selectedShards": 0,
+      "declaredRecords": 0,
+      "transferBytes": 0,
+      "maximumShardBytes": 0,
+      "thresholdStatus": "pass",
+      "failedThresholds": [],
+      "payloads": []
+    },
+    {
+      "cityId": "frankfurt",
+      "sourceId": "overture-buildings",
+      "sourceVersion": "2026-05-17-munich+2026-05-18+2026-05-29",
+      "role": "exact-polygon-analysis",
+      "requestedRadiusMeters": 1000,
+      "effectiveRadiusMeters": 1000,
+      "queryBbox": [
+        8.66812241534259,
+        50.10193688825009,
+        8.69613758465741,
+        50.11990311174991
+      ],
+      "status": "available",
+      "selectedShards": 2,
+      "declaredRecords": 4405,
+      "transferBytes": 7738455,
+      "maximumShardBytes": 3924463,
+      "thresholdStatus": "pass",
+      "failedThresholds": [],
+      "payloads": [
+        {
+          "path": "processed/overture-buildings/shards/7005_9433.geojson",
+          "bytes": 3813992,
+          "declaredRecords": 2044
+        },
+        {
+          "path": "processed/overture-buildings/shards/7005_9434.geojson",
+          "bytes": 3924463,
+          "declaredRecords": 2361
+        }
+      ]
+    },
+    {
+      "cityId": "frankfurt",
+      "sourceId": "gtfs-de-local-transit",
+      "sourceVersion": "2026-05-12",
+      "role": "point-analysis",
+      "requestedRadiusMeters": 1000,
+      "effectiveRadiusMeters": 1000,
+      "queryBbox": [
+        8.66812241534259,
+        50.10193688825009,
+        8.69613758465741,
+        50.11990311174991
+      ],
+      "status": "available",
+      "selectedShards": 1,
+      "declaredRecords": 3336,
+      "transferBytes": 1980276,
+      "maximumShardBytes": 1980276,
+      "thresholdStatus": "pass",
+      "failedThresholds": [],
+      "payloads": [
+        {
+          "path": "processed/gtfs-stops/shards/560_754.geojson",
+          "bytes": 1980276,
+          "declaredRecords": 3336
+        }
+      ]
+    },
+    {
+      "cityId": "frankfurt",
+      "sourceId": "gtfs-de-local-transit-lines",
+      "sourceVersion": "2026-05-20",
+      "role": "line-analysis",
+      "requestedRadiusMeters": 1000,
+      "effectiveRadiusMeters": 1000,
+      "queryBbox": [
+        8.66812241534259,
+        50.10193688825009,
+        8.69613758465741,
+        50.11990311174991
+      ],
+      "status": "available",
+      "selectedShards": 1,
+      "declaredRecords": 357,
+      "transferBytes": 692950,
+      "maximumShardBytes": 692950,
+      "thresholdStatus": "pass",
+      "failedThresholds": [],
+      "payloads": [
+        {
+          "path": "processed/gtfs-lines/shards/560_754.geojson",
+          "bytes": 692950,
+          "declaredRecords": 357
+        }
+      ]
+    },
+    {
+      "cityId": "frankfurt",
+      "sourceId": "copernicus-urban-atlas",
+      "sourceVersion": "2021",
+      "role": "exact-polygon-analysis",
+      "requestedRadiusMeters": 2500,
+      "effectiveRadiusMeters": 2500,
+      "queryBbox": [
+        8.647111038356478,
+        50.088462220625225,
+        8.717148961643524,
+        50.133377779374776
+      ],
+      "status": "empty",
+      "selectedShards": 0,
+      "declaredRecords": 0,
+      "transferBytes": 0,
+      "maximumShardBytes": 0,
+      "thresholdStatus": "pass",
+      "failedThresholds": [],
+      "payloads": []
+    },
+    {
+      "cityId": "frankfurt",
+      "sourceId": "overture-buildings",
+      "sourceVersion": "2026-05-17-munich+2026-05-18+2026-05-29",
+      "role": "exact-polygon-analysis",
+      "requestedRadiusMeters": 2500,
+      "effectiveRadiusMeters": 1500,
+      "queryBbox": [
+        8.661118623013888,
+        50.09744533237514,
+        8.703141376986114,
+        50.12439466762486
+      ],
+      "status": "available",
+      "selectedShards": 2,
+      "declaredRecords": 4405,
+      "transferBytes": 7738455,
+      "maximumShardBytes": 3924463,
+      "thresholdStatus": "pass",
+      "failedThresholds": [],
+      "payloads": [
+        {
+          "path": "processed/overture-buildings/shards/7005_9433.geojson",
+          "bytes": 3813992,
+          "declaredRecords": 2044
+        },
+        {
+          "path": "processed/overture-buildings/shards/7005_9434.geojson",
+          "bytes": 3924463,
+          "declaredRecords": 2361
+        }
+      ]
+    },
+    {
+      "cityId": "frankfurt",
+      "sourceId": "gtfs-de-local-transit",
+      "sourceVersion": "2026-05-12",
+      "role": "point-analysis",
+      "requestedRadiusMeters": 2500,
+      "effectiveRadiusMeters": 2500,
+      "queryBbox": [
+        8.647111038356478,
+        50.088462220625225,
+        8.717148961643524,
+        50.133377779374776
+      ],
+      "status": "available",
+      "selectedShards": 1,
+      "declaredRecords": 3336,
+      "transferBytes": 1980276,
+      "maximumShardBytes": 1980276,
+      "thresholdStatus": "pass",
+      "failedThresholds": [],
+      "payloads": [
+        {
+          "path": "processed/gtfs-stops/shards/560_754.geojson",
+          "bytes": 1980276,
+          "declaredRecords": 3336
+        }
+      ]
+    },
+    {
+      "cityId": "frankfurt",
+      "sourceId": "gtfs-de-local-transit-lines",
+      "sourceVersion": "2026-05-20",
+      "role": "line-analysis",
+      "requestedRadiusMeters": 2500,
+      "effectiveRadiusMeters": 2500,
+      "queryBbox": [
+        8.647111038356478,
+        50.088462220625225,
+        8.717148961643524,
+        50.133377779374776
+      ],
+      "status": "available",
+      "selectedShards": 1,
+      "declaredRecords": 357,
+      "transferBytes": 692950,
+      "maximumShardBytes": 692950,
+      "thresholdStatus": "pass",
+      "failedThresholds": [],
+      "payloads": [
+        {
+          "path": "processed/gtfs-lines/shards/560_754.geojson",
+          "bytes": 692950,
+          "declaredRecords": 357
+        }
+      ]
+    },
+    {
+      "cityId": "rosenheim",
+      "sourceId": "copernicus-urban-atlas",
+      "sourceVersion": "2021",
+      "role": "exact-polygon-analysis",
+      "requestedRadiusMeters": 1000,
+      "effectiveRadiusMeters": 1000,
+      "queryBbox": [
+        12.109082181089548,
+        47.847386888250085,
+        12.135857818910452,
+        47.86535311174991
+      ],
+      "status": "available",
+      "selectedShards": 2,
+      "declaredRecords": 225,
+      "transferBytes": 420831,
+      "maximumShardBytes": 312520,
+      "thresholdStatus": "pass",
+      "failedThresholds": [],
+      "payloads": [
+        {
+          "path": "processed/copernicus-urban-atlas/shards/2756_3842.geojson",
+          "bytes": 108311,
+          "declaredRecords": 56
+        },
+        {
+          "path": "processed/copernicus-urban-atlas/shards/2757_3842.geojson",
+          "bytes": 312520,
+          "declaredRecords": 169
+        }
+      ]
+    },
+    {
+      "cityId": "rosenheim",
+      "sourceId": "overture-buildings",
+      "sourceVersion": "2026-05-17-munich+2026-05-18+2026-05-29",
+      "role": "exact-polygon-analysis",
+      "requestedRadiusMeters": 1000,
+      "effectiveRadiusMeters": 1000,
+      "queryBbox": [
+        12.109082181089548,
+        47.847386888250085,
+        12.135857818910452,
+        47.86535311174991
+      ],
+      "status": "available",
+      "selectedShards": 4,
+      "declaredRecords": 3037,
+      "transferBytes": 4089261,
+      "maximumShardBytes": 2034673,
+      "thresholdStatus": "pass",
+      "failedThresholds": [],
+      "payloads": [
+        {
+          "path": "processed/overture-buildings/shards/6892_9605.geojson",
+          "bytes": 1389290,
+          "declaredRecords": 1070
+        },
+        {
+          "path": "processed/overture-buildings/shards/6892_9606.geojson",
+          "bytes": 2034673,
+          "declaredRecords": 1466
+        },
+        {
+          "path": "processed/overture-buildings/shards/6893_9605.geojson",
+          "bytes": 370195,
+          "declaredRecords": 293
+        },
+        {
+          "path": "processed/overture-buildings/shards/6893_9606.geojson",
+          "bytes": 295103,
+          "declaredRecords": 208
+        }
+      ]
+    },
+    {
+      "cityId": "rosenheim",
+      "sourceId": "gtfs-de-local-transit",
+      "sourceVersion": "2026-05-12",
+      "role": "point-analysis",
+      "requestedRadiusMeters": 1000,
+      "effectiveRadiusMeters": 1000,
+      "queryBbox": [
+        12.109082181089548,
+        47.847386888250085,
+        12.135857818910452,
+        47.86535311174991
+      ],
+      "status": "available",
+      "selectedShards": 1,
+      "declaredRecords": 1385,
+      "transferBytes": 803256,
+      "maximumShardBytes": 803256,
+      "thresholdStatus": "pass",
+      "failedThresholds": [],
+      "payloads": [
+        {
+          "path": "processed/gtfs-stops/shards/551_768.geojson",
+          "bytes": 803256,
+          "declaredRecords": 1385
+        }
+      ]
+    },
+    {
+      "cityId": "rosenheim",
+      "sourceId": "gtfs-de-local-transit-lines",
+      "sourceVersion": "2026-05-20",
+      "role": "line-analysis",
+      "requestedRadiusMeters": 1000,
+      "effectiveRadiusMeters": 1000,
+      "queryBbox": [
+        12.109082181089548,
+        47.847386888250085,
+        12.135857818910452,
+        47.86535311174991
+      ],
+      "status": "available",
+      "selectedShards": 1,
+      "declaredRecords": 146,
+      "transferBytes": 282576,
+      "maximumShardBytes": 282576,
+      "thresholdStatus": "pass",
+      "failedThresholds": [],
+      "payloads": [
+        {
+          "path": "processed/gtfs-lines/shards/551_768.geojson",
+          "bytes": 282576,
+          "declaredRecords": 146
+        }
+      ]
+    },
+    {
+      "cityId": "rosenheim",
+      "sourceId": "copernicus-urban-atlas",
+      "sourceVersion": "2021",
+      "role": "exact-polygon-analysis",
+      "requestedRadiusMeters": 2500,
+      "effectiveRadiusMeters": 2500,
+      "queryBbox": [
+        12.089000452723868,
+        47.83391222062522,
+        12.155939547276132,
+        47.878827779374774
+      ],
+      "status": "available",
+      "selectedShards": 2,
+      "declaredRecords": 225,
+      "transferBytes": 420831,
+      "maximumShardBytes": 312520,
+      "thresholdStatus": "pass",
+      "failedThresholds": [],
+      "payloads": [
+        {
+          "path": "processed/copernicus-urban-atlas/shards/2756_3842.geojson",
+          "bytes": 108311,
+          "declaredRecords": 56
+        },
+        {
+          "path": "processed/copernicus-urban-atlas/shards/2757_3842.geojson",
+          "bytes": 312520,
+          "declaredRecords": 169
+        }
+      ]
+    },
+    {
+      "cityId": "rosenheim",
+      "sourceId": "overture-buildings",
+      "sourceVersion": "2026-05-17-munich+2026-05-18+2026-05-29",
+      "role": "exact-polygon-analysis",
+      "requestedRadiusMeters": 2500,
+      "effectiveRadiusMeters": 1500,
+      "queryBbox": [
+        12.102388271634322,
+        47.842895332375136,
+        12.142551728365678,
+        47.86984466762486
+      ],
+      "status": "available",
+      "selectedShards": 4,
+      "declaredRecords": 3037,
+      "transferBytes": 4089261,
+      "maximumShardBytes": 2034673,
+      "thresholdStatus": "pass",
+      "failedThresholds": [],
+      "payloads": [
+        {
+          "path": "processed/overture-buildings/shards/6892_9605.geojson",
+          "bytes": 1389290,
+          "declaredRecords": 1070
+        },
+        {
+          "path": "processed/overture-buildings/shards/6892_9606.geojson",
+          "bytes": 2034673,
+          "declaredRecords": 1466
+        },
+        {
+          "path": "processed/overture-buildings/shards/6893_9605.geojson",
+          "bytes": 370195,
+          "declaredRecords": 293
+        },
+        {
+          "path": "processed/overture-buildings/shards/6893_9606.geojson",
+          "bytes": 295103,
+          "declaredRecords": 208
+        }
+      ]
+    },
+    {
+      "cityId": "rosenheim",
+      "sourceId": "gtfs-de-local-transit",
+      "sourceVersion": "2026-05-12",
+      "role": "point-analysis",
+      "requestedRadiusMeters": 2500,
+      "effectiveRadiusMeters": 2500,
+      "queryBbox": [
+        12.089000452723868,
+        47.83391222062522,
+        12.155939547276132,
+        47.878827779374774
+      ],
+      "status": "available",
+      "selectedShards": 1,
+      "declaredRecords": 1385,
+      "transferBytes": 803256,
+      "maximumShardBytes": 803256,
+      "thresholdStatus": "pass",
+      "failedThresholds": [],
+      "payloads": [
+        {
+          "path": "processed/gtfs-stops/shards/551_768.geojson",
+          "bytes": 803256,
+          "declaredRecords": 1385
+        }
+      ]
+    },
+    {
+      "cityId": "rosenheim",
+      "sourceId": "gtfs-de-local-transit-lines",
+      "sourceVersion": "2026-05-20",
+      "role": "line-analysis",
+      "requestedRadiusMeters": 2500,
+      "effectiveRadiusMeters": 2500,
+      "queryBbox": [
+        12.089000452723868,
+        47.83391222062522,
+        12.155939547276132,
+        47.878827779374774
+      ],
+      "status": "available",
+      "selectedShards": 1,
+      "declaredRecords": 146,
+      "transferBytes": 282576,
+      "maximumShardBytes": 282576,
+      "thresholdStatus": "pass",
+      "failedThresholds": [],
+      "payloads": [
+        {
+          "path": "processed/gtfs-lines/shards/551_768.geojson",
+          "bytes": 282576,
+          "declaredRecords": 146
+        }
+      ]
+    }
+  ]
+}

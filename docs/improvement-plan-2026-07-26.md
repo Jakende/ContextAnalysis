@@ -1,7 +1,8 @@
 # Urban Context Analysis — Improvement Goals
 
 Date: 2026-07-26  
-Status: Goal 1 complete; Goal 2 is the active milestone
+Status: Goal 1 complete; Goal 2 local contracts/compaction complete, external
+coverage and hosting inputs blocked
 Planning horizon: next 3 implementation cycles
 
 ## 1. Decision and product frame
@@ -27,7 +28,7 @@ The plan is based on the repository state at `fc76aa5`:
 - Typecheck, production build, UI validation, KPI, benchmark, project-area,
   spatial-area, scenario, and data-release validations exist and pass.
 - The slim UI build is approximately 5.4 MB; the immutable geodata release is
-  2.21 GB with 9,363 assets.
+  `uca-data-f2908a8e5313e3aa` with 9,377 assets and 1,583,124,437 bytes.
 - `public/data/` occupies about 4 GB locally, while only three release-facing
   files are tracked. Runtime and deployment storage are therefore already
   conceptually separated, but production hosting is not finished.
@@ -196,7 +197,7 @@ Acceptance:
 
 Completion evidence:
 
-- `npm run validate` completes the 11-stage deterministic contract/build runner
+- `npm run validate` completes the 15-stage deterministic contract/build runner
   and then the Playwright suite.
 - The contract runner covers typecheck, benchmark runtime and ingestion, KPI,
   project-area, spatial-area, scenario, analysis timing, UI, the data-release
@@ -231,12 +232,12 @@ production timing distributions remain follow-up work led by Goal 2.
 
 Priority: P0  
 Suggested duration: 1–2 implementation cycles
-Status: active next milestone
+Status: local implementation complete; external inputs required
 
 Deliverables:
 
 1. Choose the immutable data host and deploy
-   `uca-data-edde681ba2da0b93`.
+   `uca-data-f2908a8e5313e3aa`.
 2. Pin the production UI to the release URL and verify CORS, cache headers,
    range requests, rollback, and attribution delivery.
 3. Populate and version canonical Urban Atlas and Overture outputs for
@@ -246,6 +247,27 @@ Deliverables:
    and non-empty analytical intersection.
 5. Measure representative access patterns before choosing PMTiles, MBTiles,
    GeoPackage range access, or an indexed spatial API.
+
+Implemented locally on 2026-07-26:
+
+- provider-neutral immutable deployment and rollback contracts, fail-closed
+  slim-build release pinning, and production pin validation;
+- availability-versus-semantic municipality/FUA gates for Munich, Frankfurt,
+  and Rosenheim;
+- promoted, versioned point evidence without presenting it as continuous city
+  coverage;
+- exact Urban Atlas shard compaction with full OGR topology audit, explicit
+  repair provenance, stable fragment IDs, final OGR validation, and an
+  external recoverable backup;
+- a representative access profile that now passes all request, transfer, and
+  single-shard budgets.
+
+Remaining blockers:
+
+- the immutable host URL, production UI origin, and provider credentials have
+  not been chosen;
+- Frankfurt Urban Atlas and continuous Frankfurt/Rosenheim Urban
+  Atlas/Overture source coverage remain below the declared semantic gates.
 
 Acceptance:
 
@@ -270,7 +292,9 @@ Suggested duration: 1 implementation cycle after Goal 2 source gates
 Deliverables:
 
 1. Produce observed peer tables in this order:
-   - Munich districts;
+   - a deterministic Munich 500 m neighbourhood lattice from BKG and Urban
+     Atlas, until official Munich Stadtbezirk geometry/statistics are supplied;
+   - Munich districts after those authoritative inputs exist;
    - Bavarian cities;
    - German cities;
    - European FUAs.
@@ -282,6 +306,16 @@ Deliverables:
 4. Add distribution checks, outlier review, duplicate detection, and minimum
    peer-count gates.
 5. Keep the illustrative fixture only for UI development and tests.
+
+Evidence rule established in the 2026-07-26 audit:
+
+- use at least 20 comparable peers, at least 80% valid metric coverage, five
+  distinct values, and non-zero spread;
+- require identical radius/denominator, source-release pin, calculation
+  version, and evidence profile;
+- initially expose only Urban Atlas-derived Green/Open and land-use-only Urban
+  Mix family percentiles. Do not create a partial Local Quality composite or
+  present absent POI/tree/routing evidence as observed.
 
 Acceptance:
 

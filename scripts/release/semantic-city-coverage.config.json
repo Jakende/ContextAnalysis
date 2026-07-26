@@ -1,0 +1,108 @@
+{
+  "schema": "uca-semantic-city-coverage-policy/1.0",
+  "referenceDate": "2026-07-26",
+  "analysisRadiusMeters": 1000,
+  "requiredAttributeCompletenessPercent": 100,
+  "requiredGeometryValidityPercent": 100,
+  "contexts": [
+    {
+      "id": "munich",
+      "label": "Munich centre",
+      "lat": 48.13613,
+      "lon": 11.58082,
+      "municipalityAgs": "09162",
+      "fuaId": "DE003F"
+    },
+    {
+      "id": "frankfurt",
+      "label": "Frankfurt am Main centre",
+      "lat": 50.11092,
+      "lon": 8.68213,
+      "municipalityAgs": "06412",
+      "fuaId": "DE005F"
+    },
+    {
+      "id": "rosenheim",
+      "label": "Rosenheim centre",
+      "lat": 47.85637,
+      "lon": 12.12247,
+      "municipalityAgs": "09163",
+      "fuaId": "DE066F"
+    }
+  ],
+  "sources": [
+    {
+      "sourceId": "bkg-geobasis",
+      "kind": "geojson",
+      "path": "processed/bkg-boundaries.geojson",
+      "geometryTypes": ["Polygon", "MultiPolygon"],
+      "requiredProperties": ["GEN", "BEZ", "ARS", "AGS", "sourceId", "sourceVersion"],
+      "classProperty": "BEZ",
+      "minimumDistinctClasses": 1,
+      "freshness": { "mode": "max-age-days", "maximumAgeDays": 730 },
+      "coverageThresholds": { "municipality": 99, "fua": 99 },
+      "minimumAnalysisFeatures": 1
+    },
+    {
+      "sourceId": "eurostat-gisco-fua",
+      "kind": "geojson",
+      "path": "processed/eurostat-gisco-fua.geojson",
+      "geometryTypes": ["Polygon", "MultiPolygon"],
+      "requiredProperties": ["fua_id", "fua_name", "country", "sourceId", "sourceVersion", "source_year"],
+      "classProperty": "country",
+      "minimumDistinctClasses": 1,
+      "freshness": { "mode": "minimum-reference-year", "minimumYear": 2024 },
+      "coverageThresholds": { "municipality": 99, "fua": 99 },
+      "minimumAnalysisFeatures": 1
+    },
+    {
+      "sourceId": "gtfs-de-local-transit",
+      "kind": "sharded",
+      "path": "processed/gtfs-stops/index.json",
+      "geometryTypes": ["Point"],
+      "requiredProperties": ["sourceId", "sourceVersion", "provider", "feed", "stop_id", "stop_name", "transportMode"],
+      "classProperty": "transportMode",
+      "minimumDistinctClasses": 1,
+      "freshness": { "mode": "max-age-days", "maximumAgeDays": 365 },
+      "coverageThresholds": {},
+      "minimumAnalysisFeatures": 1
+    },
+    {
+      "sourceId": "gtfs-de-local-transit-lines",
+      "kind": "sharded",
+      "path": "processed/gtfs-lines/index.json",
+      "geometryTypes": ["LineString", "MultiLineString"],
+      "requiredProperties": ["sourceId", "sourceVersion", "provider", "feed", "route_id", "route_type", "trip_id", "transportMode"],
+      "classProperty": "transportMode",
+      "minimumDistinctClasses": 1,
+      "freshness": { "mode": "max-age-days", "maximumAgeDays": 365 },
+      "coverageThresholds": {},
+      "minimumAnalysisFeatures": 1
+    },
+    {
+      "sourceId": "copernicus-urban-atlas",
+      "kind": "sharded",
+      "path": "processed/copernicus-urban-atlas/index.json",
+      "geometryTypes": ["Polygon", "MultiPolygon"],
+      "requiredProperties": ["country", "fua_name", "fua_code", "code_2021", "class_2021", "identifier", "sourceId", "sourceVersion"],
+      "classProperty": "code_2021",
+      "minimumDistinctClasses": 4,
+      "freshness": { "mode": "minimum-reference-year", "minimumYear": 2021 },
+      "coverageThresholds": { "municipality": 95, "fua": 90 },
+      "thematicCoverageThresholds": { "municipality": 90 },
+      "minimumAnalysisFeatures": 1
+    },
+    {
+      "sourceId": "overture-buildings",
+      "kind": "sharded",
+      "path": "processed/overture-buildings/index.json",
+      "geometryTypes": ["Polygon", "MultiPolygon"],
+      "requiredProperties": ["sourceId", "sourceVersion", "label", "licenseMode"],
+      "classProperty": "label",
+      "minimumDistinctClasses": 1,
+      "freshness": { "mode": "version-date-prefix", "maximumAgeDays": 730 },
+      "coverageThresholds": { "municipality": 95 },
+      "minimumAnalysisFeatures": 1
+    }
+  ]
+}

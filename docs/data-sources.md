@@ -52,3 +52,18 @@ npm run test:data-sources:regression
 ```
 
 The regression set currently covers Munich centre, Frankfurt centre, and Rosenheim as a small-city point. The command fails on hard source problems (`failed`, `missing`, `missing-credentials`) and reports optional empty coverage explicitly without inventing availability.
+
+For offline, deterministic validation of the canonical Urban Atlas and
+Overture shards, use:
+
+```bash
+npm run test:canonical-city-inputs
+npm run test:canonical-city-coverage
+```
+
+As of the 2026-07-26 local preprocessing pass, canonical Overture coverage is
+available for all three regression locations and canonical Urban Atlas is
+available for Munich and Rosenheim. Frankfurt Urban Atlas remains explicitly
+empty because no local point-cache input intersects its fixed 1 km query
+window. These are regression-area extracts, not claims of continuous citywide
+coverage.

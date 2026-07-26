@@ -122,6 +122,10 @@ export async function runLocationAnalysis(input: {
         ),
       )
     : MOBILITY_ANALYSIS_RADIUS_METERS;
+  const buildingContextRadiusMeters = Math.min(
+    MOBILITY_ANALYSIS_RADIUS_METERS,
+    localContextRadiusMeters,
+  );
   emitProgress(input.onProgress, {
     id: "geocoding",
     label: "Nominatim reverse lookup",
@@ -201,7 +205,7 @@ export async function runLocationAnalysis(input: {
     terrainSamples,
   ] = await Promise.all([
     loadZensusGridForPoint(selectedPoint),
-    loadLod2BuildingsForPoint(selectedPoint, localContextRadiusMeters),
+    loadLod2BuildingsForPoint(selectedPoint, buildingContextRadiusMeters),
     loadBkgBoundariesForPoint(selectedPoint),
     loadFuaGeometriesForPoint(selectedPoint),
     loadGtfsStopsForPoint(selectedPoint, localContextRadiusMeters),

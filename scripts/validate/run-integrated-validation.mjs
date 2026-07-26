@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { spawn } from "node:child_process";
-import { access, readdir, rm, stat } from "node:fs/promises";
+import { access, readFile, readdir, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -9,6 +9,10 @@ import { mkdtemp } from "node:fs/promises";
 const projectRoot = resolve(fileURLToPath(new URL("../..", import.meta.url)));
 const temporaryRoot = await mkdtemp(join(tmpdir(), "uca-integrated-validation-"));
 const slimBuildDirectory = join(temporaryRoot, "dist");
+const dataReleaseManifest = JSON.parse(
+  await readFile(resolve(projectRoot, "public/data/data-release-manifest.json"), "utf8"),
+);
+const validationReleaseUrl = `https://data.invalid/${dataReleaseManifest.releaseId}`;
 
 const checks = [
   {
@@ -52,6 +56,21 @@ const checks = [
     args: ["scripts/validate/test-analysis-timing.mjs"],
   },
   {
+    label: "Semantic city coverage contract",
+    command: "node",
+    args: ["scripts/validate/test-semantic-city-coverage.mjs"],
+  },
+  {
+    label: "Data-access profile contract",
+    command: "node",
+    args: ["scripts/validate/test-data-access-profile.mjs"],
+  },
+  {
+    label: "Polygon compaction contract",
+    command: "node",
+    args: ["scripts/validate/test-sharded-polygon-compaction.mjs"],
+  },
+  {
     label: "UI design-system validation",
     command: "python3",
     args: [
@@ -69,13 +88,18 @@ const checks = [
     ],
   },
   {
+    label: "Data-deployment contract",
+    command: "node",
+    args: ["scripts/validate/test-data-deployment.mjs"],
+  },
+  {
     label: "Slim production build",
     command: "npm",
     args: ["run", "build"],
     env: {
       UCA_INCLUDE_GEODATA: "false",
       UCA_OUT_DIR: slimBuildDirectory,
-      VITE_GEODATA_BASE_URL: "https://data.invalid/uca-validation-release",
+      VITE_GEODATA_BASE_URL: validationReleaseUrl,
     },
   },
 ];
@@ -142,11 +166,21 @@ async function inspectSlimBuild(buildDirectory) {
   if (bundledGeodata) {
     throw new Error(`Slim build unexpectedly contains ${bundledGeodataPath}.`);
   }
+  const releasePin = JSON.parse(
+    await readFile(join(buildDirectory, "data-release-pin.json"), "utf8"),
+  );
+  if (
+    releasePin.releaseId !== dataReleaseManifest.releaseId ||
+    releasePin.geodataBaseUrl !== validationReleaseUrl
+  ) {
+    throw new Error("Slim build data-release pin does not match the validated manifest.");
+  }
   const inventory = await directoryInventory(buildDirectory);
   return {
     files: inventory.files,
     bytes: inventory.bytes,
     includesGeodata: false,
+    dataReleaseId: releasePin.releaseId,
   };
 }
 

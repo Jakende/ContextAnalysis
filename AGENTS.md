@@ -11,9 +11,11 @@ Last checked locally on **2026-07-26**.
 ### Build and validation
 
 - `npm run validate` passes as the canonical local release gate.
-- `npm run validate:contracts` runs 11 deterministic stages: typecheck; benchmark runtime and ingestion; KPI, project-area, spatial-area, scenario, and analysis-timing contracts; UI validation; data-release validation without redundant hash work; and a slim build in a fresh temporary directory.
+- `npm run validate:contracts` runs 15 deterministic stages: typecheck; benchmark runtime and ingestion; KPI, project-area, spatial-area, scenario, analysis-timing, semantic-coverage, data-access, and polygon-compaction contracts; UI validation; data-release and deployment validation; and a slim build in a fresh temporary directory.
 - `npm run test:e2e` passes the repository Playwright matrix in desktop Chromium at 1,440 × 1,000 and mobile Chromium at 390 × 844. The suite covers point and project-area analysis, Munich/Frankfurt/Rosenheim and multipart timing fixtures, upload, polygon/rectangle drawing, XL/L/M switching, scenario add/remove, JSON/Ollama-fallback export, external-API failure, console errors, and horizontal overflow.
 - The slim build separates MapLibre, React, GeoPackage, and application chunks, excludes canonical geodata, and keeps the UI and data release independently deployable.
+- The current local immutable release is `uca-data-f2908a8e5313e3aa` with 9,377 assets and 1,583,124,437 bytes. Its representative access profile passes, but semantic promotion remains blocked for Frankfurt and Rosenheim; do not describe point-cache availability as city coverage.
+- Canonical Urban Atlas shards are clipped to exact decimal grid bounds with stable fragment provenance. All 81,717 source parts were OGR topology-audited; 81 invalid parts were explicitly repaired with GDAL `MakeValid(LINEWORK)`, and all 92,409 output fragments passed OGR validation.
 
 ### Working surfaces
 

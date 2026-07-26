@@ -25,10 +25,12 @@ Last checked locally on **2026-07-26**.
 
 | Check | Status | Notes |
 | --- | --- | --- |
-| `npm run validate` | Passing | Runs the 11-stage contract/build gate followed by deterministic desktop and mobile Chromium regressions. |
-| `npm run validate:contracts` | Passing | Typecheck, benchmark runtime and ingestion, KPI, project-area, spatial-area, scenario, timing, UI, data-release, and slim-build checks pass from a fresh temporary staging directory. |
+| `npm run validate` | Passing | Runs the 15-stage contract/build gate followed by deterministic desktop and mobile Chromium regressions. |
+| `npm run validate:contracts` | Passing | Typecheck, benchmark runtime and ingestion, KPI, project-area, spatial-area, scenario, timing, semantic coverage, data-access, polygon-compaction, UI, data-release, deployment, and slim-build checks pass from fresh temporary staging. |
 | `npm run test:e2e` | Passing | Point, city/multipart project fixtures, rectangle/polygon drawing, XL/L/M, scenario, JSON/Ollama-fallback export, external-API outage, console-error, and 390/1,440 px overflow contracts pass. |
 | Slim production build | Passing | MapLibre, React, GeoPackage, and application chunks remain split; the validation artifact excludes canonical geodata. |
+| Data release | Passing locally | `uca-data-f2908a8e5313e3aa`: 9,377 immutable assets / 1,583,124,437 bytes; representative access stays below the declared request, transfer, and shard limits. |
+| Semantic city promotion | Blocked | Munich passes; Frankfurt and Rosenheim remain below declared Urban Atlas/Overture municipality/FUA coverage gates. |
 | KPI contract | Passing | Schema `0.4.0` keeps one analysis context, excludes fallback buffers and driving from the composite, and serializes the active scenario. |
 | GPKG / ZIP export | Passing | GeoPackage is loaded on demand; ZIP includes a standalone manifest, CSV, HTML, provenance, and editable graphics. |
 | Dependency audit | Passing | `npm audit --omit=dev` reports zero vulnerabilities. |
@@ -73,6 +75,8 @@ npm run test:project-area
 npm run test:spatial-area
 npm run test:benchmark
 npm run test:data-release
+npm run test:polygon-compaction
+npm run test:data-access-profile
 ```
 
 Use `npm run validate` before a release or handoff. It first executes the
@@ -145,6 +149,7 @@ Key characteristics:
 - analysis reads bounded preprocessed coverage and does not download or rewrite large point caches during a click;
 - production builds omit generated point-cache and duplicate cache-manifest paths while retaining the canonical sharded datasets required at runtime;
 - production may set `UCA_INCLUDE_GEODATA=false` and `VITE_GEODATA_BASE_URL` so the approximately 5.4 MB UI and immutable geodata release deploy independently;
+- canonical polygon shards carry stable source-part/fragment provenance; invalid source geometry is repaired explicitly through GDAL `MakeValid(LINEWORK)` and every compacted fragment is OGR topology-validated;
 - the fact sheet is built from structured JSON, not free-form generated text;
 - confidence and caveat fields are always exposed;
 - KPI schema version, active strategy, weights, score, classification, and evidence availability are serializable through analysis results and export manifests.

@@ -1,6 +1,6 @@
 import { defineConfig, loadEnv, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
-import { cp } from "node:fs/promises";
+import { cp, writeFile } from "node:fs/promises";
 import { relative, resolve, sep } from "node:path";
 
 type ProbeRequest = {
@@ -61,12 +61,16 @@ export default defineConfig(({ command, mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
   process.env = { ...env, ...process.env };
   const includeGeodata = env.UCA_INCLUDE_GEODATA !== "false";
+  const geodataBaseUrl = env.VITE_GEODATA_BASE_URL?.trim() ?? "";
+  const dataReleasePin = includeGeodata
+    ? null
+    : parseImmutableGeodataReleaseUrl(geodataBaseUrl);
   const outputDirectory = env.UCA_OUT_DIR?.trim() || "dist";
   return {
     plugins: [
       react(),
       localApiPlugin(),
-      curatedPublicAssetsPlugin(includeGeodata, outputDirectory),
+      curatedPublicAssetsPlugin(includeGeodata, outputDirectory, dataReleasePin),
     ],
     publicDir: command === "build" ? false : "public",
     build: {
@@ -103,6 +107,7 @@ export default defineConfig(({ command, mode }) => {
 function curatedPublicAssetsPlugin(
   includeGeodata: boolean,
   outputDirectory: string,
+  dataReleasePin: { releaseId: string; geodataBaseUrl: string } | null,
 ): Plugin {
   return {
     name: "uca-curated-public-assets",
@@ -126,7 +131,62 @@ function curatedPublicAssetsPlugin(
           );
         },
       });
+      if (dataReleasePin) {
+        await writeFile(
+          resolve(outputRoot, "data-release-pin.json"),
+          `${JSON.stringify(
+            {
+              schema: "uca-ui-data-release-pin/1.0",
+              releaseId: dataReleasePin.releaseId,
+              geodataBaseUrl: dataReleasePin.geodataBaseUrl,
+            },
+            null,
+            2,
+          )}\n`,
+          "utf8",
+        );
+      }
     },
+  };
+}
+
+function parseImmutableGeodataReleaseUrl(value: string): {
+  releaseId: string;
+  geodataBaseUrl: string;
+} {
+  if (!value) {
+    throw new Error(
+      "UCA_INCLUDE_GEODATA=false requires an explicit VITE_GEODATA_BASE_URL.",
+    );
+  }
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    throw new Error("VITE_GEODATA_BASE_URL must be a valid immutable release URL.");
+  }
+  if (
+    url.protocol !== "https:" ||
+    url.username ||
+    url.password ||
+    url.search ||
+    url.hash
+  ) {
+    throw new Error(
+      "VITE_GEODATA_BASE_URL must use HTTPS and contain no credentials, query, or fragment.",
+    );
+  }
+  const pathname = url.pathname.replace(/\/+$/, "");
+  const releaseId = pathname.split("/").filter(Boolean).at(-1) ?? "";
+  if (!/^uca-data-[0-9a-f]{16}$/.test(releaseId)) {
+    throw new Error(
+      "VITE_GEODATA_BASE_URL must end with an immutable uca-data-<16 hex> release ID.",
+    );
+  }
+  url.pathname = pathname;
+  return {
+    releaseId,
+    geodataBaseUrl: url.toString().replace(/\/$/, ""),
   };
 }
 
