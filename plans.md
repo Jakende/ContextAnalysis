@@ -1,8 +1,21 @@
 # Product Plan
 
-Last updated: 2026-07-20.
+Last updated: 2026-07-26.
 
 This file is the standing product plan for the Urban Context Analysis MVP. Agents must read it at the beginning of each session after `AGENTS.md` and before proposing or implementing product changes.
+
+The committed execution plan for the next improvement cycles is:
+
+- [`docs/improvement-plan-2026-07-26.md`](docs/improvement-plan-2026-07-26.md)
+
+Its immediate order is:
+
+1. establish one repeatable release and browser-regression gate;
+2. deploy and complete canonical city data coverage;
+3. replace illustrative benchmark peers with observed comparable cohorts;
+4. reduce frontend and analysis maintenance hotspots without changing behavior;
+5. add only versioned, deterministic scenario effects;
+6. defer advanced canopy, corridor, and sun/shadow metrics until validated.
 
 ## Current Product Direction
 
