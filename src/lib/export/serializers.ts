@@ -31,6 +31,7 @@ export function analysisToProvenanceJson(analysis: AnalysisResult): string {
       selectedPoint: analysis.selectedPoint,
       projectArea: analysis.projectArea ?? null,
       kpiScenario: analysis.kpiScenario ?? null,
+      timings: analysis.provenance.timings,
       dataSourceRun: analysis.provenance.dataSourceRun,
       sourceFetches: analysis.provenance.sourceFetches,
       overpassQueries: analysis.provenance.overpassQueries,

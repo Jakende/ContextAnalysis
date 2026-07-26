@@ -10,8 +10,8 @@ The committed execution plan for the next improvement cycles is:
 
 Its immediate order is:
 
-1. establish one repeatable release and browser-regression gate;
-2. deploy and complete canonical city data coverage;
+1. ~~establish one repeatable release and browser-regression gate~~ — completed 2026-07-26;
+2. deploy and complete canonical city data coverage — current priority;
 3. replace illustrative benchmark peers with observed comparable cohorts;
 4. reduce frontend and analysis maintenance hotspots without changing behavior;
 5. add only versioned, deterministic scenario effects;
@@ -50,6 +50,19 @@ Completed in the continued 2026-07-20 hardening pass:
 - The UI can deploy independently as an approximately 5.4 MB slim artifact through `UCA_INCLUDE_GEODATA=false` and `VITE_GEODATA_BASE_URL`.
 - Canonical assets have a deterministic SHA-256 release manifest and `available` / `empty` / `missing` regression coverage gate. The current schema-1.1 release is `uca-data-edde681ba2da0b93` with 9,363 assets and 2.21 GB logical data.
 - A browser-verified technical coverage audit is available under `docs/data-quality/coverage-audit.html`.
+
+Completed in the 2026-07-26 release-gate pass:
+
+- `npm run validate` is the canonical local gate. It runs 11 deterministic contract/build stages and then the desktop/mobile Chromium regression matrix.
+- The integrated contract runner uses a fresh operating-system temporary directory, verifies that the slim production artifact contains no canonical geodata, and removes its staging directory after completion.
+- Repository Playwright coverage now exercises point selection; Munich, Frankfurt, Rosenheim, and multipart project contexts; project-layer upload; polygon and rectangle drawing; XL/L/M switching; scenario add/remove; JSON and Ollama-fallback export; external-API failure; console-error absence; and horizontal containment at 1,440 px and 390 px.
+- Analysis now emits local structured results before optional geocoding, Zensus WMS, routing, and Overpass enrichment completes.
+- Schema-versioned, bounded timing marks cover app ready, local lookup, first usable structured result, live enrichment, and export generation. The browser snapshot is local-only and capped; export manifests contain analysis-local timings but no runtime history.
+- GitHub Actions runs the same `npm run validate` command and retains Playwright failure evidence for 14 days.
+
+Current next milestone:
+
+- Goal 2, Data Coverage and Deployment Storage: choose the immutable data host, deploy and pin the canonical release, fill Frankfurt/Rosenheim gaps, and add semantic municipality/FUA quality thresholds.
 
 ### Durable KPI contract
 

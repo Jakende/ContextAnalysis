@@ -11,6 +11,10 @@ import { analysisToSvg, svgToPngBlob } from "../../lib/export/svg";
 import { createExportManifest } from "../../lib/export/manifest";
 import { createZipBlob } from "../../lib/export/zip";
 import { generateOllamaReport } from "../../lib/ollama/client";
+import {
+  beginExportTiming,
+  finishExportTiming,
+} from "../../lib/performance/timing";
 import { scenarioToGeoJson, type ScenarioLayer } from "../../lib/scenario";
 import type { AnalysisPhase, AnalysisResult } from "../../lib/types";
 
@@ -39,6 +43,9 @@ export function ExportPanel({
 
   async function runExport(kind: string) {
     if (!analysis) return;
+    const exportTimingId = beginExportTiming(kind);
+    let exportFailed = false;
+    let exportError: unknown;
     try {
       onStatus(`Exporting ${kind}...`);
       if (kind === "json") {
@@ -174,7 +181,15 @@ export function ExportPanel({
       }
       onStatus(`${kind.toUpperCase()} export ready.`);
     } catch (error) {
+      exportFailed = true;
+      exportError = error;
       onStatus(error instanceof Error ? error.message : String(error));
+    } finally {
+      finishExportTiming(
+        exportTimingId,
+        exportFailed ? "failed" : "ok",
+        exportError,
+      );
     }
   }
 

@@ -6,19 +6,22 @@ At the beginning of each session, read this file and then read `plans.md` before
 
 ## 0. Current implementation status
 
-Last checked locally on **2026-07-20**.
+Last checked locally on **2026-07-26**.
 
 ### Build and validation
 
-- `npm run typecheck` passes.
-- `npm run build` passes. The slim build separates MapLibre, React, GeoPackage, and application chunks; no chunk currently exceeds 1,500 kB after minification.
-- `npm run validate:ui` passes.
+- `npm run validate` passes as the canonical local release gate.
+- `npm run validate:contracts` runs 11 deterministic stages: typecheck; benchmark runtime and ingestion; KPI, project-area, spatial-area, scenario, and analysis-timing contracts; UI validation; data-release validation without redundant hash work; and a slim build in a fresh temporary directory.
+- `npm run test:e2e` passes the repository Playwright matrix in desktop Chromium at 1,440 × 1,000 and mobile Chromium at 390 × 844. The suite covers point and project-area analysis, Munich/Frankfurt/Rosenheim and multipart timing fixtures, upload, polygon/rectangle drawing, XL/L/M switching, scenario add/remove, JSON/Ollama-fallback export, external-API failure, console errors, and horizontal overflow.
+- The slim build separates MapLibre, React, GeoPackage, and application chunks, excludes canonical geodata, and keeps the UI and data release independently deployable.
 
 ### Working surfaces
 
 - The main mounted experience is the map-first workspace in `src/app/App.tsx`.
 - The map and inspector use a resizable workspace split. The map fullscreen control targets the full workspace so the inspector remains available in fullscreen.
 - The current product direction is direct and map-first; do not add a guided workflow unless explicitly requested again.
+- Analysis emits a usable local structured result before optional Nominatim, Zensus WMS, routing, and Overpass enrichment completes. External-service failure must preserve that local result.
+- Bounded local performance evidence is available through `window.__UCA_PERFORMANCE__`; analysis-local timings are serialized in provenance and manifests, while runtime/export history remains local and is not telemetry.
 - Users can upload a WGS84 polygon/multipolygon or draw a polygon/rectangle project area. The dissolved boundary becomes the deterministic L-scale observation context and export geometry.
 - User proposals are a separate scenario layer. Drawing and scenario export are implemented; KPI-impact modelling is intentionally still unavailable and must not be inferred.
 - Exports include JSON, CSV, GeoJSON, SVG, PNG, Markdown, HTML, Ollama report, ZIP package, Provenance JSON, and GPKG.

@@ -1,5 +1,9 @@
 import type { Feature, FeatureCollection, Geometry, Point } from "geojson";
 import type { ProjectArea } from "./projectArea/types";
+import type {
+  AnalysisTimingSummary,
+  ExportPerformanceSummary,
+} from "./performance/timing";
 import type { ScenarioExportSummary } from "./scenario/types";
 
 export type { ProjectArea } from "./projectArea/types";
@@ -232,6 +236,8 @@ export type DataSourceRunEvent = {
 
 export type AnalysisProvenance = {
   createdAt: string;
+  /** Local, bounded timing marks. They describe execution only and never KPI evidence. */
+  timings: AnalysisTimingSummary;
   sourceIds: string[];
   sourceFetches: SourceFetchReceipt[];
   dataSourceRun: DataSourceRunEvent[];
@@ -239,7 +245,7 @@ export type AnalysisProvenance = {
   geocoding: {
     enabled: boolean;
     sourceId: string;
-    status: "ok" | "failed" | "skipped";
+    status: "ok" | "failed" | "skipped" | "pending";
     cacheKey?: string;
     error?: string;
   };
@@ -319,6 +325,8 @@ export type ExportManifest = {
   kpiScenario?: KpiScenario;
   /** Summary of a separately exported user-authored proposal layer. */
   scenario?: ScenarioExportSummary;
+  /** Analysis-local timings only; prior runtime/export activity is deliberately excluded. */
+  performance: ExportPerformanceSummary;
   createdAt: string;
   scales: Scale[];
   sources: DataSource[];

@@ -1,4 +1,5 @@
 import { getSources } from "../data/sourceRegistry";
+import { createExportPerformanceSummary } from "../performance/timing";
 import { createScenarioExportSummary, type ScenarioLayer } from "../scenario";
 import type { AnalysisResult, ExportManifest } from "../types";
 
@@ -17,6 +18,7 @@ export function createExportManifest(
     ...(analysis.projectArea ? { projectArea: analysis.projectArea } : {}),
     ...(analysis.kpiScenario ? { kpiScenario: analysis.kpiScenario } : {}),
     ...(scenario ? { scenario: createScenarioExportSummary(scenario) } : {}),
+    performance: createExportPerformanceSummary(analysis.provenance.timings),
     createdAt: new Date().toISOString(),
     scales: ["XL", "L", "M"],
     sources: getSources(analysis.provenance.sourceIds),

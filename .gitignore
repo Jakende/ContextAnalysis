@@ -8,3 +8,6 @@ dist/
 data/cache/
 data/exports/
 public/data/processed/
+artifacts/
+playwright-report/
+test-results/

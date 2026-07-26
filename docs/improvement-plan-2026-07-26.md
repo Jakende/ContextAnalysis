@@ -1,7 +1,7 @@
 # Urban Context Analysis — Improvement Goals
 
 Date: 2026-07-26  
-Status: committed execution plan  
+Status: Goal 1 complete; Goal 2 is the active milestone
 Planning horizon: next 3 implementation cycles
 
 ## 1. Decision and product frame
@@ -157,12 +157,12 @@ Every release must preserve:
 
 ## 4. Prioritized implementation goals
 
-## Goal 1 — Establish one repeatable release gate
+## Goal 1 — Establish one repeatable release gate — Completed
 
 Priority: P0  
-Suggested duration: 1 implementation cycle
+Completed: 2026-07-26
 
-Deliverables:
+Completed deliverables:
 
 1. Add a single `npm run validate` command that runs typecheck, contract tests,
    UI validation, release-manifest validation without unnecessary hash work,
@@ -182,28 +182,56 @@ Deliverables:
    - first usable fact sheet;
    - live enrichment complete;
    - export generation.
-4. Store bounded benchmark results as CI artifacts; do not add runtime
+4. Store bounded browser evidence as CI artifacts; do not add runtime
    telemetry or external tracking by default.
 
 Acceptance:
 
 - one command can reproduce the local release gate;
 - the regression browser suite has no console errors;
-- baseline measurements exist for Munich point, Munich project area, Frankfurt,
-  Rosenheim, offline APIs, and a complex multipart boundary;
-- flaky external requests are stubbed in contract tests and tested separately
-  as optional integration checks.
+- baseline timing evidence exists for Munich point, Munich project area,
+  Frankfurt, Rosenheim, offline APIs, and a complex multipart boundary;
+- flaky external requests are stubbed in the release contract; live
+  integrations remain separate from the deterministic gate.
 
-Commit slices:
+Completion evidence:
 
-1. `test: add integrated validation command`
-2. `test: add map workspace browser regression suite`
-3. `perf: record bounded analysis timing baselines`
+- `npm run validate` completes the 11-stage deterministic contract/build runner
+  and then the Playwright suite.
+- The contract runner covers typecheck, benchmark runtime and ingestion, KPI,
+  project-area, spatial-area, scenario, analysis timing, UI, the data-release
+  contract without redundant hash work, and a slim build in a fresh temporary
+  directory.
+- The browser matrix uses deterministic request fixtures at 1,440 × 1,000 and
+  390 × 844. It covers point analysis, project upload, rectangle/polygon
+  drawing, XL/L/M switching, scenario add/remove, JSON export,
+  Ollama-unavailable deterministic report fallback, external-API failure,
+  console-error absence, and horizontal containment.
+- Its bounded timing attachments cover Munich point/project contexts,
+  Frankfurt, Rosenheim, an offline-API run, and a dissolved multipart
+  boundary.
+- The timing schema records app ready, local lookup, first usable structured
+  result, live enrichment, and export generation. Runtime evidence is exposed
+  only through the bounded `window.__UCA_PERFORMANCE__` snapshot; manifests
+  contain reproducible analysis-local timings and exclude prior runtime/export
+  activity.
+- The provisional 5-second first-usable contract is asserted in the browser
+  fixture. Thirty-run median/p95 aggregation remains an operating-baseline
+  exercise rather than runtime telemetry.
+- GitHub Actions installs Chromium, executes the same gate, and retains
+  Playwright evidence for 14 days.
+
+Goal 1 did not certify national data completeness or a 30-run city performance
+distribution. The Frankfurt/Rosenheim browser fixtures confirm reliable
+partial-result behavior, not source completeness. Their source gaps,
+municipality/FUA semantic coverage, immutable-host deployment, and observed
+production timing distributions remain follow-up work led by Goal 2.
 
 ## Goal 2 — Make data coverage production-deployable
 
 Priority: P0  
 Suggested duration: 1–2 implementation cycles
+Status: active next milestone
 
 Deliverables:
 
@@ -407,7 +435,7 @@ These require an explicit product or infrastructure choice:
 
 The next durable release is ready when:
 
-- Goal 1 is complete;
+- Goal 1 remains green in the canonical release gate;
 - the three primary product-health KPIs have recorded baselines;
 - one immutable geodata deployment can be rolled back independently;
 - the city coverage report distinguishes availability from semantic quality;

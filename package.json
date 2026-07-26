@@ -28,6 +28,10 @@
     "test:project-area": "node scripts/validate/test-project-area.mjs",
     "test:spatial-area": "node scripts/validate/test-spatial-area.mjs",
     "test:scenario": "node scripts/validate/test-scenario.mjs",
+    "test:timing": "node scripts/validate/test-analysis-timing.mjs",
+    "test:e2e": "playwright test",
+    "validate:contracts": "node scripts/validate/run-integrated-validation.mjs",
+    "validate": "npm run validate:contracts && npm run test:e2e",
     "validate:ui": "python3 scripts/validate/validate_ui_css.py src/styles/design-system.css src/styles/app.css"
   },
   "keywords": [],

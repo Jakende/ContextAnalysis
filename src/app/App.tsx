@@ -16,6 +16,10 @@ import { recomputeMSectionFromAnalysis } from "../lib/analysis/m/analyzeM";
 import { runLocationAnalysis } from "../lib/analysis/runAnalysis";
 import { projectAreaContainsCoordinate } from "../lib/projectArea/geometry";
 import {
+  createAnalysisTimingStart,
+  markAppReady,
+} from "../lib/performance/timing";
+import {
   addScenarioFeature,
   createEmptyScenarioLayer,
   removeScenarioFeature,
@@ -168,6 +172,10 @@ export function App() {
   }, [themeInvert]);
 
   useEffect(() => {
+    markAppReady();
+  }, []);
+
+  useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
       setWorkspaceExpanded(false);
@@ -194,6 +202,7 @@ export function App() {
       setStatus("Select a point inside the active project boundary, or clear the boundary first.");
       return;
     }
+    const timingStart = createAnalysisTimingStart();
     const runId = analysisRunIdRef.current + 1;
     analysisRunIdRef.current = runId;
     setIsAnalyzing(true);
@@ -214,6 +223,7 @@ export function App() {
         projectArea: projectAreaOverride,
         layers,
         sectionLine,
+        timingStart,
         onProgress: (step) => {
           if (analysisRunIdRef.current !== runId) return;
           setLoadStep(setAnalysisLoadSteps, step.id, step.status, step.detail);
@@ -636,8 +646,14 @@ function createInitialLoadSteps(): AnalysisLoadStep[] {
     },
     {
       id: "local-data",
-      label: "Local and WMS datasets",
+      label: "Local and sharded datasets",
       detail: "Waiting for sharded source reads.",
+      status: "queued",
+    },
+    {
+      id: "zensus-wms",
+      label: "Zensus WMS indicators",
+      detail: "Waiting for optional official WMS values.",
       status: "queued",
     },
     {

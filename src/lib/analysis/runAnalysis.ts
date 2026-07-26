@@ -19,6 +19,11 @@ import { MOBILITY_ANALYSIS_RADIUS_METERS } from "./mobility/mobilityScales";
 import { fetchOpenRouteServiceIsochrones } from "../mobility/openRouteService";
 import { runOverpassModules } from "../overpass/client";
 import { projectAreaRadiusMeters } from "../projectArea/geometry";
+import {
+  createAnalysisTimer,
+  publishAnalysisTimings,
+  type AnalysisTimingStart,
+} from "../performance/timing";
 import type {
   AnalysisResult,
   DataSourceRunEvent,
@@ -102,7 +107,10 @@ export async function runLocationAnalysis(input: {
   onPartialResult?: (result: AnalysisResult, sectionSvg: string) => void;
   enableGeocoding?: boolean;
   enableOverpass?: boolean;
+  timingStart?: AnalysisTimingStart;
 }): Promise<{ result: AnalysisResult; sectionSvg: string }> {
+  const analysisTimer = createAnalysisTimer(input.timingStart);
+  publishAnalysisTimings(analysisTimer.snapshot());
   const computedAt = new Date().toISOString();
   const projectArea = input.projectArea ?? undefined;
   const localContextRadiusMeters = projectArea
@@ -120,35 +128,26 @@ export async function runLocationAnalysis(input: {
     detail: "Loading optional reverse address context with a one-day local cache.",
     status: input.enableGeocoding === false ? "skipped" : "running",
   });
-  const geocoding =
+  const skippedGeocoding = {
+    status: "skipped" as const,
+    cacheKey: undefined,
+    label: undefined,
+    address: undefined,
+    municipality: undefined,
+    district: undefined,
+    sourceStatus: undefined,
+  };
+  const geocodingPromise =
     input.enableGeocoding === false
-      ? {
-          status: "skipped" as const,
-          cacheKey: undefined,
-          label: undefined,
-          address: undefined,
-          municipality: undefined,
-          district: undefined,
-          sourceStatus: undefined,
-        }
-      : await reverseGeocode(input.lat, input.lon, { allowCache: true });
-  emitProgress(input.onProgress, {
-    id: "geocoding",
-    label: "Nominatim reverse lookup",
-    detail:
-      geocoding.status === "ok"
-        ? "Reverse address context loaded."
-        : "Reverse geocoding unavailable; analysis continues with coordinates.",
-    status: geocoding.status === "ok" ? "ok" : geocoding.status,
-  });
+      ? Promise.resolve(skippedGeocoding)
+      : reverseGeocode(input.lat, input.lon, { allowCache: true });
+  let geocoding:
+    | Awaited<ReturnType<typeof reverseGeocode>>
+    | typeof skippedGeocoding = skippedGeocoding;
 
-  const selectedPoint: SelectedPoint = {
+  let selectedPoint: SelectedPoint = {
     lat: input.lat,
     lon: input.lon,
-    label: geocoding.label,
-    address: geocoding.address,
-    municipality: geocoding.municipality,
-    district: geocoding.district,
     point: pointGeometry(input.lat, input.lon),
   };
 
@@ -168,10 +167,18 @@ export async function runLocationAnalysis(input: {
 
   emitProgress(input.onProgress, {
     id: "local-data",
-    label: "Local, WMS, and sharded datasets",
-    detail: "Loading independent local, WMS, GTFS, Urban Atlas, building, contour, and terrain sources in parallel.",
+    label: "Local and sharded datasets",
+    detail: "Loading independent local GTFS, Urban Atlas, building, contour, terrain, boundary, FUA, and grid sources in parallel.",
     status: "running",
   });
+  emitProgress(input.onProgress, {
+    id: "zensus-wms",
+    label: "Zensus WMS indicators",
+    detail: "Loading optional official WMS values without blocking local results.",
+    status: "running",
+  });
+  analysisTimer.mark("local-data-lookup-start");
+  publishAnalysisTimings(analysisTimer.snapshot());
   emitProgress(input.onProgress, {
     id: "mobility-catchments",
     label: "Mobility catchments",
@@ -179,9 +186,12 @@ export async function runLocationAnalysis(input: {
     status: "running",
   });
   const isochronePromise = fetchOpenRouteServiceIsochrones(selectedPoint, computedAt);
+  const zensusWmsPromise = fetchZensusWmsIndicators(selectedPoint, computedAt);
+  let zensusWmsIndicators: Awaited<
+    ReturnType<typeof fetchZensusWmsIndicators>
+  > = [];
   const [
     zensusGrid,
-    zensusWmsIndicators,
     lod2Buildings,
     bkgBoundaries,
     fuaGeometries,
@@ -191,7 +201,6 @@ export async function runLocationAnalysis(input: {
     terrainSamples,
   ] = await Promise.all([
     loadZensusGridForPoint(selectedPoint),
-    fetchZensusWmsIndicators(selectedPoint, computedAt),
     loadLod2BuildingsForPoint(selectedPoint, localContextRadiusMeters),
     loadBkgBoundariesForPoint(selectedPoint),
     loadFuaGeometriesForPoint(selectedPoint),
@@ -202,9 +211,11 @@ export async function runLocationAnalysis(input: {
       ? loadTerrainSamplesForSection(input.sectionLine)
       : Promise.resolve([]),
   ]);
+  analysisTimer.mark("local-data-lookup-complete");
+  publishAnalysisTimings(analysisTimer.snapshot());
   emitProgress(input.onProgress, {
     id: "local-data",
-    label: "Local, WMS, and sharded datasets",
+    label: "Local and sharded datasets",
     detail: `${bkgBoundaries.features.length} BKG / ${fuaGeometries.features.length} FUA / ${gtfsStops.features.length} GTFS stops / ${urbanAtlas.features.length} Urban Atlas / ${lod2Buildings.features.length} building / ${contourLines.features.length} contour feature(s).`,
     status: "ok",
   });
@@ -448,6 +459,7 @@ export async function runLocationAnalysis(input: {
       },
       provenance: {
         createdAt: computedAt,
+        timings: analysisTimer.snapshot(),
         sourceIds,
         sourceFetches,
         dataSourceRun: createDataSourceRunReport({
@@ -459,7 +471,10 @@ export async function runLocationAnalysis(input: {
         geocoding: {
           enabled: input.enableGeocoding !== false,
           sourceId: "osm-nominatim",
-          status: geocoding.status,
+          status:
+            isPartial && input.enableGeocoding !== false
+              ? "pending"
+              : geocoding.status,
           cacheKey: geocoding.cacheKey,
           error: "error" in geocoding ? geocoding.error : undefined,
         },
@@ -485,11 +500,53 @@ export async function runLocationAnalysis(input: {
   };
 
   if (input.onPartialResult) {
-    const partial = await buildResult({ collections: {}, provenance: [] }, true);
+    const partialResult = await buildResult({ collections: {}, provenance: [] }, true);
+    analysisTimer.mark("first-usable-structured-result");
+    const partial = withAnalysisTimings(partialResult, analysisTimer.snapshot());
+    publishAnalysisTimings(partial.result.provenance.timings);
     input.onPartialResult(partial.result, partial.sectionSvg);
   }
 
-  isochrones = await isochronePromise;
+  const [
+    completedGeocoding,
+    completedZensusWmsIndicators,
+    completedIsochrones,
+    overpass,
+  ] = await Promise.all([
+    geocodingPromise,
+    zensusWmsPromise,
+    isochronePromise,
+    overpassPromise,
+  ]);
+  geocoding = completedGeocoding;
+  zensusWmsIndicators = completedZensusWmsIndicators;
+  isochrones = completedIsochrones;
+  selectedPoint = {
+    ...selectedPoint,
+    label: geocoding.label,
+    address: geocoding.address,
+    municipality: geocoding.municipality,
+    district: geocoding.district,
+  };
+  emitProgress(input.onProgress, {
+    id: "geocoding",
+    label: "Nominatim reverse lookup",
+    detail:
+      geocoding.status === "ok"
+        ? "Reverse address context loaded."
+        : input.enableGeocoding === false
+          ? "Reverse geocoding disabled."
+          : "Reverse geocoding unavailable; analysis continues with coordinates.",
+    status: geocoding.status === "ok" ? "ok" : geocoding.status,
+  });
+  emitProgress(input.onProgress, {
+    id: "zensus-wms",
+    label: "Zensus WMS indicators",
+    detail: `${zensusWmsIndicators.filter((indicator) => indicator.value !== null).length} of ${zensusWmsIndicators.length} official WMS value(s) available.`,
+    status: zensusWmsIndicators.some((indicator) => indicator.value !== null)
+      ? "ok"
+      : "failed",
+  });
   emitProgress(input.onProgress, {
     id: "mobility-catchments",
     label: "Mobility catchments",
@@ -502,7 +559,6 @@ export async function runLocationAnalysis(input: {
           : "ok",
   });
 
-  const overpass = await overpassPromise;
   emitProgress(input.onProgress, {
     id: "overpass",
     label: "Overpass OSM modules",
@@ -513,7 +569,30 @@ export async function runLocationAnalysis(input: {
         ? "failed"
         : "skipped",
   });
-  return buildResult(overpass, false);
+  const completeResult = await buildResult(overpass, false);
+  if (!analysisTimer.has("first-usable-structured-result")) {
+    analysisTimer.mark("first-usable-structured-result");
+  }
+  analysisTimer.mark("live-enrichment-complete");
+  const complete = withAnalysisTimings(completeResult, analysisTimer.snapshot());
+  publishAnalysisTimings(complete.result.provenance.timings);
+  return complete;
+}
+
+function withAnalysisTimings(
+  output: { result: AnalysisResult; sectionSvg: string },
+  timings: AnalysisResult["provenance"]["timings"],
+): { result: AnalysisResult; sectionSvg: string } {
+  return {
+    ...output,
+    result: {
+      ...output.result,
+      provenance: {
+        ...output.result.provenance,
+        timings,
+      },
+    },
+  };
 }
 
 function mergeCollections(...collections: FeatureCollection[]): FeatureCollection {

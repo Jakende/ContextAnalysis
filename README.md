@@ -21,13 +21,14 @@
 
 ## Current build status
 
-Last checked locally on **2026-07-20**.
+Last checked locally on **2026-07-26**.
 
 | Check | Status | Notes |
 | --- | --- | --- |
-| `npm run typecheck` | Passing | TypeScript compiles with `tsc --noEmit`. |
-| `npm run build` | Passing | Vite 8.1.5 production build passes; the heavy MapLibre and on-demand GPKG paths remain split from the app chunk. |
-| `npm run validate:ui` | Passing | Current CSS satisfies the repository UI guardrails. |
+| `npm run validate` | Passing | Runs the 11-stage contract/build gate followed by deterministic desktop and mobile Chromium regressions. |
+| `npm run validate:contracts` | Passing | Typecheck, benchmark runtime and ingestion, KPI, project-area, spatial-area, scenario, timing, UI, data-release, and slim-build checks pass from a fresh temporary staging directory. |
+| `npm run test:e2e` | Passing | Point, city/multipart project fixtures, rectangle/polygon drawing, XL/L/M, scenario, JSON/Ollama-fallback export, external-API outage, console-error, and 390/1,440 px overflow contracts pass. |
+| Slim production build | Passing | MapLibre, React, GeoPackage, and application chunks remain split; the validation artifact excludes canonical geodata. |
 | KPI contract | Passing | Schema `0.4.0` keeps one analysis context, excludes fallback buffers and driving from the composite, and serializes the active scenario. |
 | GPKG / ZIP export | Passing | GeoPackage is loaded on demand; ZIP includes a standalone manifest, CSV, HTML, provenance, and editable graphics. |
 | Dependency audit | Passing | `npm audit --omit=dev` reports zero vulnerabilities. |
@@ -62,15 +63,45 @@ Open `http://127.0.0.1:5173`.
 ### Useful checks
 
 ```bash
+npm run validate
+npm run validate:contracts
+npm run test:e2e
 npm run typecheck
 npm run build
+npm run test:timing
 npm run test:project-area
 npm run test:spatial-area
 npm run test:benchmark
 npm run test:data-release
 ```
 
-`npm run validate:ui` enforces the current design-system guardrails and is expected to pass.
+Use `npm run validate` before a release or handoff. It first executes the
+deterministic contract/build gate, then starts the repository Playwright suite
+at 1,440 px and 390 px. Browser requests are stubbed for repeatability; live
+service checks remain separate from this release contract. The timing evidence
+matrix includes Munich point/project contexts, Frankfurt, Rosenheim, an offline
+API run, and a dissolved multipart boundary.
+
+`npm run validate:ui` remains available as the focused design-system guardrail.
+
+### Inspect runtime timings
+
+The application records bounded, local-only performance evidence without
+external telemetry. After loading the app and running an analysis, inspect it
+in the browser console:
+
+```js
+window.__UCA_PERFORMANCE__
+```
+
+The snapshot contains app-ready time, the latest analysis marks, and at most 20
+export events. Analysis marks cover local lookup start/completion, first usable
+structured result, and live-enrichment completion. The first-usable mark
+records structured-result delivery; it is not a browser-paint metric.
+
+Analysis-local timings are also serialized in analysis provenance and export
+manifests. Runtime history and prior export activity are deliberately excluded
+from manifests so identical analysis inputs remain reproducible.
 
 ## Configuration
 
