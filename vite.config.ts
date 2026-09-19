@@ -72,6 +72,9 @@ export default defineConfig(({ command, mode }) => {
       localApiPlugin(),
       curatedPublicAssetsPlugin(includeGeodata, outputDirectory, dataReleasePin),
     ],
+    optimizeDeps: {
+      exclude: ["maplibre-gl"],
+    },
     publicDir: command === "build" ? false : "public",
     build: {
       outDir: outputDirectory,

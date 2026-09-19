@@ -57,7 +57,7 @@
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",
-    "maplibre-gl": "^5.24.0",
+    "maplibre-gl": "^6.9.0",
     "playwright": "^1.59.1",
     "polygon-clipping": "^0.15.7",
     "react": "^19.2.5",
@@ -68,5 +68,9 @@
   },
   "devDependencies": {
     "@types/node": "^25.8.0"
+  },
+  "allowScripts": {
+    "fsevents@2.3.2": true,
+    "fsevents@2.3.3": true
   }
 }

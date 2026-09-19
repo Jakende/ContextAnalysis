@@ -1,6 +1,7 @@
-import maplibregl, {
-  type GeoJSONSource,
-  type Map as MapLibreMap,
+import * as maplibregl from "maplibre-gl";
+import type {
+  GeoJSONSource,
+  Map as MapLibreMap,
 } from "maplibre-gl";
 import type { MutableRefObject } from "react";
 import { useEffect, useRef, useState } from "react";
@@ -305,6 +306,7 @@ export function MapView({
   const isAnalyzingRef = useRef(isAnalyzing);
   const sectionDrawModeRef = useRef(false);
   const sectionDraftStartRef = useRef<SectionLine["start"] | null>(null);
+  const backgroundModeRef = useRef<BackgroundMode>("osmRaster");
   const projectDrawModeRef = useRef<ProjectAreaDrawingMode>(null);
   const projectDraftVerticesRef = useRef<ProjectAreaCoordinate[]>([]);
   const scenarioDrawTypeRef = useRef<ScenarioFeatureType | null>(null);
@@ -494,7 +496,7 @@ export function MapView({
       updateZensusWmsLayer(map, zensusLayerRef.current);
       applyLayerStyles(map, layerStyles);
       applyBaseMapTheme(map, themeInvertRef.current);
-      applyBackgroundMode(map, "osmRaster");
+      applyBackgroundMode(map, backgroundModeRef.current);
       syncAnalysisToMap(
         map,
         analysisRef.current,
@@ -889,7 +891,13 @@ export function MapView({
           </p>
         </div>
       </details>
-      <BackgroundSwitcher value={backgroundMode} onChange={setBackgroundMode} />
+      <BackgroundSwitcher
+        value={backgroundMode}
+        onChange={(mode) => {
+          backgroundModeRef.current = mode;
+          setBackgroundMode(mode);
+        }}
+      />
       {isAnalyzing ? <AnalysisLoadingOverlay steps={analysisLoadSteps} /> : null}
     </section>
   );
@@ -2798,13 +2806,13 @@ function applyBackgroundMode(map: MapLibreMap, mode: BackgroundMode): void {
   setLayerVisibility(map, "osm-raster-basemap", osmRaster);
   setLayerVisibility(map, "satellite-raster-basemap", satellite);
   for (const id of ["versatiles-ocean", "versatiles-land", "versatiles-water", "versatiles-streets", "versatiles-buildings"]) {
-    setLayerVisibility(map, id, vector);
-  }
-  for (const id of ["landuse", "parks", "water", "buildings-base"]) {
     setLayerVisibility(map, id, false);
   }
+  for (const id of ["landuse", "parks", "water", "buildings-base"]) {
+    setLayerVisibility(map, id, vector);
+  }
   for (const id of ["roads-secondary", "roads-main", "boundaries", "place-labels"]) {
-    setLayerVisibility(map, id, satellite);
+    setLayerVisibility(map, id, vector || satellite);
   }
   setPaint(map, "roads-secondary", "line-opacity", satellite ? 0.42 : 1);
   setPaint(map, "roads-main", "line-opacity", satellite ? 0.66 : 0.62);
@@ -3426,11 +3434,14 @@ function applyVectorFallbackTheme(map: MapLibreMap, invert: boolean): void {
   setPaint(map, "versatiles-buildings", "fill-opacity", theme.buildingOpacity);
 }
 
+type PaintPropertyName = Parameters<MapLibreMap["setPaintProperty"]>[1];
+type PaintPropertyValue = Parameters<MapLibreMap["setPaintProperty"]>[2];
+
 function setPaint(
   map: MapLibreMap,
   layerId: string,
-  property: string,
-  value: unknown,
+  property: PaintPropertyName,
+  value: PaintPropertyValue,
 ): void {
   if (map.getLayer(layerId)) {
     map.setPaintProperty(layerId, property, value);
