@@ -198,3 +198,14 @@ If you extend the analysis model, keep the changes deterministic and traceable:
 - keep provenance and caveats on every indicator;
 - update the matching docs when the workflow changes;
 - prefer preprocessed open data over repeated public API calls.
+
+## verplant-Produktvariante (20.09.2026)
+
+`npm run build:verplant` erzeugt `dist-verplant/` für `/ausprobieren/app/`. Die Standardvariante bleibt UCA. Implementiert sind Wer/Wo/Was, getrennte Projekt-/Kontextgeometrien, `explore`/`project_check`, deterministische Perspektiven, append-only Durchläufe und getrennte Arbeitsstände sowie JSON/Markdown/HTML/ZIP. Ohne Datenhost bleibt die Demo mit sichtbaren Datenlücken nutzbar; das ist keine Abdeckungsfreigabe. Lokale KI ist optional und darf ausschließlich vorhandene Prüffragen auswählen.
+
+- [Architektur, Verträge, Invalidierung und Folgepakete](docs/verplant-architecture.md)
+- [Statische Integration und Build](docs/verplant-integration.md)
+- [Geprüfte Referenz-Repositories](docs/verplant-reference-repositories.md)
+- [Tatsächlich ausgeführte Prüfungen](docs/verplant-validation.md)
+
+`npm run test:verplant` prüft die neuen Verträge und ist zusätzlich in `validate:contracts` eingebunden. Playwright und Mobilprüfung wurden für diese Umsetzung auf ausdrücklichen Wunsch nicht abgeschlossen; die bestehende Suite bleibt erhalten. Das fremde Repository `hompage_mockup` wurde nicht verändert.

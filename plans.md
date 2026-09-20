@@ -288,3 +288,11 @@ Acceptance target:
 - Before adding a new metric source, update `src/lib/data/sourceRegistry.ts`.
 - Before adding a new export field, confirm JSON, CSV, GeoJSON, SVG, GPKG, Markdown, and HTML behavior still makes sense.
 - Keep all benchmark, canopy, and station-axis values reproducible from structured analysis JSON.
+
+## Produktvariante verplant — erster vertikaler Pfad, 20.09.2026
+
+- Implementiert: konfigurierbare Variante, deutscher Kontextbereich, getrennte Geometrien, zehn redaktionelle Perspektivprofile, deterministische Reflexionsobjekte, zentrale Invalidierung, immutable Durchlaufhistorie, getrennte Workspace-Bearbeitungen und bewusster JSON/Markdown/HTML/ZIP-Export.
+- Implementiert: statischer Unterpfad-Build `dist-verplant/` mit Integrationsmanifest; ohne konfigurierten Datenhost expliziter Datenlückenmodus. Keine neue schwere Laufzeitabhängigkeit.
+- Geprüfter Stand und Abnahmegrenzen: [verplant-validation.md](docs/verplant-validation.md). Playwright/Mobil auf Nutzerwunsch ausgenommen.
+- Offen: echte Datenhostbereitstellung/Abdeckung, fachliche Profilredaktion, vollständige Datenlabel-Übersetzung, geprüfter JSON-Reimport, weitergehende Geometrieeingabe und Modi, positive lokale Ollama-Integration sowie Kopie ins Zielrepository.
+- Die bestehende UCA-Roadmap bleibt für die Standardvariante bestehen. Die fünf verplant-Phasen sind frei anwählbare Arbeitsbereiche, kein Einbahnstraßen-Wizard. Details und testbare Folgepakete: [verplant-architecture.md](docs/verplant-architecture.md).
