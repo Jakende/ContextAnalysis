@@ -6,6 +6,7 @@ const base = "/ausprobieren/app/";
 const types = {
   ".html": "text/html; charset=utf-8",
   ".js": "text/javascript",
+  ".mjs": "text/javascript",
   ".css": "text/css",
   ".json": "application/json",
   ".wasm": "application/wasm",
