@@ -106,6 +106,8 @@ export async function runLocationAnalysis(input: {
   onProgress?: (step: AnalysisLoadStep) => void;
   onPartialResult?: (result: AnalysisResult, sectionSvg: string) => void;
   enableGeocoding?: boolean;
+  /** Disable optional remote enrichment without changing the UCA default. */
+  enableRemoteServices?: boolean;
   enableOverpass?: boolean;
   timingStart?: AnalysisTimingStart;
 }): Promise<{ result: AnalysisResult; sectionSvg: string }> {
@@ -189,8 +191,8 @@ export async function runLocationAnalysis(input: {
     detail: "Requesting cached/routed isochrones or deterministic mode buffers without blocking local source reads.",
     status: "running",
   });
-  const isochronePromise = fetchOpenRouteServiceIsochrones(selectedPoint, computedAt);
-  const zensusWmsPromise = fetchZensusWmsIndicators(selectedPoint, computedAt);
+  const isochronePromise = fetchOpenRouteServiceIsochrones(selectedPoint, computedAt, input.enableRemoteServices !== false);
+  const zensusWmsPromise = input.enableRemoteServices === false ? Promise.resolve([]) : fetchZensusWmsIndicators(selectedPoint, computedAt);
   let zensusWmsIndicators: Awaited<
     ReturnType<typeof fetchZensusWmsIndicators>
   > = [];
@@ -295,6 +297,7 @@ export async function runLocationAnalysis(input: {
       ? [isochrones.receipt]
       : [
           ...(await runSourceAdapters({
+        allowRemote: input.enableRemoteServices !== false,
         district: xl.district,
         selectedPoint,
         computedAt,

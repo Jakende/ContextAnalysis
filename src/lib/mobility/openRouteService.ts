@@ -1,9 +1,10 @@
+import { apiUrl } from "../api/base";
 import type { FeatureCollection, Polygon } from "geojson";
 import { fetchWithTimeout, getCached, setCached } from "../api/cache";
 import type { SelectedPoint, SourceFetchReceipt } from "../types";
 import { bufferPolygon, featureCollection, geometryToFeature } from "../analysis/geometry";
 
-const ORS_URL = "/api/openrouteservice-isochrones";
+const ORS_URL = apiUrl("openrouteservice-isochrones");
 const CACHE_VERSION = "v1";
 const CACHE_MAX_AGE_MS = 1000 * 60 * 60 * 24 * 14;
 const DEFAULT_RANGES_SECONDS = [300, 600, 900];
@@ -29,6 +30,7 @@ export type IsochroneResult = {
 export async function fetchOpenRouteServiceIsochrones(
   selectedPoint: SelectedPoint,
   computedAt: string,
+  enabled = true,
 ): Promise<IsochroneResult> {
   const startedAt = performance.now();
   const profiles = [
@@ -37,7 +39,7 @@ export async function fetchOpenRouteServiceIsochrones(
     { id: "driving-car", label: "driving", rangeType: "time" },
   ] as const;
   const fallbackCollection = createFallbackIsochrones(selectedPoint, computedAt);
-  const serviceAvailable = await openRouteServiceAvailable();
+  const serviceAvailable = enabled && await openRouteServiceAvailable();
 
   if (!serviceAvailable) {
     return {
@@ -137,7 +139,7 @@ export async function fetchOpenRouteServiceIsochrones(
 async function openRouteServiceAvailable(): Promise<boolean> {
   try {
     const response = await fetchWithTimeout(
-      "/api/openrouteservice-status",
+      apiUrl("openrouteservice-status"),
       { method: "GET" },
       2_000,
     );

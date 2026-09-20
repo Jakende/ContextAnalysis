@@ -1,3 +1,4 @@
+import { apiUrl } from "../api/base";
 import type { FeatureCollection } from "geojson";
 import { fetchWithTimeout } from "../api/cache";
 import type {
@@ -21,6 +22,7 @@ type GeocodingReceipt = {
 };
 
 type SourceAdapterInput = {
+  allowRemote?: boolean;
   district: string;
   selectedPoint: SelectedPoint;
   computedAt: string;
@@ -102,7 +104,7 @@ const PREPROCESSED_ONLY_SOURCE_IDS = new Set([
 export async function runSourceAdapters(
   input: SourceAdapterInput,
 ): Promise<SourceFetchReceipt[]> {
-  const assetReceipts = await Promise.all([
+  const assetReceipts = input.allowRemote === false ? [] : await Promise.all([
     fetchOpenFreeMapTileJson(input.computedAt),
     fetchOpenFreeMapSprite(input.computedAt),
   ]);
@@ -298,6 +300,10 @@ async function registryBackedSourceReceipt(
 ): Promise<SourceFetchReceipt> {
   const source: DataSource = sourceRegistry[sourceId as keyof typeof sourceRegistry];
   const queriedAt = input.computedAt;
+  if (input.allowRemote === false) {
+    if (input.localCollections?.[sourceId]) return loadedLocalCollectionReceipt(source, input.localCollections[sourceId], queriedAt);
+    return receipt(source, {status:"skipped",queriedAt,elapsedMs:0,method:"Optional remote source access disabled by caller.",caveats:["Source not verified in this local-only run."]});
+  }
   if (sourceId === "zensus-grid-2022") {
     return zensusWmsSourceReceipt(source, queriedAt);
   }
@@ -530,7 +536,7 @@ async function remoteMetadataReceipt(
 
 async function probeRemoteSource(url: string): Promise<SourceProbeResponse> {
   const response = await fetchWithTimeout(
-    `/api/source-probe?url=${encodeURIComponent(url)}`,
+    apiUrl(`source-probe?url=${encodeURIComponent(url)}`),
     { cache: "no-store" },
     12_000,
   );

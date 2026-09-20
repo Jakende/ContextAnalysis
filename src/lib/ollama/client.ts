@@ -1,3 +1,4 @@
+import { apiUrl } from "../api/base";
 import type { AnalysisResult } from "../types";
 import { getSources } from "../data/sourceRegistry";
 import { analysisToMarkdown } from "../export/serializers";
@@ -46,7 +47,7 @@ ${REQUIRED_REPORT_HEADINGS.join("\n")}
 export async function generateOllamaReport(
   analysis: AnalysisResult,
 ): Promise<OllamaReport> {
-  const apiBaseUrl = import.meta.env.VITE_OLLAMA_API_BASE_URL ?? "/api/ollama";
+  const apiBaseUrl = import.meta.env.VITE_OLLAMA_API_BASE_URL ?? apiUrl("ollama");
   const model = import.meta.env.VITE_OLLAMA_MODEL ?? "deepseek-v4-flash:cloud";
   const language = import.meta.env.VITE_REPORT_LANGUAGE ?? "en";
 

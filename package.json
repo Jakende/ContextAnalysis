@@ -44,9 +44,11 @@
     "test:scenario": "node scripts/validate/test-scenario.mjs",
     "test:timing": "node scripts/validate/test-analysis-timing.mjs",
     "test:e2e": "playwright test",
-    "validate:contracts": "node scripts/validate/run-integrated-validation.mjs",
+    "validate:contracts": "node scripts/validate/run-integrated-validation.mjs && npm run test:verplant",
     "validate": "npm run validate:contracts && npm run test:e2e",
-    "validate:ui": "python3 scripts/validate/validate_ui_css.py src/styles/design-system.css src/styles/app.css"
+    "validate:ui": "python3 scripts/validate/validate_ui_css.py src/styles/design-system.css src/styles/app.css",
+    "build:verplant": "node scripts/release/build-verplant.mjs",
+    "test:verplant": "node scripts/validate/test-verplant.mjs"
   },
   "keywords": [],
   "author": "",

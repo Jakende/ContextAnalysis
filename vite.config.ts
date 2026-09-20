@@ -58,17 +58,25 @@ const SOURCE_PROBE_ALLOWED_HOSTS = new Set([
 ]);
 
 export default defineConfig(({ command, mode }) => {
-  const env = loadEnv(mode, process.cwd(), "");
+  const env = { ...loadEnv(mode, process.cwd(), ""), ...process.env };
   process.env = { ...env, ...process.env };
   const includeGeodata = env.UCA_INCLUDE_GEODATA !== "false";
   const geodataBaseUrl = env.VITE_GEODATA_BASE_URL?.trim() ?? "";
-  const dataReleasePin = includeGeodata
+  const dataReleasePin = includeGeodata || (env.VITE_PRODUCT_VARIANT === "verplant" && env.VITE_GEODATA_MODE === "none")
     ? null
     : parseImmutableGeodataReleaseUrl(geodataBaseUrl);
   const outputDirectory = env.UCA_OUT_DIR?.trim() || "dist";
   return {
+    base: env.VITE_PUBLIC_BASE || "/",
     plugins: [
       react(),
+      ...(env.VITE_PRODUCT_VARIANT === "verplant" ? [{
+        name: "verplant-document-title",
+        transformIndexHtml(html: string) {
+          return html.replace("<title>Urban Context Analysis</title>", "<title>verplant — ausprobieren</title>")
+            .replace("Urban Context Analysis: interaktive XL/L/M Analyse fuer Stadt, Quartier und Strassenraum.", "verplant: räumlichen Kontext verstehen und Perspektiven wechseln.");
+        },
+      }] : []),
       localApiPlugin(),
       curatedPublicAssetsPlugin(includeGeodata, outputDirectory, dataReleasePin),
     ],

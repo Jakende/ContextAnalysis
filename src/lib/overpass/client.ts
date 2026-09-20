@@ -1,3 +1,4 @@
+import { apiUrl } from "../api/base";
 import type { FeatureCollection } from "geojson";
 import { fetchWithTimeout, getCached, setCached } from "../api/cache";
 import type { OverpassModule, OverpassProvenance, QueryParams } from "../types";
@@ -206,7 +207,7 @@ async function fetchOverpassQuery(
   const started = performance.now();
   try {
     const response = await fetchWithTimeout(
-      "/api/overpass",
+      apiUrl("overpass"),
       {
         method: "POST",
         headers: {
@@ -221,7 +222,7 @@ async function fetchOverpassQuery(
     return { ok: response.ok && proxy.ok && Boolean(proxy.data), proxy };
   } catch (error) {
     endpointStatus.push({
-      endpoint: "/api/overpass",
+      endpoint: apiUrl("overpass"),
       ok: false,
       elapsedMs: Math.round(performance.now() - started),
       error: error instanceof Error ? error.message : String(error),
@@ -237,7 +238,7 @@ function normalizeEndpointStatus(
   if (proxy.endpointStatus?.length) return proxy.endpointStatus;
   return [
     {
-      endpoint: proxy.endpoint ?? "/api/overpass",
+      endpoint: proxy.endpoint ?? apiUrl("overpass"),
       ok: proxy.ok,
       elapsedMs: Math.round(proxy.elapsedMs ?? fallbackElapsedMs),
       error: proxy.error,

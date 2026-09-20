@@ -10,6 +10,7 @@ export function getCached<T>(key: string, maxAgeMs: number): T | null {
   const local = memory.get(key) as CacheRecord<T> | undefined;
   if (local && now - local.createdAt < maxAgeMs) return local.value;
 
+  if (import.meta.env.VITE_PRODUCT_VARIANT === "verplant") return null;
   try {
     const serialized = window.localStorage.getItem(key);
     if (!serialized) return null;
@@ -25,6 +26,7 @@ export function getCached<T>(key: string, maxAgeMs: number): T | null {
 export function setCached<T>(key: string, value: T): void {
   const record: CacheRecord<T> = { createdAt: Date.now(), value };
   memory.set(key, record);
+  if (import.meta.env.VITE_PRODUCT_VARIANT === "verplant") return;
   try {
     window.localStorage.setItem(key, JSON.stringify(record));
   } catch {

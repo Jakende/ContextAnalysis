@@ -1,3 +1,4 @@
+import { apiUrl } from "./base";
 import { fetchWithTimeout, getCached, setCached } from "./cache";
 
 type NominatimResponse = {
@@ -145,7 +146,7 @@ export async function searchPlaces(
 
   try {
     const response = await fetchWithTimeout(
-      `/api/nominatim-search?${params.toString()}`,
+      apiUrl(`nominatim-search?${params.toString()}`),
       { cache: "no-store" },
       6_000,
     );

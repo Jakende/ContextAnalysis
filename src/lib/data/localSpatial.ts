@@ -794,6 +794,7 @@ async function fetchFeatureCollection(url: string): Promise<FeatureCollection | 
 }
 
 async function fetchJson(url: string): Promise<unknown | null> {
+  if (import.meta.env.VITE_PRODUCT_VARIANT === "verplant" && import.meta.env.VITE_GEODATA_MODE === "none") return null;
   const cached = jsonRequestCache.get(url);
   if (cached) return cached;
   const request = fetch(url)
@@ -1241,4 +1242,10 @@ function projectMeters(coordinate: number[], referenceLat: number) {
     x: coordinate[0] * 111_320 * Math.cos(latRadians),
     y: coordinate[1] * 111_320,
   };
+}
+
+/** Explicit new data-version run; existing result objects remain immutable. */
+export function clearLocalSpatialRequestCache(): void {
+  jsonRequestCache.clear();
+  featureCollectionRequestCache.clear();
 }

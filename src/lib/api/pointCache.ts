@@ -1,3 +1,4 @@
+import { apiUrl } from "./base";
 export type PointCacheSource = "overture" | "urban-atlas";
 
 export type PointCacheResult = {
@@ -20,7 +21,7 @@ export async function resolvePointCache(input: {
   error?: string;
 }> {
   try {
-    const response = await fetch("/api/point-cache", {
+    const response = await fetch(apiUrl("point-cache"), {
       method: "POST",
       cache: "no-store",
       headers: { "Content-Type": "application/json" },

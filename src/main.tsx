@@ -1,12 +1,27 @@
 import "maplibre-gl/dist/maplibre-gl.css";
-import { StrictMode } from "react";
+import { lazy, Suspense, StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { App } from "./app/App";
-import "./styles/design-system.css";
-import "./styles/app.css";
+import { productVariant } from "./config/productVariant";
+const App = lazy(() =>
+  import.meta.env.VITE_PRODUCT_VARIANT === "verplant"
+    ? import("./app/VerplantApp").then((m) => ({ default: m.VerplantApp }))
+    : import("./app/App").then((m) => ({ default: m.App })),
+);
+if (productVariant.perspectives) {
+  document.documentElement.lang = productVariant.language;
+  document.title = productVariant.title;
+}
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <App />
+    <Suspense
+      fallback={
+        <p role="status">
+          {productVariant.perspectives ? "Anwendung wird geladen…" : "Loading…"}
+        </p>
+      }
+    >
+      <App />
+    </Suspense>
   </StrictMode>,
 );

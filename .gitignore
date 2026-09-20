@@ -11,3 +11,5 @@ public/data/processed/
 artifacts/
 playwright-report/
 test-results/
+_experiments/
+dist-verplant/

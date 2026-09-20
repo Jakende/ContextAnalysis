@@ -1,4 +1,4 @@
-const DEFAULT_GEODATA_BASE_URL = "/data";
+const DEFAULT_GEODATA_BASE_URL = `${import.meta.env.BASE_URL ?? "/"}data`;
 
 /**
  * Resolve one immutable geodata-release asset without coupling runtime code to
