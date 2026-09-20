@@ -1,6 +1,10 @@
 import { spawnSync, execFileSync } from "node:child_process";
 import { writeFileSync, readdirSync, readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
+import {
+  installRuntimeAssets,
+  validateRuntimeAssets,
+} from "./runtime-assets.mjs";
 const git = (...args) => execFileSync("git", args, { encoding: "utf8" }).trim();
 const base = process.env.VITE_PUBLIC_BASE || "/ausprobieren/app/";
 if (
@@ -37,6 +41,7 @@ for (const args of [
   if (p.status !== 0) process.exit(p.status ?? 1);
 }
 const root = resolve("dist-verplant");
+await installRuntimeAssets(root);
 const files = [];
 function walk(dir) {
   for (const e of readdirSync(dir, { withFileTypes: true })) {
@@ -51,6 +56,7 @@ if (existsSync(resolve(root, "data/processed")))
 const html = readFileSync(resolve(root, "index.html"), "utf8");
 if (!html.includes(`${base}assets/`))
   throw new Error("Asset base path missing");
+const runtimeAssets = await validateRuntimeAssets(root, base);
 for (const p of files.filter((p) => /\.(js|html|json|css)$/.test(p))) {
   const text = readFileSync(p, "utf8");
   if (
@@ -77,11 +83,13 @@ writeFileSync(
       analysisVersion: "0.1.0",
       exportVersion: "0.1.0",
       extensionVersion: "verplant-case/1.0.0",
+      runtimeAssets,
       checks: [
         "tsc -b",
         "vite build",
         "slim-geodata-absence",
         "subpath-index-assets",
+        "runtime-referenced-assets",
         "secrets-and-local-path-scan",
       ],
     },

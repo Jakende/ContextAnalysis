@@ -48,7 +48,8 @@
     "validate": "npm run validate:contracts && npm run test:e2e",
     "validate:ui": "python3 scripts/validate/validate_ui_css.py src/styles/design-system.css src/styles/app.css",
     "build:verplant": "node scripts/release/build-verplant.mjs",
-    "test:verplant": "node scripts/validate/test-verplant.mjs"
+    "test:verplant": "node scripts/validate/test-verplant.mjs",
+    "test:runtime-assets": "node scripts/validate/test-runtime-assets.mjs"
   },
   "keywords": [],
   "author": "",

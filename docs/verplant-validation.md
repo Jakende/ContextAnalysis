@@ -9,6 +9,7 @@ Stand: 20.09.2026. Basis: `e41294919f166ed729bd125d71fb799776191c49` auf `URSB-o
 | `npm run typecheck` | bestanden |
 | `npm run build` | UCA-Produktionsbuild bestanden |
 | `npm run build:verplant` | Unterpfad-Build bestanden; keine kanonischen Geodaten, lokalen absoluten Pfade, localhost-Ziele oder erkannten Schlüssel |
+| `npm run test:runtime-assets` | Negativ- und Positivprüfung für dynamisch referenzierte Laufzeitdateien bestanden; fehlende `new URL(...)`-Assets brechen die Prüfung ab |
 | `npm run validate:ui` | bestehende UCA-CSS-Vertragsprüfung bestanden |
 | `npm run test:data-sources` | bestanden; technische Quellenprüfung ist keine Zusage vollständiger geografischer Abdeckung |
 | `npm run test:benchmark` | bestanden |
